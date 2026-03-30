@@ -9786,15 +9786,18 @@ async function handleForgotVerify(e) {
       return;
     }
 
-    // Code verified — update password in localStorage
+    // Code verified — update or create account in localStorage
     const users = getUsers();
     const user = users.find(u => u.email === resetEmail);
-    if (!user) {
-      showLoginError('Účet s týmto e-mailom neexistuje v tomto prehliadači. Zaregistrujte sa znova.');
-      return;
-    }
+    const hashedPass = await simpleHash(pass);
 
-    user.password = await simpleHash(pass);
+    if (user) {
+      user.password = hashedPass;
+    } else {
+      // Email verified but no local account — create one
+      const name = resetEmail.split('@')[0];
+      users.push({ name, email: resetEmail, password: hashedPass, createdAt: new Date().toISOString() });
+    }
     saveUsers(users);
 
     resetToken = null;
