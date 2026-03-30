@@ -2191,8 +2191,8 @@
 
 <div class="app-layout">
   <nav class="sidebar">
-    <div class="sidebar-title" onclick="toggleSection(this)">Menu <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
-    <div class="sidebar-section">
+    <!-- Global items - always visible -->
+    <div class="sidebar-global">
       <div class="nav-item active" onclick="showPage('home')">
         <span class="nav-icon"><i data-lucide="layout-dashboard"></i></span> Prehľad
       </div>
@@ -2201,67 +2201,8 @@
       </div>
     </div>
 
-    <div class="sidebar-title" style="margin-top:0.75rem" onclick="toggleSection(this)">Kalkulačky <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
-    <div class="sidebar-section">
-      <div class="nav-item" onclick="showPage('investovanie')">
-        <span class="nav-icon"><i data-lucide="trending-up"></i></span> Investovanie
-      </div>
-      <div class="nav-item" onclick="showPage('milionova')">
-        <span class="nav-icon"><i data-lucide="target"></i></span> Miliónová kalkulačka
-      </div>
-      <div class="nav-item" onclick="showPage('renta')">
-        <span class="nav-icon"><i data-lucide="wallet"></i></span> Mesačná renta
-      </div>
-      <div class="nav-item" onclick="showPage('finmath')">
-        <span class="nav-icon"><i data-lucide="calculator"></i></span> Finančná matematika
-      </div>
-      <div class="nav-item" onclick="showPage('pilier')">
-        <span class="nav-icon"><i data-lucide="shield-check"></i></span> II. Pilier
-      </div>
-      <div class="nav-item" onclick="showPage('hypoteka')">
-        <span class="nav-icon"><i data-lucide="building-2"></i></span> Hypotéka + Investícia
-      </div>
-      <div class="nav-item" onclick="showPage('rezerva')">
-        <span class="nav-icon"><i data-lucide="piggy-bank"></i></span> Tvorba rezervy
-      </div>
-      <div class="nav-item" onclick="showPage('dividenda')">
-        <span class="nav-icon"><i data-lucide="coins"></i></span> Dividendové fondy
-      </div>
-    </div>
-
-    <div class="sidebar-title" style="margin-top:0.75rem" onclick="toggleSection(this)">Hypotekárny modul <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
-    <div class="sidebar-section">
-      <div class="nav-item" onclick="showPage('mhypoteka')">
-        <span class="nav-icon"><i data-lucide="home"></i></span> Jedna domácnosť
-      </div>
-      <div class="nav-item" onclick="showPage('mhypoteka-multi')">
-        <span class="nav-icon"><i data-lucide="users"></i></span> Viac domácností
-      </div>
-      <div class="nav-item" onclick="showPage('mhypoteka-rovne')">
-        <span class="nav-icon"><i data-lucide="equal"></i></span> Rovné splátky
-      </div>
-      <div class="nav-item" onclick="showPage('mhypoteka-klesajuce')">
-        <span class="nav-icon"><i data-lucide="trending-down"></i></span> Klesajúce splátky
-      </div>
-    </div>
-
-    <div class="sidebar-title" style="margin-top:0.75rem" onclick="toggleSection(this)">Úverová metodika <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
-    <div class="sidebar-section">
-      <div class="nav-item" onclick="showPage('metodika')">
-        <span class="nav-icon"><i data-lucide="bar-chart-3"></i></span> Porovnanie bánk
-      </div>
-    </div>
-
-    <div class="sidebar-title" style="margin-top:0.75rem" onclick="toggleSection(this)">Analýza <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
-    <div class="sidebar-section">
-      <div class="nav-item" onclick="showPage('aof')">
-        <span class="nav-icon"><i data-lucide="clipboard-list"></i></span> Vstupné údaje klienta
-      </div>
-      <div class="nav-item" onclick="showPage('rozlozenie')">
-        <span class="nav-icon"><i data-lucide="pie-chart"></i></span> Rozloženie investície
-      </div>
-    </div>
-    <div class="sidebar-title" style="margin-top:0.75rem" onclick="toggleSection(this)">Realitný modul <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+    <!-- Section 1: Nehnuteľnosti -->
+    <div class="sidebar-title" data-section="nehnutelnosti" onclick="toggleSection(this)">Nehnuteľnosti <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
     <div class="sidebar-section">
       <div class="nav-item" onclick="showPage('leads')">
         <span class="nav-icon"><i data-lucide="search"></i></span> Vyhľadávanie
@@ -2274,6 +2215,66 @@
       </div>
       <div class="nav-item" onclick="openAiSettings()">
         <span class="nav-icon"><i data-lucide="sparkles"></i></span> AI Nastavenia
+      </div>
+    </div>
+
+    <!-- Section 2: Investičné kalkulačky -->
+    <div class="sidebar-title" style="margin-top:0.75rem" data-section="kalkulacky" onclick="toggleSection(this)">Investičné kalkulačky <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+    <div class="sidebar-section">
+      <div class="nav-item" onclick="showPage('investovanie')">
+        <span class="nav-icon"><i data-lucide="trending-up"></i></span> Investovanie
+      </div>
+      <div class="nav-item" onclick="showPage('milionova')">
+        <span class="nav-icon"><i data-lucide="target"></i></span> Miliónová kalkulačka
+      </div>
+      <div class="nav-item" onclick="showPage('renta')">
+        <span class="nav-icon"><i data-lucide="wallet"></i></span> Mesačná renta
+      </div>
+      <div class="nav-item" onclick="showPage('rezerva')">
+        <span class="nav-icon"><i data-lucide="piggy-bank"></i></span> Tvorba rezervy
+      </div>
+      <div class="nav-item" onclick="showPage('dividenda')">
+        <span class="nav-icon"><i data-lucide="coins"></i></span> Dividendové fondy
+      </div>
+      <div class="nav-item" onclick="showPage('pilier')">
+        <span class="nav-icon"><i data-lucide="shield-check"></i></span> II. Pilier
+      </div>
+      <div class="nav-item" onclick="showPage('finmath')">
+        <span class="nav-icon"><i data-lucide="calculator"></i></span> Finančná matematika
+      </div>
+    </div>
+
+    <!-- Section 3: Hypotéky -->
+    <div class="sidebar-title" style="margin-top:0.75rem" data-section="hypoteky" onclick="toggleSection(this)">Hypotéky <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+    <div class="sidebar-section">
+      <div class="nav-item" onclick="showPage('mhypoteka')">
+        <span class="nav-icon"><i data-lucide="home"></i></span> Jedna domácnosť
+      </div>
+      <div class="nav-item" onclick="showPage('mhypoteka-multi')">
+        <span class="nav-icon"><i data-lucide="users"></i></span> Viac domácností
+      </div>
+      <div class="nav-item" onclick="showPage('hypoteka')">
+        <span class="nav-icon"><i data-lucide="building-2"></i></span> Hypotéka + Investícia
+      </div>
+      <div class="nav-item" onclick="showPage('mhypoteka-rovne')">
+        <span class="nav-icon"><i data-lucide="equal"></i></span> Rovné splátky
+      </div>
+      <div class="nav-item" onclick="showPage('mhypoteka-klesajuce')">
+        <span class="nav-icon"><i data-lucide="trending-down"></i></span> Klesajúce splátky
+      </div>
+    </div>
+
+    <!-- Section 4: Metodika & Klient -->
+    <div class="sidebar-title" style="margin-top:0.75rem" data-section="metodika" onclick="toggleSection(this)">Metodika & Klient <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+    <div class="sidebar-section">
+      <div class="nav-item" onclick="showPage('metodika')">
+        <span class="nav-icon"><i data-lucide="bar-chart-3"></i></span> Porovnanie bánk
+      </div>
+      <div class="nav-item" onclick="showPage('aof')">
+        <span class="nav-icon"><i data-lucide="clipboard-list"></i></span> Vstupné údaje klienta
+      </div>
+      <div class="nav-item" onclick="showPage('rozlozenie')">
+        <span class="nav-icon"><i data-lucide="pie-chart"></i></span> Rozloženie investície
       </div>
     </div>
   </nav>
