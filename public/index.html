@@ -1164,31 +1164,33 @@
     .stat-value { font-size: 1.35rem; font-weight: 800; color: var(--primary-dark); line-height: 1.2; }
     .stat-label { font-size: 0.72rem; color: var(--text-light); font-weight: 500; margin-top: 2px; }
     .stat-card.clickable { cursor: pointer; transition: all 0.2s ease; }
-    .stat-card.clickable:hover { border-color: rgba(46,196,212,0.3); transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+    .stat-card.clickable:hover { border-color: rgba(46,196,212,0.2); box-shadow: var(--shadow-lg); }
     /* ===== DASHBOARD ===== */
     .dash-pipeline {
       background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow);
       padding: 1.5rem 1.75rem; margin-bottom: 1.75rem; border: 1px solid rgba(0,0,0,0.04);
     }
     .dash-pipeline-title {
-      font-size: 0.82rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;
-      color: var(--primary-dark); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;
+      font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px;
+      color: var(--text-light); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;
     }
-    .dash-funnel { display: flex; align-items: stretch; gap: 0; overflow-x: auto; }
+    .dash-funnel { display: flex; align-items: stretch; gap: 2px; overflow-x: auto; }
     .dash-funnel-stage {
-      flex: 1; min-width: 90px; padding: 1rem 0.5rem; text-align: center;
-      cursor: pointer; position: relative; transition: all 0.2s; border-radius: 0;
+      flex: 1; min-width: 85px; padding: 0.85rem 0.5rem; text-align: center;
+      cursor: pointer; position: relative; transition: all 0.15s; border-radius: 0;
     }
     .dash-funnel-stage:first-child { border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
     .dash-funnel-stage:last-child { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
-    .dash-funnel-stage:hover { filter: brightness(0.93); transform: translateY(-2px); }
+    .dash-funnel-stage:hover { filter: brightness(0.95); }
     .dash-funnel-count {
-      font-size: 1.65rem; font-weight: 800; font-family: 'JetBrains Mono', 'Inter', monospace; line-height: 1.2;
+      font-size: 1.4rem; font-weight: 700; font-family: 'JetBrains Mono', 'Inter', monospace; line-height: 1.2;
     }
     .dash-funnel-label {
-      font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; opacity: 0.8;
+      font-size: 0.62rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; margin-top: 3px; opacity: 0.7;
     }
-    .dash-funnel-icon { font-size: 1.1rem; margin-bottom: 4px; }
+    .dash-funnel-dot {
+      width: 6px; height: 6px; border-radius: 50%; margin: 0 auto 6px; opacity: 0.7;
+    }
     .dash-charts-row {
       display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.75rem;
     }
@@ -1206,19 +1208,19 @@
       gap: 0.75rem; margin-bottom: 1.75rem;
     }
     .dash-action-btn {
-      background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow);
-      padding: 1.15rem 1rem; border: 1px solid rgba(0,0,0,0.04); cursor: pointer;
-      transition: all 0.2s; display: flex; align-items: center; gap: 0.75rem;
+      background: var(--card); border-radius: var(--radius-sm); box-shadow: none;
+      padding: 1rem; border: 1px solid var(--border); cursor: pointer;
+      transition: all 0.15s; display: flex; align-items: center; gap: 0.7rem;
       font-family: 'Inter', sans-serif; text-align: left;
     }
-    .dash-action-btn:hover { border-color: rgba(46,196,212,0.4); transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+    .dash-action-btn:hover { border-color: rgba(46,196,212,0.35); background: #FAFCFC; }
     .dash-action-icon {
-      width: 40px; height: 40px; border-radius: 10px;
+      width: 36px; height: 36px; border-radius: 8px;
       display: flex; align-items: center; justify-content: center; flex-shrink: 0;
     }
-    .dash-action-icon svg { width: 20px; height: 20px; stroke-width: 1.75; }
-    .dash-action-label { font-weight: 600; font-size: 0.82rem; color: var(--primary-dark); }
-    .dash-action-sub { font-size: 0.7rem; color: var(--text-light); margin-top: 2px; }
+    .dash-action-icon svg { width: 18px; height: 18px; stroke-width: 1.75; }
+    .dash-action-label { font-weight: 600; font-size: 0.8rem; color: var(--primary-dark); }
+    .dash-action-sub { font-size: 0.68rem; color: var(--text-light); margin-top: 1px; }
     .dash-bottom-row {
       display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.75rem;
     }
@@ -2799,7 +2801,7 @@
       <div class="section-heading"><i data-lucide="zap" style="width:18px;height:18px;stroke-width:2"></i> Rýchle akcie</div>
       <div class="dash-actions-row">
         <button class="dash-action-btn" onclick="showPage('myproperties'); setTimeout(()=>openPropertyForm(), 100);">
-          <div class="dash-action-icon" style="background:linear-gradient(135deg,#E5F5F1,#D0F0EA);color:#1A7A8A;">
+          <div class="dash-action-icon" style="background:#EFF8F6;color:#1A7A8A;">
             <i data-lucide="plus-circle"></i>
           </div>
           <div>
@@ -2808,7 +2810,7 @@
           </div>
         </button>
         <button class="dash-action-btn" onclick="showPage('contacts'); setTimeout(()=>openContactForm(), 100);">
-          <div class="dash-action-icon" style="background:linear-gradient(135deg,#E0F2FE,#BAE6FD);color:#0369A1;">
+          <div class="dash-action-icon" style="background:#EEF6FE;color:#0369A1;">
             <i data-lucide="user-plus"></i>
           </div>
           <div>
@@ -2817,7 +2819,7 @@
           </div>
         </button>
         <button class="dash-action-btn" onclick="showPage('leads')">
-          <div class="dash-action-icon" style="background:linear-gradient(135deg,#FEF3C7,#FDE68A);color:#B45309;">
+          <div class="dash-action-icon" style="background:#FEF8EC;color:#B45309;">
             <i data-lucide="search"></i>
           </div>
           <div>
@@ -2826,7 +2828,7 @@
           </div>
         </button>
         <button class="dash-action-btn" onclick="showPage('mhypoteka')">
-          <div class="dash-action-icon" style="background:linear-gradient(135deg,#EDE9FE,#DDD6FE);color:#7C3AED;">
+          <div class="dash-action-icon" style="background:#F3F0FE;color:#7C3AED;">
             <i data-lucide="calculator"></i>
           </div>
           <div>
@@ -10705,8 +10707,8 @@ function renderDashPipeline(props) {
 
   container.innerHTML = PROP_PIPELINE.map(stage => {
     const count = counts[stage.key] || 0;
-    return '<div class="dash-funnel-stage" style="background:' + stage.color + '15;color:' + stage.color + ';" onclick="dashFilterByStatus(\'' + stage.key + '\')" title="' + stage.label + ': ' + count + '">' +
-      '<div class="dash-funnel-icon">' + stage.icon + '</div>' +
+    return '<div class="dash-funnel-stage" style="background:' + stage.color + '0A;color:' + stage.color + ';" onclick="dashFilterByStatus(\'' + stage.key + '\')" title="' + stage.label + ': ' + count + '">' +
+      '<div class="dash-funnel-dot" style="background:' + stage.color + ';"></div>' +
       '<div class="dash-funnel-count" style="color:' + stage.color + ';">' + count + '</div>' +
       '<div class="dash-funnel-label">' + stage.label + '</div>' +
     '</div>';
