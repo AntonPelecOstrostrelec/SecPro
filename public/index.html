@@ -1100,6 +1100,7 @@
     .page { display: none; }
     .page.active { display: block; animation: fadeIn 0.25s ease; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     /* ===== HOME ===== */
     .welcome-hero {
       background: linear-gradient(135deg, #0B2A3C 0%, #0D4F5F 40%, #1A7A8A 100%);
@@ -1333,6 +1334,16 @@
     .aml-risk-factor { display: flex; justify-content: space-between; align-items: center; padding: 0.35rem 0; font-size: 0.8rem; }
     .aml-risk-factor-label { color: var(--text-light); }
     .aml-risk-factor-score { font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+    .aml-check-clear { background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); color: #059669; }
+    .aml-check-hit { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: #DC2626; }
+    .aml-check-review { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3); color: #D97706; }
+    .aml-check-loading { background: rgba(26,122,138,0.08); border: 1px solid rgba(26,122,138,0.2); color: #1A7A8A; }
+    .aml-check-error { background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.2); color: #EF4444; }
+    .aml-match-card { background: #F8FAFC; border: 1px solid var(--border); border-radius: 8px; padding: 0.6rem 0.85rem; margin-bottom: 0.5rem; font-size: 0.8rem; }
+    .aml-match-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem; }
+    .aml-match-name { font-weight: 700; color: var(--primary-dark); }
+    .aml-match-score { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; font-weight: 600; }
+    .aml-match-meta { font-size: 0.72rem; color: var(--text-light); }
     @media (max-width: 768px) {
       .aml-grid { grid-template-columns: 1fr; }
       .aml-detail-grid { grid-template-columns: 1fr; }
@@ -4162,13 +4173,21 @@
           <!-- Sanctions / Register verification -->
           <div class="aml-form-section">
             <div class="aml-form-section-title"><i data-lucide="search" style="width:14px;height:14px;"></i> Overenie v registroch a sankčných zoznamoch</div>
-            <p style="font-size:0.78rem;color:var(--text-light);margin:0 0 0.75rem;">Potvrďte, že ste klienta preverili v príslušných zoznamoch. Zaznačte dátum a výsledok overenia.</p>
+            <p style="font-size:0.78rem;color:var(--text-light);margin:0 0 0.5rem;">Automatické preverenie v sankčných zoznamoch EÚ, OSN, OFAC a databáze PEP cez OpenSanctions.org.</p>
+
+            <button type="button" class="btn btn-primary" onclick="amlAutoCheck()" id="aml-auto-check-btn" style="margin-bottom:1rem;display:flex;align-items:center;gap:0.5rem;">
+              <i data-lucide="shield-check" style="width:16px;height:16px;"></i> Automaticky overiť klienta
+            </button>
+            <div id="aml-check-status" style="display:none;margin-bottom:1rem;padding:0.75rem 1rem;border-radius:8px;font-size:0.82rem;"></div>
+            <div id="aml-check-matches" style="display:none;margin-bottom:1rem;"></div>
+
             <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:0.75rem;">
               <div class="form-group">
                 <label>Sankčné zoznamy (EÚ, OSN, OFAC)</label>
                 <select id="aml-sanctions-result" style="width:100%;padding:0.5rem;border-radius:8px;border:1px solid var(--border);">
                   <option value="clear">Bez nálezu</option>
                   <option value="hit">Nájdená zhoda</option>
+                  <option value="review">Na posúdenie</option>
                   <option value="pending">Neoverené</option>
                 </select>
               </div>
@@ -4180,6 +4199,7 @@
                 <select id="aml-register-result" style="width:100%;padding:0.5rem;border-radius:8px;border:1px solid var(--border);">
                   <option value="clear">Bez nálezu</option>
                   <option value="hit">Nájdená zhoda</option>
+                  <option value="review">Na posúdenie</option>
                   <option value="pending">Neoverené</option>
                 </select>
               </div>
@@ -4187,7 +4207,7 @@
             </div>
             <div class="form-group" style="margin-top:0.25rem;">
               <label>Poznámka k overeniu</label>
-              <textarea id="aml-register-note" rows="2" placeholder="Napr. zdroj overenia, číslo screenu, odkaz na záznam..."></textarea>
+              <textarea id="aml-register-note" rows="2" placeholder="Automaticky vyplnené po overení, alebo zadajte manuálne..."></textarea>
             </div>
           </div>
 
@@ -11160,6 +11180,132 @@ function amlPreviewDocs() {
     preview.innerHTML += '<div style="padding:4px 10px;background:#F1F5F9;border-radius:6px;font-size:0.75rem;color:var(--text-light);">' + esc(f.name) + '</div>';
   });
 }
+async function amlAutoCheck() {
+  // Determine client name from form
+  const isFo = document.querySelector('input[name="aml-client-type"]:checked').value === 'fo';
+  let name, birthDate;
+  if (isFo) {
+    const fn = document.getElementById('aml-fo-firstname').value.trim();
+    const ln = document.getElementById('aml-fo-lastname').value.trim();
+    name = (fn + ' ' + ln).trim();
+    birthDate = document.getElementById('aml-fo-dob').value;
+  } else {
+    name = document.getElementById('aml-po-name').value.trim();
+  }
+
+  if (!name || name.length < 2) {
+    alert('Najprv vyplňte meno klienta.');
+    return;
+  }
+
+  const statusEl = document.getElementById('aml-check-status');
+  const matchesEl = document.getElementById('aml-check-matches');
+  const btn = document.getElementById('aml-auto-check-btn');
+
+  // Loading state
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.8s linear infinite;display:inline-block;"></span> Overujem...';
+  statusEl.style.display = 'block';
+  statusEl.className = 'aml-check-loading';
+  statusEl.innerHTML = 'Prebieha automatické overenie v sankčných zoznamoch a PEP databázach pre: <strong>' + esc(name) + '</strong>...';
+  matchesEl.style.display = 'none';
+  matchesEl.innerHTML = '';
+
+  try {
+    const resp = await fetch('/api/aml-check', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, birthDate, nationality: isFo ? document.getElementById('aml-fo-nationality').value : '' })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.error || 'HTTP ' + resp.status);
+    }
+
+    const data = await resp.json();
+    const today = new Date().toISOString().slice(0, 10);
+
+    // Fill sanctions result
+    document.getElementById('aml-sanctions-result').value = data.sanctions.status === 'review' ? 'review' : data.sanctions.status;
+    document.getElementById('aml-sanctions-date').value = today;
+
+    // Fill PEP result
+    document.getElementById('aml-register-result').value = data.pep.status === 'review' ? 'review' : data.pep.status;
+    document.getElementById('aml-register-date').value = today;
+
+    // Build note
+    const note = 'Automatické overenie ' + today + ' cez ' + data.source +
+      ' | Sankcie: ' + data.sanctions.status.toUpperCase() + ' (' + data.sanctions.total + ' výsl.)' +
+      ' | PEP: ' + data.pep.status.toUpperCase() + ' (' + data.pep.total + ' výsl.)';
+    document.getElementById('aml-register-note').value = note;
+
+    // Store autocheck data on existing record if editing
+    const editId = document.getElementById('aml-edit-id').value;
+    if (editId) {
+      const recs = getAmlRecords();
+      const ri = recs.findIndex(x => x.id === editId);
+      if (ri >= 0) {
+        recs[ri].autoCheckData = data;
+        recs[ri].sanctionsResult = data.sanctions.status;
+        recs[ri].sanctionsDate = today;
+        recs[ri].registerResult = data.pep.status;
+        recs[ri].registerDate = today;
+        recs[ri].registerNote = note;
+        saveAmlRecords(recs);
+      }
+    }
+
+    // Show overall status
+    const overallStatus = (data.sanctions.status === 'hit' || data.pep.status === 'hit') ? 'hit'
+      : (data.sanctions.status === 'review' || data.pep.status === 'review') ? 'review' : 'clear';
+
+    const statusMessages = {
+      clear: '<strong>Bez nálezu</strong> — Klient nebol nájdený v žiadnom sankčnom zozname ani PEP databáze.',
+      review: '<strong>Na posúdenie</strong> — Boli nájdené možné zhody. Skontrolujte nižšie a rozhodnite manuálne.',
+      hit: '<strong>ZHODA NÁJDENÁ</strong> — Klient má zhodu v sankčných zoznamoch alebo PEP databáze. Vyžaduje sa zvýšená starostlivosť!'
+    };
+    statusEl.className = 'aml-check-' + overallStatus;
+    statusEl.innerHTML = statusMessages[overallStatus] +
+      '<div style="margin-top:0.35rem;font-size:0.72rem;opacity:0.8;">Zdroj: ' + esc(data.source) + ' | Dopyt: "' + esc(data.query) + '" | ' + today + '</div>';
+
+    // Show matches if any
+    const allMatches = [
+      ...data.sanctions.matches.map(m => ({ ...m, type: 'Sankcie' })),
+      ...data.pep.matches.map(m => ({ ...m, type: 'PEP' }))
+    ];
+
+    if (allMatches.length > 0) {
+      matchesEl.style.display = 'block';
+      matchesEl.innerHTML = '<div style="font-size:0.78rem;font-weight:700;color:var(--primary-dark);margin-bottom:0.5rem;">Nájdené záznamy (' + allMatches.length + '):</div>' +
+        allMatches.map(m => {
+          const scoreColor = m.score >= 0.85 ? '#EF4444' : m.score >= 0.6 ? '#F59E0B' : '#64748B';
+          const scorePct = Math.round(m.score * 100);
+          return '<div class="aml-match-card">' +
+            '<div class="aml-match-card-header">' +
+              '<span class="aml-match-name">' + esc(m.name) + '</span>' +
+              '<span class="aml-match-score" style="color:' + scoreColor + ';">' + scorePct + '% zhoda | ' + esc(m.type) + '</span>' +
+            '</div>' +
+            '<div class="aml-match-meta">' +
+              (m.datasets ? 'Zdroj: ' + esc(m.datasets) : '') +
+              (m.countries ? ' | Krajina: ' + esc(m.countries) : '') +
+              (m.position ? ' | Pozícia: ' + esc(m.position) : '') +
+              (m.birthDates && m.birthDates.length ? ' | Nar.: ' + m.birthDates.join(', ') : '') +
+            '</div>' +
+          '</div>';
+        }).join('');
+    }
+
+  } catch (err) {
+    statusEl.className = 'aml-check-error';
+    statusEl.innerHTML = '<strong>Chyba</strong> — ' + esc(err.message) + '. Skúste znova alebo vyplňte manuálne.';
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i data-lucide="shield-check" style="width:16px;height:16px;"></i> Automaticky overiť klienta';
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  }
+}
+
 function amlPreviewDocCategory(cat) {
   const input = document.getElementById('aml-doc-' + cat);
   const preview = document.getElementById('aml-doc-' + cat + '-preview');
@@ -11210,10 +11356,12 @@ function amlCalcRisk(record) {
 
   // Sanctions/register check
   if (record.sanctionsResult === 'hit') { score += 10; factors.push({ f: 'Zhoda v sankčných zoznamoch', s: 10 }); }
+  else if (record.sanctionsResult === 'review') { score += 4; factors.push({ f: 'Sankčné zoznamy - možná zhoda', s: 4 }); }
   else if (record.sanctionsResult === 'pending') { score += 2; factors.push({ f: 'Sankčné zoznamy neoverené', s: 2 }); }
   else { factors.push({ f: 'Sankčné zoznamy - bez nálezu', s: 0 }); }
 
-  if (record.registerResult === 'hit') { score += 3; factors.push({ f: 'Zhoda v registri PEP/RPVS', s: 3 }); }
+  if (record.registerResult === 'hit') { score += 3; factors.push({ f: 'Zhoda v registri PEP', s: 3 }); }
+  else if (record.registerResult === 'review') { score += 2; factors.push({ f: 'PEP - možná zhoda', s: 2 }); }
   else if (record.registerResult === 'pending') { score += 1; factors.push({ f: 'Registre neoverené', s: 1 }); }
 
   let category = 'low';
@@ -11294,6 +11442,7 @@ function saveAml() {
   const existingRec = existingRecords.find(x => x.id === record.id);
   record.docIdName = idDocFile ? idDocFile.name : (existingRec ? existingRec.docIdName : null);
   record.docFundsName = fundsDocFile ? fundsDocFile.name : (existingRec ? existingRec.docFundsName : null);
+  record.autoCheckData = existingRec ? existingRec.autoCheckData : null;
   const otherDocs = document.getElementById('aml-docs').files;
   if (otherDocs.length > 0) {
     record.docsOtherNames = Array.from(otherDocs).map(f => f.name);
@@ -11455,18 +11604,42 @@ function openAmlDetail(id) {
   html += '</div></div>';
 
   // Register verification
-  const sanctLabels = { clear: 'Bez nálezu', hit: 'Nájdená zhoda', pending: 'Neoverené' };
+  const sanctLabels = { clear: 'Bez nálezu', hit: 'Nájdená zhoda', review: 'Na posúdenie', pending: 'Neoverené' };
   html += '<div class="aml-form-section"><div class="aml-form-section-title">Overenie v registroch</div><div class="aml-detail-grid">';
   const sanctResult = r.sanctionsResult || 'pending';
-  const sanctColor = sanctResult === 'clear' ? '#10B981' : sanctResult === 'hit' ? '#EF4444' : '#F59E0B';
-  html += amlDR('Sankčné zoznamy', '<span style="color:' + sanctColor + ';font-weight:600;">' + (sanctLabels[sanctResult] || '—') + '</span>');
+  const sanctColor = sanctResult === 'clear' ? '#10B981' : (sanctResult === 'hit' ? '#EF4444' : (sanctResult === 'review' ? '#F59E0B' : '#94A3B8'));
+  html += amlDR('Sankčné zoznamy (EÚ, OSN, OFAC)', '<span style="color:' + sanctColor + ';font-weight:600;">' + (sanctLabels[sanctResult] || '—') + '</span>');
   html += amlDR('Dátum overenia (sankcie)', r.sanctionsDate || '—');
   const regResult = r.registerResult || 'pending';
-  const regColor = regResult === 'clear' ? '#10B981' : regResult === 'hit' ? '#EF4444' : '#F59E0B';
-  html += amlDR('Register PEP/RPVS', '<span style="color:' + regColor + ';font-weight:600;">' + (sanctLabels[regResult] || '—') + '</span>');
+  const regColor = regResult === 'clear' ? '#10B981' : (regResult === 'hit' ? '#EF4444' : (regResult === 'review' ? '#F59E0B' : '#94A3B8'));
+  html += amlDR('Register PEP', '<span style="color:' + regColor + ';font-weight:600;">' + (sanctLabels[regResult] || '—') + '</span>');
   html += amlDR('Dátum overenia (registre)', r.registerDate || '—');
-  if (r.registerNote) html += amlDR('Poznámka k overeniu', r.registerNote);
-  html += '</div></div>';
+  if (r.registerNote) html += amlDR('Zdroj / poznámka', r.registerNote);
+  html += '</div>';
+
+  // Show auto-check matches if stored
+  if (r.autoCheckData) {
+    const allAutoMatches = [
+      ...(r.autoCheckData.sanctions?.matches || []).map(m => ({ ...m, type: 'Sankcie' })),
+      ...(r.autoCheckData.pep?.matches || []).map(m => ({ ...m, type: 'PEP' }))
+    ];
+    if (allAutoMatches.length > 0) {
+      html += '<div style="margin-top:0.5rem;font-size:0.78rem;font-weight:600;color:var(--primary-dark);margin-bottom:0.35rem;">Nájdené záznamy z automatického overenia:</div>';
+      allAutoMatches.forEach(m => {
+        const scoreColor = m.score >= 0.85 ? '#EF4444' : m.score >= 0.6 ? '#F59E0B' : '#64748B';
+        html += '<div class="aml-match-card"><div class="aml-match-card-header">' +
+          '<span class="aml-match-name">' + esc(m.name) + '</span>' +
+          '<span class="aml-match-score" style="color:' + scoreColor + ';">' + Math.round(m.score * 100) + '% | ' + esc(m.type) + '</span>' +
+        '</div><div class="aml-match-meta">' +
+          (m.datasets ? 'Zdroj: ' + esc(m.datasets) : '') +
+          (m.countries ? ' | Krajina: ' + esc(m.countries) : '') +
+          (m.position ? ' | Pozícia: ' + esc(m.position) : '') +
+        '</div></div>';
+      });
+    }
+    html += '<div style="font-size:0.68rem;color:var(--text-light);margin-top:0.25rem;">Zdroj: ' + esc(r.autoCheckData.source || 'OpenSanctions.org') + '</div>';
+  }
+  html += '</div>';
 
   // Source + Transaction
   html += '<div class="aml-form-section"><div class="aml-form-section-title">Transakcia & Prostriedky</div><div class="aml-detail-grid">';
@@ -11653,12 +11826,27 @@ function generateAmlPdf() {
 
   // Register verification
   secTitle('OVERENIE V REGISTROCH');
-  const sanctLabelsP = { clear: 'Bez nalezu', hit: 'Najdena zhoda', pending: 'Neoverene' };
+  const sanctLabelsP = { clear: 'Bez nalezu', hit: 'NAJDENA ZHODA', review: 'Na posudenie', pending: 'Neoverene' };
   row('Sankcne zoznamy (EU, OSN, OFAC)', sanctLabelsP[r.sanctionsResult] || 'Neoverene');
   row('Datum overenia sankcii', r.sanctionsDate || 'Nevykonane');
-  row('Register PEP / RPVS', sanctLabelsP[r.registerResult] || 'Neoverene');
+  row('Register PEP', sanctLabelsP[r.registerResult] || 'Neoverene');
   row('Datum overenia registrov', r.registerDate || 'Nevykonane');
-  if (r.registerNote) row('Poznamka k overeniu', r.registerNote);
+  if (r.registerNote) row('Zdroj / poznamka', r.registerNote);
+  // Auto-check matches
+  if (r.autoCheckData) {
+    const autoMatches = [
+      ...(r.autoCheckData.sanctions?.matches || []).map(m => ({ ...m, type: 'Sankcie' })),
+      ...(r.autoCheckData.pep?.matches || []).map(m => ({ ...m, type: 'PEP' }))
+    ];
+    if (autoMatches.length > 0) {
+      y += 2;
+      row('Pocet najdenych zaznamov', autoMatches.length);
+      autoMatches.slice(0, 5).forEach((m, i) => {
+        row('Zaznam ' + (i + 1), m.name + ' (' + Math.round(m.score * 100) + '% zhoda, ' + m.type + ')');
+      });
+    }
+    row('Zdroj overenia', r.autoCheckData.source || 'OpenSanctions.org');
+  }
   y += 4;
 
   // Transaction
