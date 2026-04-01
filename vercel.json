@@ -2,6 +2,10 @@
   "framework": null,
   "outputDirectory": "public",
   "functions": {
+    "api/aml-check.js": {
+      "maxDuration": 60,
+      "memory": 512
+    },
     "api/*.js": {
       "maxDuration": 30,
       "includeFiles": "lib/**"
