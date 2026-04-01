@@ -7,7 +7,7 @@ module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const { provider, apiKey, model, property, sampleAds, mode } = req.body;
+    const { provider, apiKey, model, property, sampleAds, mode, tone, length, style, formal, emoji, okolie, cta, customInstructions } = req.body;
 
     if (!apiKey) return res.status(400).json({ error: 'API kľúč je povinný' });
     if (!property) return res.status(400).json({ error: 'Údaje o nehnuteľnosti sú povinné' });
@@ -35,14 +35,45 @@ module.exports = async function handler(req, res) {
       sampleContext = `\n\nUžívateľ má nasledujúce vzorové inzeráty, ktoré ukazujú jeho štýl písania. Napodobni tento štýl - rovnaký tón, štruktúru, dĺžku a frázy:\n\n${sampleAds.map((ad, i) => `--- Vzor ${i + 1} ---\n${ad}`).join('\n\n')}`;
     }
 
+    // Build tone/style instructions from user settings
+    const toneLabels = {
+      profesionalny: 'profesionálny', priatelsky: 'priateľský a vrelý', luxusny: 'luxusný a exkluzívny',
+      odborny: 'odborný a technický', dynamicky: 'dynamický a energický', emotivny: 'emotívny a pútavý'
+    };
+    const lengthMap = { kratky: '2-3 krátke odstavce', stredny: '3-5 odstavcov', dlhy: '5-7 podrobných odstavcov' };
+    const styleMap = {
+      informativny: 'informatívny - dôraz na fakty, parametre a čísla',
+      predajny: 'predajný - dôraz na výhody a motiváciu ku kúpe',
+      storytelling: 'rozprávačský - príbeh o živote v tejto nehnuteľnosti'
+    };
+
+    let toneStr = '';
+    if (tone && tone.length > 0) {
+      toneStr = `\nTón: ${tone.map(t => toneLabels[t] || t).join(', ')}.`;
+    }
+    const lengthStr = length ? `\nDĺžka: ${lengthMap[length] || 'stredný'}.` : '';
+    const styleStr = style ? `\nŠtýl: ${styleMap[style] || 'informatívny'}.` : '';
+    const formalStr = formal === false ? '\nPouži neformálne oslovovanie (tykanie).' : '\nPouži formálne oslovovanie (vykanie).';
+    const emojiStr = emoji ? '\nMôžeš použiť vhodné emoji na oživenie textu.' : '\nNepoužívaj emoji.';
+    const okolieStr = okolie !== false ? '' : '\nNezdôrazňuj okolie a občiansku vybavenosť, sústreď sa na nehnuteľnosť.';
+    const ctaStr = cta !== false ? '' : '\nNepridávaj výzvu na kontaktovanie alebo obhliadku na konci.';
+    const customStr = customInstructions ? `\n\nDodatočné pokyny od užívateľa: ${customInstructions}` : '';
+
+    const settingsBlock = toneStr + lengthStr + styleStr + formalStr + emojiStr + okolieStr + ctaStr + customStr;
+
     let systemPrompt, userPrompt;
 
     if (mode === 'headline') {
-      systemPrompt = `Si expert na tvorbu titulkov realitných inzerátov na Slovensku. Tvor krátke, chytľavé, profesionálne titulky v slovenčine. Vráť LEN titulok, nič iné.${sampleContext}`;
+      systemPrompt = `Si expert na tvorbu titulkov realitných inzerátov na Slovensku. Tvor krátke, chytľavé titulky v slovenčine. Vráť LEN titulok, nič iné.${toneStr}${formalStr}${emojiStr}${customStr}${sampleContext}`;
       userPrompt = `Vytvor chytľavý titulok inzerátu pre túto nehnuteľnosť:\n\n${detailsStr}`;
     } else {
-      systemPrompt = `Si expert na tvorbu realitných inzerátov na Slovensku. Píš profesionálne, predajné popisy nehnuteľností v slovenčine. Popis by mal byť informatívny, atraktívny a mal by zdôrazniť výhody nehnuteľnosti. Nepoužívaj klamlivé tvrdenia. Vráť LEN text popisu, bez titulku a bez úvodzoviek.${sampleContext}`;
-      userPrompt = `Napíš profesionálny popis inzerátu pre túto nehnuteľnosť:\n\n${detailsStr}\n\nPopis by mal mať 3-5 odstavcov a mal by zahŕňať:\n- Úvodné zhrnutie\n- Popis dispozície a vybavenia\n- Okolie a občianska vybavenosť\n- Záver s výzvou`;
+      systemPrompt = `Si expert na tvorbu realitných inzerátov na Slovensku. Píš popisy nehnuteľností v slovenčine. Popis by mal byť atraktívny a mal by zdôrazniť výhody nehnuteľnosti. Nepoužívaj klamlivé tvrdenia. Vráť LEN text popisu, bez titulku a bez úvodzoviek.${settingsBlock}${sampleContext}`;
+      const paragraphs = lengthMap[length] || '3-5 odstavcov';
+      let structure = `Popis by mal mať ${paragraphs} a mal by zahŕňať:\n- Úvodné zhrnutie`;
+      structure += '\n- Popis dispozície a vybavenia';
+      if (okolie !== false) structure += '\n- Okolie a občianska vybavenosť';
+      if (cta !== false) structure += '\n- Záver s výzvou na kontakt';
+      userPrompt = `Napíš popis inzerátu pre túto nehnuteľnosť:\n\n${detailsStr}\n\n${structure}`;
     }
 
     const maxTokens = mode === 'headline' ? 100 : 1024;
