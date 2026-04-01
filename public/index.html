@@ -1135,7 +1135,7 @@
     .welcome-hero p { opacity: 0.75; font-size: 1rem; position: relative; }
     .stats-row {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(5, 1fr);
       gap: 1rem;
       margin-bottom: 2rem;
     }
@@ -1276,6 +1276,66 @@
     @media (max-width: 768px) {
       .dash-charts-row { grid-template-columns: 1fr; }
       .dash-bottom-row { grid-template-columns: 1fr; }
+    }
+    /* ===== AML ===== */
+    .aml-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 1rem; }
+    .aml-card {
+      background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow);
+      padding: 1.25rem; border: 1px solid rgba(0,0,0,0.04); cursor: pointer; transition: all 0.15s;
+      display: flex; flex-direction: column; gap: 0.6rem;
+    }
+    .aml-card:hover { border-color: rgba(46,196,212,0.25); box-shadow: var(--shadow-lg); }
+    .aml-card-header { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+    .aml-card-name { font-weight: 700; font-size: 0.95rem; color: var(--primary-dark); }
+    .aml-card-type { font-size: 0.68rem; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: #F1F5F9; color: #64748B; }
+    .aml-card-meta { display: flex; gap: 0.6rem; flex-wrap: wrap; font-size: 0.75rem; color: var(--text-light); }
+    .aml-card-meta span { display: flex; align-items: center; gap: 3px; }
+    .aml-badge {
+      display: inline-block; padding: 3px 10px; border-radius: 12px;
+      font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px;
+    }
+    .aml-badge.low { background: #F0FDF4; color: #16A34A; }
+    .aml-badge.medium { background: #FFF7ED; color: #D97706; }
+    .aml-badge.high { background: #FEF2F2; color: #DC2626; }
+    .aml-badge.pending { background: #F1F5F9; color: #64748B; }
+    .aml-badge.approved { background: #F0FDF4; color: #16A34A; }
+    .aml-badge.flagged { background: #FFF7ED; color: #D97706; }
+    .aml-badge.rejected { background: #FEF2F2; color: #DC2626; }
+    .aml-risk-bar { display: flex; gap: 2px; align-items: center; }
+    .aml-risk-seg { width: 24px; height: 6px; border-radius: 3px; background: #E2E8F0; }
+    .aml-risk-seg.active-low { background: #16A34A; }
+    .aml-risk-seg.active-med { background: #D97706; }
+    .aml-risk-seg.active-high { background: #DC2626; }
+    .aml-form-section {
+      margin-bottom: 1.25rem; padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .aml-form-section:last-child { border-bottom: none; margin-bottom: 0; }
+    .aml-form-section-title {
+      font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+      color: var(--primary-dark); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.4rem;
+    }
+    .aml-source-grid { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+    .aml-source-chip {
+      padding: 5px 12px; border-radius: 8px; font-size: 0.75rem; font-weight: 500;
+      border: 1px solid var(--border); cursor: pointer; transition: all 0.15s;
+      user-select: none; background: var(--card);
+    }
+    .aml-source-chip.selected { background: var(--primary-bg); border-color: var(--primary-light); color: var(--primary-dark); font-weight: 600; }
+    .aml-source-chip:hover { border-color: var(--primary-lighter); }
+    .aml-detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 1.5rem; }
+    .aml-detail-row { display: flex; flex-direction: column; padding: 0.4rem 0; }
+    .aml-detail-label { font-size: 0.68rem; font-weight: 600; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.5px; }
+    .aml-detail-value { font-size: 0.88rem; font-weight: 500; color: var(--primary-dark); margin-top: 1px; }
+    .aml-risk-summary {
+      background: #F8FAFC; border-radius: var(--radius-sm); padding: 1rem; margin-top: 0.75rem;
+    }
+    .aml-risk-factor { display: flex; justify-content: space-between; align-items: center; padding: 0.35rem 0; font-size: 0.8rem; }
+    .aml-risk-factor-label { color: var(--text-light); }
+    .aml-risk-factor-score { font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+    @media (max-width: 768px) {
+      .aml-grid { grid-template-columns: 1fr; }
+      .aml-detail-grid { grid-template-columns: 1fr; }
     }
     .section-heading {
       font-size: 0.82rem;
@@ -2668,6 +2728,9 @@
       <div class="nav-item" onclick="showPage('contacts')">
         <span class="nav-icon"><i data-lucide="contact"></i></span> Kontakty
       </div>
+      <div class="nav-item" onclick="showPage('aml')">
+        <span class="nav-icon"><i data-lucide="shield-check"></i></span> AML Preverenie
+      </div>
       <div class="nav-item" onclick="openAiSettings()">
         <span class="nav-icon"><i data-lucide="sparkles"></i></span> AI Nastavenia
       </div>
@@ -2766,6 +2829,13 @@
           <div class="stat-info">
             <div class="stat-value" id="dash-sold-count">0</div>
             <div class="stat-label">Predané</div>
+          </div>
+        </div>
+        <div class="stat-card clickable" onclick="showPage('aml')">
+          <div class="stat-icon" style="background:rgba(232,115,74,0.12);color:#E8734A;"><i data-lucide="shield-alert"></i></div>
+          <div class="stat-info">
+            <div class="stat-value" id="dash-aml-pending">0</div>
+            <div class="stat-label">Nepreverení klienti</div>
           </div>
         </div>
       </div>
@@ -3945,6 +4015,226 @@
       </div>
     </div>
 
+    <!-- AML VERIFICATION PAGE -->
+    <div id="page-aml" class="page">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap;gap:0.75rem;">
+        <div>
+          <h2 style="margin:0;font-size:1.35rem;color:var(--dark);">AML Preverenie klientov</h2>
+          <p style="margin:0.25rem 0 0;font-size:0.82rem;color:var(--text-light);">Identifikácia a preverenie klientov podľa zákona 297/2008 Z.z.</p>
+        </div>
+        <div style="display:flex;gap:0.5rem;">
+          <button class="btn btn-primary" onclick="openAmlForm()"><i data-lucide="plus" style="width:16px;height:16px;"></i> Nové preverenie</button>
+          <button class="btn" onclick="exportAmlCSV()" style="background:#F1F5F9;color:var(--text);border:1px solid var(--border);"><i data-lucide="download" style="width:16px;height:16px;"></i> Export CSV</button>
+        </div>
+      </div>
+      <!-- Filters -->
+      <div style="display:flex;gap:0.75rem;margin-bottom:1.25rem;flex-wrap:wrap;align-items:center;">
+        <div class="filter-search-wrap" style="flex:1;min-width:200px;">
+          <i data-lucide="search" style="width:16px;height:16px;position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-light);pointer-events:none;"></i>
+          <input type="text" class="filter-search" id="aml-filter-search" placeholder="Hľadať podľa mena, IČO..." oninput="renderAmlList()" style="padding-left:36px;" />
+        </div>
+        <select id="aml-filter-status" onchange="renderAmlList()" style="padding:0.5rem 0.75rem;border-radius:8px;border:1px solid var(--border);font-size:0.82rem;background:var(--card);">
+          <option value="">Všetky statusy</option>
+          <option value="pending">Čaká na preverenie</option>
+          <option value="approved">Schválený</option>
+          <option value="flagged">Vyžaduje pozornosť</option>
+          <option value="rejected">Zamietnutý</option>
+        </select>
+        <select id="aml-filter-risk" onchange="renderAmlList()" style="padding:0.5rem 0.75rem;border-radius:8px;border:1px solid var(--border);font-size:0.82rem;background:var(--card);">
+          <option value="">Všetky riziká</option>
+          <option value="low">Nízke</option>
+          <option value="medium">Stredné</option>
+          <option value="high">Vysoké</option>
+        </select>
+        <span class="filter-count" id="aml-count"></span>
+      </div>
+      <!-- Grid -->
+      <div class="aml-grid" id="aml-grid"></div>
+      <div id="aml-empty" style="display:none;text-align:center;padding:3rem;">
+        <div style="font-size:2.5rem;margin-bottom:0.75rem;">🛡️</div>
+        <p style="color:var(--text-light);margin-bottom:1rem;">Zatiaľ žiadne AML preverenia</p>
+        <button class="btn btn-primary" onclick="openAmlForm()">Pridať prvé preverenie</button>
+      </div>
+    </div>
+
+    <!-- AML FORM MODAL -->
+    <div id="aml-modal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.45);overflow-y:auto;padding:2rem;">
+      <div style="max-width:680px;margin:0 auto;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-lg);overflow:hidden;">
+        <div style="background:linear-gradient(135deg,#0B2A3C,#1A7A8A);padding:1.25rem 1.5rem;display:flex;justify-content:space-between;align-items:center;">
+          <span id="aml-modal-title" style="color:white;font-weight:700;font-size:1.05rem;">Nové AML preverenie</span>
+          <button onclick="closeAmlForm()" style="background:none;border:none;color:rgba(255,255,255,0.7);cursor:pointer;font-size:1.3rem;">&times;</button>
+        </div>
+        <div style="padding:1.5rem;max-height:75vh;overflow-y:auto;">
+          <input type="hidden" id="aml-edit-id" />
+
+          <!-- Link to contact -->
+          <div class="aml-form-section">
+            <div class="aml-form-section-title"><i data-lucide="link" style="width:14px;height:14px;"></i> Prepojenie na kontakt</div>
+            <div class="form-group">
+              <label>Existujúci kontakt</label>
+              <select id="aml-contact-id" onchange="amlPrefillFromContact()" style="width:100%;padding:0.5rem;border-radius:8px;border:1px solid var(--border);font-size:0.85rem;">
+                <option value="">-- Bez prepojenia --</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Client type -->
+          <div class="aml-form-section">
+            <div class="aml-form-section-title"><i data-lucide="user" style="width:14px;height:14px;"></i> Typ klienta</div>
+            <div style="display:flex;gap:0.5rem;">
+              <label style="flex:1;display:flex;align-items:center;gap:0.5rem;padding:0.65rem;border:2px solid var(--border);border-radius:10px;cursor:pointer;transition:all 0.15s;" id="aml-type-fo-label">
+                <input type="radio" name="aml-client-type" value="fo" checked onchange="amlToggleClientType()" /> Fyzická osoba
+              </label>
+              <label style="flex:1;display:flex;align-items:center;gap:0.5rem;padding:0.65rem;border:2px solid var(--border);border-radius:10px;cursor:pointer;transition:all 0.15s;" id="aml-type-po-label">
+                <input type="radio" name="aml-client-type" value="po" onchange="amlToggleClientType()" /> Právnická osoba
+              </label>
+            </div>
+          </div>
+
+          <!-- FO fields -->
+          <div id="aml-fo-fields" class="aml-form-section">
+            <div class="aml-form-section-title"><i data-lucide="id-card" style="width:14px;height:14px;"></i> Identifikácia - Fyzická osoba (§7)</div>
+            <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:0.75rem;">
+              <div class="form-group"><label>Meno *</label><input type="text" id="aml-fo-firstname" required /></div>
+              <div class="form-group"><label>Priezvisko *</label><input type="text" id="aml-fo-lastname" required /></div>
+              <div class="form-group"><label>Rodné číslo</label><input type="text" id="aml-fo-birthnum" placeholder="napr. 900101/1234" /></div>
+              <div class="form-group"><label>Dátum narodenia</label><input type="date" id="aml-fo-dob" /></div>
+              <div class="form-group"><label>Štátna príslušnosť *</label><input type="text" id="aml-fo-nationality" value="Slovenská republika" /></div>
+              <div class="form-group"><label>Adresa trvalého pobytu *</label><input type="text" id="aml-fo-address" /></div>
+              <div class="form-group"><label>Typ dokladu *</label>
+                <select id="aml-fo-doctype" style="width:100%;padding:0.5rem;border-radius:8px;border:1px solid var(--border);">
+                  <option value="op">Občiansky preukaz</option>
+                  <option value="pas">Cestovný pas</option>
+                  <option value="pobyt">Povolenie na pobyt</option>
+                </select>
+              </div>
+              <div class="form-group"><label>Číslo dokladu *</label><input type="text" id="aml-fo-docnum" /></div>
+              <div class="form-group"><label>Platnosť dokladu do</label><input type="date" id="aml-fo-docexpiry" /></div>
+            </div>
+          </div>
+
+          <!-- PO fields -->
+          <div id="aml-po-fields" class="aml-form-section" style="display:none;">
+            <div class="aml-form-section-title"><i data-lucide="building-2" style="width:14px;height:14px;"></i> Identifikácia - Právnická osoba (§7)</div>
+            <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:0.75rem;">
+              <div class="form-group" style="grid-column:1/-1;"><label>Obchodné meno *</label><input type="text" id="aml-po-name" /></div>
+              <div class="form-group"><label>IČO *</label><input type="text" id="aml-po-ico" /></div>
+              <div class="form-group"><label>Právna forma</label>
+                <select id="aml-po-form" style="width:100%;padding:0.5rem;border-radius:8px;border:1px solid var(--border);">
+                  <option value="sro">s.r.o.</option><option value="as">a.s.</option><option value="zivnost">Živnostník</option><option value="ine">Iné</option>
+                </select>
+              </div>
+              <div class="form-group" style="grid-column:1/-1;"><label>Sídlo *</label><input type="text" id="aml-po-address" /></div>
+              <div class="form-group"><label>Štatutár - meno *</label><input type="text" id="aml-po-statname" /></div>
+              <div class="form-group"><label>Štatutár - číslo dokladu</label><input type="text" id="aml-po-statdoc" /></div>
+            </div>
+            <div class="aml-form-section-title" style="margin-top:1rem;"><i data-lucide="users" style="width:14px;height:14px;"></i> Konečný užívateľ výhod - UBO (§6a)</div>
+            <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:0.75rem;">
+              <div class="form-group"><label>Meno a priezvisko UBO *</label><input type="text" id="aml-po-uboname" /></div>
+              <div class="form-group"><label>Podiel vlastníctva (%)</label><input type="number" id="aml-po-ubopct" min="0" max="100" /></div>
+              <div class="form-group"><label>Rodné číslo / dátum narodenia</label><input type="text" id="aml-po-ubobirth" /></div>
+              <div class="form-group"><label>Adresa trvalého pobytu</label><input type="text" id="aml-po-uboaddr" /></div>
+            </div>
+          </div>
+
+          <!-- PEP declaration -->
+          <div class="aml-form-section">
+            <div class="aml-form-section-title"><i data-lucide="alert-triangle" style="width:14px;height:14px;"></i> PEP - Politicky exponovaná osoba (§6)</div>
+            <div style="display:flex;flex-direction:column;gap:0.4rem;">
+              <label style="display:flex;align-items:center;gap:0.5rem;padding:0.5rem;border-radius:8px;cursor:pointer;">
+                <input type="radio" name="aml-pep" value="no" checked onchange="amlTogglePep()" /> Klient nie je PEP
+              </label>
+              <label style="display:flex;align-items:center;gap:0.5rem;padding:0.5rem;border-radius:8px;cursor:pointer;">
+                <input type="radio" name="aml-pep" value="yes" onchange="amlTogglePep()" /> Klient je PEP
+              </label>
+              <label style="display:flex;align-items:center;gap:0.5rem;padding:0.5rem;border-radius:8px;cursor:pointer;">
+                <input type="radio" name="aml-pep" value="family" onchange="amlTogglePep()" /> Rodinný príslušník PEP
+              </label>
+              <label style="display:flex;align-items:center;gap:0.5rem;padding:0.5rem;border-radius:8px;cursor:pointer;">
+                <input type="radio" name="aml-pep" value="associate" onchange="amlTogglePep()" /> Blízka osoba PEP
+              </label>
+            </div>
+            <div id="aml-pep-detail" style="display:none;margin-top:0.5rem;">
+              <div class="form-group"><label>Podrobnosti o PEP statuse</label><textarea id="aml-pep-note" rows="2" placeholder="Funkcia, obdobie, vzťah..."></textarea></div>
+            </div>
+          </div>
+
+          <!-- Source of funds -->
+          <div class="aml-form-section">
+            <div class="aml-form-section-title"><i data-lucide="banknote" style="width:14px;height:14px;"></i> Pôvod finančných prostriedkov (§10)</div>
+            <div class="aml-source-grid" id="aml-source-grid">
+              <span class="aml-source-chip" data-val="employment" onclick="amlToggleSource(this)">Zamestnanie</span>
+              <span class="aml-source-chip" data-val="business" onclick="amlToggleSource(this)">Podnikanie</span>
+              <span class="aml-source-chip" data-val="property" onclick="amlToggleSource(this)">Predaj majetku</span>
+              <span class="aml-source-chip" data-val="inheritance" onclick="amlToggleSource(this)">Dedičstvo / Dar</span>
+              <span class="aml-source-chip" data-val="savings" onclick="amlToggleSource(this)">Úspory</span>
+              <span class="aml-source-chip" data-val="loan" onclick="amlToggleSource(this)">Úver / Hypotéka</span>
+              <span class="aml-source-chip" data-val="investment" onclick="amlToggleSource(this)">Investície</span>
+              <span class="aml-source-chip" data-val="other" onclick="amlToggleSource(this)">Iné</span>
+            </div>
+            <div class="form-group" style="margin-top:0.5rem;">
+              <label>Podrobnosti k pôvodu prostriedkov</label>
+              <textarea id="aml-source-detail" rows="2" placeholder="Bližšie informácie..."></textarea>
+            </div>
+          </div>
+
+          <!-- Transaction -->
+          <div class="aml-form-section">
+            <div class="aml-form-section-title"><i data-lucide="home" style="width:14px;height:14px;"></i> Transakcia</div>
+            <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:0.75rem;">
+              <div class="form-group"><label>Účel transakcie</label>
+                <select id="aml-tx-purpose" style="width:100%;padding:0.5rem;border-radius:8px;border:1px solid var(--border);">
+                  <option value="buy">Kúpa nehnuteľnosti</option>
+                  <option value="sell">Predaj nehnuteľnosti</option>
+                  <option value="rent">Prenájom</option>
+                  <option value="other">Iné</option>
+                </select>
+              </div>
+              <div class="form-group"><label>Hodnota transakcie (€)</label><input type="number" id="aml-tx-value" min="0" /></div>
+            </div>
+          </div>
+
+          <!-- Notes -->
+          <div class="aml-form-section">
+            <div class="aml-form-section-title"><i data-lucide="file-text" style="width:14px;height:14px;"></i> Poznámky</div>
+            <div class="form-group"><textarea id="aml-notes" rows="2" placeholder="Interné poznámky k prevereniu..."></textarea></div>
+          </div>
+
+          <!-- Document upload -->
+          <div class="aml-form-section">
+            <div class="aml-form-section-title"><i data-lucide="paperclip" style="width:14px;height:14px;"></i> Doklady (scan/fotografia)</div>
+            <input type="file" id="aml-docs" multiple accept="image/*,.pdf" onchange="amlPreviewDocs()" style="font-size:0.82rem;" />
+            <div id="aml-doc-preview" style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-top:0.5rem;"></div>
+          </div>
+
+          <!-- Actions -->
+          <div style="display:flex;justify-content:flex-end;gap:0.5rem;margin-top:1rem;">
+            <button class="btn" onclick="closeAmlForm()" style="background:#F1F5F9;color:var(--text);border:1px solid var(--border);">Zrušiť</button>
+            <button class="btn btn-primary" onclick="saveAml()">Uložiť preverenie</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AML DETAIL MODAL -->
+    <div id="aml-detail-modal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.45);overflow-y:auto;padding:2rem;">
+      <div style="max-width:680px;margin:0 auto;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-lg);overflow:hidden;">
+        <div style="background:linear-gradient(135deg,#0B2A3C,#1A7A8A);padding:1.25rem 1.5rem;display:flex;justify-content:space-between;align-items:center;">
+          <span style="color:white;font-weight:700;font-size:1.05rem;">Detail AML preverenia</span>
+          <div style="display:flex;gap:0.5rem;align-items:center;">
+            <button onclick="generateAmlPdf()" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.2);color:white;cursor:pointer;padding:6px 12px;border-radius:8px;font-size:0.78rem;font-weight:600;display:flex;align-items:center;gap:4px;"><i data-lucide="file-text" style="width:14px;height:14px;"></i> PDF</button>
+            <button onclick="closeAmlDetail()" style="background:none;border:none;color:rgba(255,255,255,0.7);cursor:pointer;font-size:1.3rem;">&times;</button>
+          </div>
+        </div>
+        <div id="aml-detail-content" style="padding:1.5rem;"></div>
+        <div style="padding:0 1.5rem 1.5rem;display:flex;justify-content:flex-end;gap:0.5rem;">
+          <button class="btn" onclick="editAmlFromDetail()" style="background:#F1F5F9;color:var(--text);border:1px solid var(--border);"><i data-lucide="pencil" style="width:14px;height:14px;"></i> Upraviť</button>
+          <button class="btn" onclick="deleteAmlFromDetail()" style="background:#FEF2F2;color:#DC2626;border:1px solid #FECACA;"><i data-lucide="trash-2" style="width:14px;height:14px;"></i> Vymazať</button>
+          <button class="btn btn-primary" id="aml-detail-approve-btn" onclick="approveAml()">Schváliť</button>
+        </div>
+      </div>
+    </div>
+
     <!-- CONTACTS PAGE -->
     <div id="page-contacts" class="page">
       <!-- Toolbar -->
@@ -4008,6 +4298,7 @@
                 <th style="text-align:left;">E-mail</th>
                 <th style="text-align:left;">Kategória</th>
                 <th style="text-align:left;">Status</th>
+                <th style="text-align:center;">AML</th>
                 <th style="text-align:left;">Poznámka</th>
                 <th style="text-align:center;width:100px;">Akcie</th>
               </tr>
@@ -5279,6 +5570,7 @@ function showPage(id) {
   });
   if (id === 'historia' && typeof renderHistory === 'function') renderHistory();
   if (id === 'home') renderDashboard();
+  if (id === 'aml') renderAmlList();
   window.scrollTo(0, 0);
 }
 
@@ -9480,18 +9772,30 @@ function deleteProperty(id) {
 function changePropertyStatus(id, newStatus) {
   const props = getProperties();
   const p = props.find(x => x.id === id);
-  if (p) {
-    // Log status change history
-    if (!p.statusHistory) p.statusHistory = [];
-    p.statusHistory.push({ from: p.status, to: newStatus, at: new Date().toISOString() });
-    p.status = newStatus;
-    p.updatedAt = new Date().toISOString();
-    saveProperties(props);
-    renderProperties();
-    // Sync to LEONIS
-    if (newStatus === ACTIVE_LISTING_STATUS) syncToLeonis(p);
-    else if (INACTIVE_STATUSES.includes(newStatus)) removeFromLeonis(p.id);
+  if (!p) return;
+
+  // AML gate: warn when advancing to rezervacia or later without approved AML
+  const amlGateStages = ['rezervacia', 'predana', 'uzavrety'];
+  if (amlGateStages.includes(newStatus) && p.ownerName) {
+    const contacts = getContacts();
+    const amlRecs = typeof getAmlRecords === 'function' ? getAmlRecords() : [];
+    const ownerContact = contacts.find(c => c.name && c.name.toLowerCase() === p.ownerName.toLowerCase());
+    const amlApproved = ownerContact && amlRecs.some(a => a.contactId === ownerContact.id && a.status === 'approved');
+    if (!amlApproved) {
+      if (!confirm('AML preverenie klienta "' + p.ownerName + '" nie je schválené.\n\nPodľa zákona 297/2008 Z.z. je potrebné preveriť klienta pred uzavretím obchodu.\n\nChcete napriek tomu pokračovať?')) return;
+    }
   }
+
+  // Log status change history
+  if (!p.statusHistory) p.statusHistory = [];
+  p.statusHistory.push({ from: p.status, to: newStatus, at: new Date().toISOString() });
+  p.status = newStatus;
+  p.updatedAt = new Date().toISOString();
+  saveProperties(props);
+  renderProperties();
+  // Sync to LEONIS
+  if (newStatus === ACTIVE_LISTING_STATUS) syncToLeonis(p);
+  else if (INACTIVE_STATUSES.includes(newStatus)) removeFromLeonis(p.id);
 }
 
 function advanceProperty(id, forceTo) {
@@ -10395,10 +10699,18 @@ function renderContacts() {
     if (emptyBtn) emptyBtn.style.display = '';
   }
 
+  const amlAll = typeof getAmlRecords === 'function' ? getAmlRecords() : [];
   tbody.innerHTML = filtered.map(c => {
     const cat = CONTACT_CATEGORY_LABELS[c.category] || c.category;
     const st = CONTACT_STATUS_LABELS[c.status] || { label: c.status, color: '#999', bg: '#f0f0f0' };
     const note = c.note ? (c.note.length > 40 ? c.note.slice(0, 40) + '...' : c.note) : '-';
+    const amlRec = amlAll.find(a => a.contactId === c.id);
+    const amlBadge = amlRec
+      ? (amlRec.status === 'approved' ? '<span class="aml-badge approved" style="font-size:0.7rem;padding:0.15rem 0.45rem;">Overený</span>'
+        : amlRec.status === 'rejected' ? '<span class="aml-badge rejected" style="font-size:0.7rem;padding:0.15rem 0.45rem;">Zamietnutý</span>'
+        : amlRec.status === 'flagged' ? '<span class="aml-badge flagged" style="font-size:0.7rem;padding:0.15rem 0.45rem;">Flagged</span>'
+        : '<span class="aml-badge pending" style="font-size:0.7rem;padding:0.15rem 0.45rem;">Čaká</span>')
+      : '<span style="font-size:0.7rem;color:var(--text-light);">-</span>';
     return `<tr>
       <td style="text-align:left;padding-left:1rem;font-weight:600;color:#0B2A3C;">
         ${esc(c.name)}${c.company ? '<br><span style="font-weight:400;font-size:0.75rem;color:var(--text-light);">' + esc(c.company) + '</span>' : ''}
@@ -10407,6 +10719,7 @@ function renderContacts() {
       <td style="text-align:left;">${c.email ? '<a href="mailto:' + esc(c.email) + '" style="color:#1A7A8A;text-decoration:none;">' + esc(c.email) + '</a>' : '-'}</td>
       <td style="text-align:left;"><span style="font-size:0.78rem;">${esc(cat)}</span></td>
       <td style="text-align:left;"><span style="display:inline-block;padding:0.2rem 0.55rem;border-radius:12px;font-size:0.72rem;font-weight:600;background:${st.bg};color:${st.color};">${esc(st.label)}</span></td>
+      <td style="text-align:center;">${amlBadge}</td>
       <td style="text-align:left;font-size:0.8rem;color:var(--text-light);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(c.note || '')}">${esc(note)}</td>
       <td style="text-align:center;">
         <button onclick="openContactForm('${c.id}')" style="background:none;border:none;cursor:pointer;color:#1A7A8A;padding:4px;" title="Upraviť"><i data-lucide="pencil" style="width:15px;height:15px;"></i></button>
@@ -10657,6 +10970,592 @@ function enterApp(user) {
   document.getElementById('headerUserAvatar').textContent = initials;
 }
 
+// ==================== AML ====================
+const AML_KEY = 'secpro_aml';
+function getAmlRecords() { try { return JSON.parse(localStorage.getItem(AML_KEY)) || []; } catch { return []; } }
+function saveAmlRecords(arr) { localStorage.setItem(AML_KEY, JSON.stringify(arr)); }
+
+const AML_STATUS_MAP = {
+  pending:  { label: 'Čaká', color: '#64748B', bg: '#F1F5F9' },
+  approved: { label: 'Schválený', color: '#16A34A', bg: '#F0FDF4' },
+  flagged:  { label: 'Pozornosť', color: '#D97706', bg: '#FFF7ED' },
+  rejected: { label: 'Zamietnutý', color: '#DC2626', bg: '#FEF2F2' }
+};
+const AML_RISK_MAP = {
+  low:    { label: 'Nízke', color: '#16A34A' },
+  medium: { label: 'Stredné', color: '#D97706' },
+  high:   { label: 'Vysoké', color: '#DC2626' }
+};
+const AML_SOURCE_LABELS = {
+  employment: 'Zamestnanie', business: 'Podnikanie', property: 'Predaj majetku',
+  inheritance: 'Dedičstvo / Dar', savings: 'Úspory', loan: 'Úver / Hypotéka',
+  investment: 'Investície', other: 'Iné'
+};
+const AML_DOC_LABELS = { op: 'Občiansky preukaz', pas: 'Cestovný pas', pobyt: 'Povolenie na pobyt' };
+const AML_PURPOSE_LABELS = { buy: 'Kúpa nehnuteľnosti', sell: 'Predaj nehnuteľnosti', rent: 'Prenájom', other: 'Iné' };
+
+function openAmlForm(editId) {
+  document.getElementById('aml-edit-id').value = editId || '';
+  document.getElementById('aml-modal-title').textContent = editId ? 'Upraviť AML preverenie' : 'Nové AML preverenie';
+  // Populate contacts dropdown
+  const sel = document.getElementById('aml-contact-id');
+  const contacts = getContacts();
+  sel.innerHTML = '<option value="">-- Bez prepojenia --</option>' +
+    contacts.map(c => '<option value="' + c.id + '">' + esc(c.name) + (c.phone ? ' (' + esc(c.phone) + ')' : '') + '</option>').join('');
+
+  if (editId) {
+    const r = getAmlRecords().find(x => x.id === editId);
+    if (r) {
+      sel.value = r.contactId || '';
+      document.querySelector('input[name="aml-client-type"][value="' + r.clientType + '"]').checked = true;
+      amlToggleClientType();
+      if (r.clientType === 'fo') {
+        document.getElementById('aml-fo-firstname').value = r.firstName || '';
+        document.getElementById('aml-fo-lastname').value = r.lastName || '';
+        document.getElementById('aml-fo-birthnum').value = r.birthNumber || '';
+        document.getElementById('aml-fo-dob').value = r.dateOfBirth || '';
+        document.getElementById('aml-fo-nationality').value = r.nationality || 'Slovenská republika';
+        document.getElementById('aml-fo-address').value = r.permanentAddress || '';
+        document.getElementById('aml-fo-doctype').value = r.idDocType || 'op';
+        document.getElementById('aml-fo-docnum').value = r.idDocNumber || '';
+        document.getElementById('aml-fo-docexpiry').value = r.idDocExpiry || '';
+      } else {
+        document.getElementById('aml-po-name').value = r.companyName || '';
+        document.getElementById('aml-po-ico').value = r.ico || '';
+        document.getElementById('aml-po-form').value = r.legalForm || 'sro';
+        document.getElementById('aml-po-address').value = r.registeredOffice || '';
+        document.getElementById('aml-po-statname').value = r.statutoryRepName || '';
+        document.getElementById('aml-po-statdoc').value = r.statutoryRepDoc || '';
+        document.getElementById('aml-po-uboname').value = r.uboName || '';
+        document.getElementById('aml-po-ubopct').value = r.uboOwnershipPct || '';
+        document.getElementById('aml-po-ubobirth').value = r.uboBirthNumber || '';
+        document.getElementById('aml-po-uboaddr').value = r.uboAddress || '';
+      }
+      const pepVal = r.pepStatus || 'no';
+      document.querySelector('input[name="aml-pep"][value="' + pepVal + '"]').checked = true;
+      amlTogglePep();
+      document.getElementById('aml-pep-note').value = r.pepDetails || '';
+      // Sources
+      document.querySelectorAll('#aml-source-grid .aml-source-chip').forEach(c => {
+        c.classList.toggle('selected', (r.sourceOfFunds || []).includes(c.dataset.val));
+      });
+      document.getElementById('aml-source-detail').value = r.sourceOfFundsDetail || '';
+      document.getElementById('aml-tx-purpose').value = r.transactionPurpose || 'buy';
+      document.getElementById('aml-tx-value').value = r.transactionValue || '';
+      document.getElementById('aml-notes').value = r.notes || '';
+    }
+  } else {
+    // Reset form
+    document.querySelector('input[name="aml-client-type"][value="fo"]').checked = true;
+    amlToggleClientType();
+    ['aml-fo-firstname','aml-fo-lastname','aml-fo-birthnum','aml-fo-dob','aml-fo-address','aml-fo-docnum','aml-fo-docexpiry',
+     'aml-po-name','aml-po-ico','aml-po-address','aml-po-statname','aml-po-statdoc','aml-po-uboname','aml-po-ubopct','aml-po-ubobirth','aml-po-uboaddr',
+     'aml-pep-note','aml-source-detail','aml-tx-value','aml-notes'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    document.getElementById('aml-fo-nationality').value = 'Slovenská republika';
+    document.getElementById('aml-fo-doctype').value = 'op';
+    document.getElementById('aml-po-form').value = 'sro';
+    document.getElementById('aml-tx-purpose').value = 'buy';
+    document.querySelector('input[name="aml-pep"][value="no"]').checked = true;
+    amlTogglePep();
+    document.querySelectorAll('#aml-source-grid .aml-source-chip').forEach(c => c.classList.remove('selected'));
+    document.getElementById('aml-doc-preview').innerHTML = '';
+  }
+  document.getElementById('aml-modal').style.display = 'block';
+}
+function closeAmlForm() { document.getElementById('aml-modal').style.display = 'none'; }
+
+function amlToggleClientType() {
+  const isFo = document.querySelector('input[name="aml-client-type"]:checked').value === 'fo';
+  document.getElementById('aml-fo-fields').style.display = isFo ? '' : 'none';
+  document.getElementById('aml-po-fields').style.display = isFo ? 'none' : '';
+  document.getElementById('aml-type-fo-label').style.borderColor = isFo ? 'var(--primary-light)' : 'var(--border)';
+  document.getElementById('aml-type-po-label').style.borderColor = isFo ? 'var(--border)' : 'var(--primary-light)';
+}
+function amlTogglePep() {
+  const v = document.querySelector('input[name="aml-pep"]:checked').value;
+  document.getElementById('aml-pep-detail').style.display = v === 'no' ? 'none' : '';
+}
+function amlToggleSource(el) { el.classList.toggle('selected'); }
+function amlPrefillFromContact() {
+  const cid = document.getElementById('aml-contact-id').value;
+  if (!cid) return;
+  const c = getContacts().find(x => x.id === cid);
+  if (!c) return;
+  const nameParts = (c.name || '').split(' ');
+  document.getElementById('aml-fo-firstname').value = nameParts[0] || '';
+  document.getElementById('aml-fo-lastname').value = nameParts.slice(1).join(' ') || '';
+  if (c.phone) document.getElementById('aml-fo-address').value = document.getElementById('aml-fo-address').value || (c.address || '');
+}
+function amlPreviewDocs() {
+  const files = document.getElementById('aml-docs').files;
+  const preview = document.getElementById('aml-doc-preview');
+  preview.innerHTML = '';
+  Array.from(files).forEach(f => {
+    preview.innerHTML += '<div style="padding:4px 10px;background:#F1F5F9;border-radius:6px;font-size:0.75rem;color:var(--text-light);">' + esc(f.name) + '</div>';
+  });
+}
+
+// --- Risk scoring ---
+function amlCalcRisk(record) {
+  let score = 0;
+  const factors = [];
+
+  // Client type
+  if (record.clientType === 'po') { score += 2; factors.push({ f: 'Právnická osoba', s: 2 }); }
+  else { score += 1; factors.push({ f: 'Fyzická osoba', s: 1 }); }
+
+  // PEP
+  if (record.pepStatus === 'yes') { score += 8; factors.push({ f: 'PEP - priamo', s: 8 }); }
+  else if (record.pepStatus === 'family') { score += 5; factors.push({ f: 'PEP - rodinný príslušník', s: 5 }); }
+  else if (record.pepStatus === 'associate') { score += 4; factors.push({ f: 'PEP - blízka osoba', s: 4 }); }
+  else { factors.push({ f: 'PEP - nie', s: 0 }); }
+
+  // Nationality
+  const nat = (record.nationality || record.registeredOffice || '').toLowerCase();
+  const highRiskCountries = ['irán', 'iran', 'severná kórea', 'north korea', 'mjanmarsko', 'myanmar', 'jemen', 'yemen', 'sýria', 'syria', 'afganistan', 'afghanistan'];
+  if (highRiskCountries.some(c => nat.includes(c))) { score += 6; factors.push({ f: 'Vysokoriziková krajina', s: 6 }); }
+  else if (!nat.includes('slovensk') && !nat.includes('česk') && nat.length > 2) { score += 2; factors.push({ f: 'Zahraničný klient', s: 2 }); }
+  else { factors.push({ f: 'Tuzemský klient', s: 0 }); }
+
+  // Transaction value
+  const val = Number(record.transactionValue) || 0;
+  if (val > 500000) { score += 4; factors.push({ f: 'Hodnota > 500 000 €', s: 4 }); }
+  else if (val > 200000) { score += 2; factors.push({ f: 'Hodnota 200-500k €', s: 2 }); }
+  else if (val > 0) { score += 1; factors.push({ f: 'Hodnota < 200 000 €', s: 1 }); }
+
+  // Source of funds
+  const src = record.sourceOfFunds || [];
+  if (src.length === 0) { score += 3; factors.push({ f: 'Pôvod prostriedkov neuvedený', s: 3 }); }
+  else if (src.includes('other') && src.length === 1) { score += 2; factors.push({ f: 'Pôvod prostriedkov - iné', s: 2 }); }
+  else { factors.push({ f: 'Pôvod prostriedkov uvedený', s: 0 }); }
+
+  // UBO for PO
+  if (record.clientType === 'po' && !record.uboName) { score += 3; factors.push({ f: 'UBO neidentifikovaný', s: 3 }); }
+
+  let category = 'low';
+  if (score >= 10) category = 'high';
+  else if (score >= 5) category = 'medium';
+
+  let ddLevel = 'simplified';
+  if (category === 'high') ddLevel = 'enhanced';
+  else if (category === 'medium') ddLevel = 'basic';
+
+  return { score, category, factors, ddLevel };
+}
+
+function saveAml() {
+  const editId = document.getElementById('aml-edit-id').value;
+  const clientType = document.querySelector('input[name="aml-client-type"]:checked').value;
+
+  // Validate required fields
+  if (clientType === 'fo') {
+    if (!document.getElementById('aml-fo-firstname').value.trim() || !document.getElementById('aml-fo-lastname').value.trim()) {
+      alert('Meno a priezvisko sú povinné.'); return;
+    }
+  } else {
+    if (!document.getElementById('aml-po-name').value.trim()) {
+      alert('Obchodné meno je povinné.'); return;
+    }
+  }
+
+  const sources = Array.from(document.querySelectorAll('#aml-source-grid .aml-source-chip.selected')).map(c => c.dataset.val);
+
+  const record = {
+    id: editId || Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+    contactId: document.getElementById('aml-contact-id').value || '',
+    clientType,
+    // FO
+    firstName: document.getElementById('aml-fo-firstname').value.trim(),
+    lastName: document.getElementById('aml-fo-lastname').value.trim(),
+    birthNumber: document.getElementById('aml-fo-birthnum').value.trim(),
+    dateOfBirth: document.getElementById('aml-fo-dob').value,
+    nationality: document.getElementById('aml-fo-nationality').value.trim(),
+    permanentAddress: document.getElementById('aml-fo-address').value.trim(),
+    idDocType: document.getElementById('aml-fo-doctype').value,
+    idDocNumber: document.getElementById('aml-fo-docnum').value.trim(),
+    idDocExpiry: document.getElementById('aml-fo-docexpiry').value,
+    // PO
+    companyName: document.getElementById('aml-po-name').value.trim(),
+    ico: document.getElementById('aml-po-ico').value.trim(),
+    legalForm: document.getElementById('aml-po-form').value,
+    registeredOffice: document.getElementById('aml-po-address').value.trim(),
+    statutoryRepName: document.getElementById('aml-po-statname').value.trim(),
+    statutoryRepDoc: document.getElementById('aml-po-statdoc').value.trim(),
+    uboName: document.getElementById('aml-po-uboname').value.trim(),
+    uboOwnershipPct: document.getElementById('aml-po-ubopct').value,
+    uboBirthNumber: document.getElementById('aml-po-ubobirth').value.trim(),
+    uboAddress: document.getElementById('aml-po-uboaddr').value.trim(),
+    // Common
+    pepStatus: document.querySelector('input[name="aml-pep"]:checked').value,
+    pepDetails: document.getElementById('aml-pep-note').value.trim(),
+    sourceOfFunds: sources,
+    sourceOfFundsDetail: document.getElementById('aml-source-detail').value.trim(),
+    transactionPurpose: document.getElementById('aml-tx-purpose').value,
+    transactionValue: document.getElementById('aml-tx-value').value,
+    notes: document.getElementById('aml-notes').value.trim(),
+    updatedAt: new Date().toISOString()
+  };
+
+  // Calculate risk
+  const risk = amlCalcRisk(record);
+  record.riskScore = risk.score;
+  record.riskCategory = risk.category;
+  record.riskFactors = risk.factors;
+  record.dueDiligenceLevel = risk.ddLevel;
+
+  const records = getAmlRecords();
+  const idx = records.findIndex(x => x.id === record.id);
+  if (idx >= 0) {
+    record.status = records[idx].status || 'pending';
+    record.createdAt = records[idx].createdAt;
+    record.verifiedBy = records[idx].verifiedBy;
+    record.verifiedAt = records[idx].verifiedAt;
+    records[idx] = record;
+  } else {
+    record.status = risk.category === 'high' ? 'flagged' : 'pending';
+    record.createdAt = new Date().toISOString();
+    records.push(record);
+  }
+
+  // Update contact's AML status
+  if (record.contactId) {
+    const contacts = getContacts();
+    const ci = contacts.findIndex(c => c.id === record.contactId);
+    if (ci >= 0) {
+      contacts[ci].amlStatus = record.status;
+      contacts[ci].amlRisk = record.riskCategory;
+      contacts[ci].amlDate = record.updatedAt;
+      saveContacts(contacts);
+    }
+  }
+
+  saveAmlRecords(records);
+  closeAmlForm();
+  renderAmlList();
+}
+
+function getAmlDisplayName(r) {
+  return r.clientType === 'fo' ? ((r.firstName || '') + ' ' + (r.lastName || '')).trim() || 'Bez mena' : r.companyName || 'Bez názvu';
+}
+
+function renderAmlList() {
+  const records = getAmlRecords();
+  const search = (document.getElementById('aml-filter-search')?.value || '').toLowerCase();
+  const statusF = document.getElementById('aml-filter-status')?.value || '';
+  const riskF = document.getElementById('aml-filter-risk')?.value || '';
+
+  let filtered = records.filter(r => {
+    if (search) {
+      const haystack = (getAmlDisplayName(r) + ' ' + (r.ico || '') + ' ' + (r.birthNumber || '')).toLowerCase();
+      if (!haystack.includes(search)) return false;
+    }
+    if (statusF && r.status !== statusF) return false;
+    if (riskF && r.riskCategory !== riskF) return false;
+    return true;
+  });
+
+  filtered.sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
+
+  const grid = document.getElementById('aml-grid');
+  const empty = document.getElementById('aml-empty');
+  const countEl = document.getElementById('aml-count');
+  if (countEl) countEl.textContent = filtered.length + ' z ' + records.length + ' preverení';
+
+  if (filtered.length === 0) {
+    grid.innerHTML = '';
+    empty.style.display = records.length === 0 ? 'block' : 'block';
+    if (records.length > 0) empty.querySelector('p').textContent = 'Žiadne preverenia nezodpovedajú filtru.';
+    return;
+  }
+  empty.style.display = 'none';
+
+  grid.innerHTML = filtered.map(r => {
+    const name = esc(getAmlDisplayName(r));
+    const st = AML_STATUS_MAP[r.status] || AML_STATUS_MAP.pending;
+    const risk = AML_RISK_MAP[r.riskCategory] || AML_RISK_MAP.low;
+    const typeLabel = r.clientType === 'fo' ? 'FO' : 'PO';
+    const dateStr = r.updatedAt ? new Date(r.updatedAt).toLocaleDateString('sk-SK', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+    const riskSegs = ['low','medium','high'].map((lvl, i) => {
+      const active = (r.riskCategory === 'low' && i === 0) || (r.riskCategory === 'medium' && i <= 1) || (r.riskCategory === 'high');
+      return '<div class="aml-risk-seg' + (active ? ' active-' + (i === 0 ? 'low' : i === 1 ? 'med' : 'high') : '') + '"></div>';
+    }).join('');
+
+    return '<div class="aml-card" onclick="openAmlDetail(\'' + r.id + '\')">' +
+      '<div class="aml-card-header">' +
+        '<div style="display:flex;align-items:center;gap:0.5rem;">' +
+          '<span class="aml-card-name">' + name + '</span>' +
+          '<span class="aml-card-type">' + typeLabel + '</span>' +
+        '</div>' +
+        '<span class="aml-badge ' + r.status + '">' + st.label + '</span>' +
+      '</div>' +
+      '<div class="aml-card-meta">' +
+        '<span>' + dateStr + '</span>' +
+        (r.ico ? '<span>IČO: ' + esc(r.ico) + '</span>' : '') +
+        (r.transactionValue ? '<span>' + Number(r.transactionValue).toLocaleString('sk-SK') + ' €</span>' : '') +
+      '</div>' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;">' +
+        '<div style="display:flex;align-items:center;gap:0.5rem;">' +
+          '<div class="aml-risk-bar">' + riskSegs + '</div>' +
+          '<span style="font-size:0.72rem;font-weight:600;color:' + risk.color + ';">' + risk.label + ' riziko</span>' +
+        '</div>' +
+        '<span style="font-size:0.68rem;color:var(--text-light);">Skóre: ' + (r.riskScore || 0) + '</span>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+let amlDetailId = null;
+function openAmlDetail(id) {
+  amlDetailId = id;
+  const r = getAmlRecords().find(x => x.id === id);
+  if (!r) return;
+  const name = esc(getAmlDisplayName(r));
+  const st = AML_STATUS_MAP[r.status] || AML_STATUS_MAP.pending;
+  const risk = AML_RISK_MAP[r.riskCategory] || AML_RISK_MAP.low;
+  const ddLabels = { simplified: 'Zjednodušená', basic: 'Základná', enhanced: 'Zvýšená' };
+
+  let html = '<div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1.25rem;">' +
+    '<div style="font-size:1.2rem;font-weight:800;color:var(--primary-dark);">' + name + '</div>' +
+    '<span class="aml-badge ' + r.status + '">' + st.label + '</span>' +
+    '<span class="aml-badge ' + r.riskCategory + '">' + risk.label + ' riziko</span>' +
+  '</div>';
+
+  // Identification
+  html += '<div class="aml-form-section"><div class="aml-form-section-title">Identifikácia</div><div class="aml-detail-grid">';
+  if (r.clientType === 'fo') {
+    html += amlDR('Meno', r.firstName + ' ' + r.lastName);
+    html += amlDR('Rodné číslo', r.birthNumber || '—');
+    html += amlDR('Dátum narodenia', r.dateOfBirth || '—');
+    html += amlDR('Štátna príslušnosť', r.nationality || '—');
+    html += amlDR('Adresa', r.permanentAddress || '—');
+    html += amlDR('Doklad', (AML_DOC_LABELS[r.idDocType] || r.idDocType || '—') + ' ' + (r.idDocNumber || ''));
+    html += amlDR('Platnosť do', r.idDocExpiry || '—');
+  } else {
+    html += amlDR('Obchodné meno', r.companyName || '—');
+    html += amlDR('IČO', r.ico || '—');
+    html += amlDR('Právna forma', r.legalForm || '—');
+    html += amlDR('Sídlo', r.registeredOffice || '—');
+    html += amlDR('Štatutár', r.statutoryRepName || '—');
+    html += amlDR('UBO', (r.uboName || '—') + (r.uboOwnershipPct ? ' (' + r.uboOwnershipPct + '%)' : ''));
+  }
+  html += '</div></div>';
+
+  // PEP
+  const pepLabels = { no: 'Nie', yes: 'Áno - priamo', family: 'Rodinný príslušník', associate: 'Blízka osoba' };
+  html += '<div class="aml-form-section"><div class="aml-form-section-title">PEP Status</div><div class="aml-detail-grid">';
+  html += amlDR('PEP', pepLabels[r.pepStatus] || 'Nie');
+  if (r.pepDetails) html += amlDR('Detaily', r.pepDetails);
+  html += '</div></div>';
+
+  // Source + Transaction
+  html += '<div class="aml-form-section"><div class="aml-form-section-title">Transakcia & Prostriedky</div><div class="aml-detail-grid">';
+  html += amlDR('Účel', AML_PURPOSE_LABELS[r.transactionPurpose] || '—');
+  html += amlDR('Hodnota', r.transactionValue ? Number(r.transactionValue).toLocaleString('sk-SK') + ' €' : '—');
+  html += amlDR('Pôvod prostriedkov', (r.sourceOfFunds || []).map(s => AML_SOURCE_LABELS[s] || s).join(', ') || '—');
+  if (r.sourceOfFundsDetail) html += amlDR('Detail', r.sourceOfFundsDetail);
+  html += '</div></div>';
+
+  // Risk
+  html += '<div class="aml-form-section"><div class="aml-form-section-title">Hodnotenie rizika</div>';
+  html += '<div class="aml-detail-grid">';
+  html += amlDR('Skóre', r.riskScore || 0);
+  html += amlDR('Kategória', '<span style="color:' + risk.color + ';font-weight:700;">' + risk.label + '</span>');
+  html += amlDR('Due diligence', ddLabels[r.dueDiligenceLevel] || '—');
+  html += '</div>';
+  if (r.riskFactors && r.riskFactors.length) {
+    html += '<div class="aml-risk-summary">';
+    r.riskFactors.forEach(f => {
+      html += '<div class="aml-risk-factor"><span class="aml-risk-factor-label">' + esc(f.f) + '</span><span class="aml-risk-factor-score">+' + f.s + '</span></div>';
+    });
+    html += '</div>';
+  }
+  html += '</div>';
+
+  // Notes
+  if (r.notes) {
+    html += '<div class="aml-form-section"><div class="aml-form-section-title">Poznámky</div><p style="font-size:0.85rem;color:var(--text-light);">' + esc(r.notes) + '</p></div>';
+  }
+
+  // Audit
+  html += '<div style="font-size:0.72rem;color:var(--text-light);margin-top:0.5rem;">';
+  html += 'Vytvorené: ' + (r.createdAt ? new Date(r.createdAt).toLocaleString('sk-SK') : '—');
+  if (r.verifiedBy) html += ' | Schválil: ' + esc(r.verifiedBy) + ' (' + new Date(r.verifiedAt).toLocaleString('sk-SK') + ')';
+  html += '</div>';
+
+  document.getElementById('aml-detail-content').innerHTML = html;
+  // Show/hide approve button
+  document.getElementById('aml-detail-approve-btn').style.display = (r.status === 'pending' || r.status === 'flagged') ? '' : 'none';
+  document.getElementById('aml-detail-modal').style.display = 'block';
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+function amlDR(label, value) {
+  return '<div class="aml-detail-row"><span class="aml-detail-label">' + label + '</span><span class="aml-detail-value">' + value + '</span></div>';
+}
+function closeAmlDetail() { document.getElementById('aml-detail-modal').style.display = 'none'; amlDetailId = null; }
+function editAmlFromDetail() { if (amlDetailId) { closeAmlDetail(); openAmlForm(amlDetailId); } }
+function deleteAmlFromDetail() {
+  if (!amlDetailId || !confirm('Naozaj vymazať toto AML preverenie?')) return;
+  const records = getAmlRecords().filter(x => x.id !== amlDetailId);
+  saveAmlRecords(records);
+  closeAmlDetail();
+  renderAmlList();
+}
+function approveAml() {
+  if (!amlDetailId) return;
+  const records = getAmlRecords();
+  const r = records.find(x => x.id === amlDetailId);
+  if (!r) return;
+  const session = JSON.parse(localStorage.getItem('secpro_session') || '{}');
+  r.status = 'approved';
+  r.verifiedBy = session.name || 'Neznámy';
+  r.verifiedAt = new Date().toISOString();
+  // Update linked contact
+  if (r.contactId) {
+    const contacts = getContacts();
+    const ci = contacts.findIndex(c => c.id === r.contactId);
+    if (ci >= 0) { contacts[ci].amlStatus = 'approved'; contacts[ci].amlDate = r.verifiedAt; saveContacts(contacts); }
+  }
+  saveAmlRecords(records);
+  closeAmlDetail();
+  renderAmlList();
+}
+
+function exportAmlCSV() {
+  const records = getAmlRecords();
+  if (!records.length) { alert('Žiadne záznamy na export.'); return; }
+  const headers = ['Meno/Názov','Typ','IČO','Status','Riziko','Skóre','PEP','Účel','Hodnota','Pôvod prostriedkov','Dátum'];
+  const rows = records.map(r => [
+    '"' + getAmlDisplayName(r).replace(/"/g,'""') + '"',
+    r.clientType === 'fo' ? 'FO' : 'PO',
+    r.ico || '',
+    (AML_STATUS_MAP[r.status] || {}).label || r.status,
+    (AML_RISK_MAP[r.riskCategory] || {}).label || '',
+    r.riskScore || 0,
+    r.pepStatus || 'no',
+    AML_PURPOSE_LABELS[r.transactionPurpose] || '',
+    r.transactionValue || '',
+    (r.sourceOfFunds || []).join(';'),
+    r.updatedAt ? new Date(r.updatedAt).toLocaleDateString('sk-SK') : ''
+  ].join(','));
+  const csv = '\uFEFF' + headers.join(',') + '\n' + rows.join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'aml-preverenia.csv'; a.click();
+}
+
+// --- AML PDF ---
+function generateAmlPdf() {
+  const r = getAmlRecords().find(x => x.id === amlDetailId);
+  if (!r) return;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF('p', 'mm', 'a4');
+  const pw = doc.internal.pageSize.getWidth();
+  const m = 15;
+  const cw = pw - 2 * m;
+  let y = m;
+
+  // Header
+  doc.setFillColor(11, 42, 60);
+  doc.rect(0, 0, pw, 32, 'F');
+  doc.setFillColor(26, 122, 138);
+  doc.rect(0, 32, pw, 2, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(16); doc.setFont(undefined, 'bold');
+  doc.text('SecPro - AML Preverenie klienta', m, 14);
+  doc.setFontSize(9); doc.setFont(undefined, 'normal');
+  doc.text('Zakon 297/2008 Z.z. | Datum: ' + new Date().toLocaleDateString('sk-SK'), m, 22);
+  doc.text('Dokument ID: ' + r.id, m, 28);
+  y = 40;
+
+  function secTitle(title) {
+    doc.setFillColor(240, 242, 245);
+    doc.roundedRect(m, y, cw, 8, 2, 2, 'F');
+    doc.setTextColor(11, 42, 60); doc.setFontSize(9); doc.setFont(undefined, 'bold');
+    doc.text(title, m + 4, y + 5.5);
+    y += 12;
+  }
+  function row(label, value) {
+    if (y > 270) { doc.addPage(); y = m; }
+    doc.setTextColor(100, 116, 139); doc.setFontSize(8); doc.setFont(undefined, 'normal');
+    doc.text(label, m + 2, y);
+    doc.setTextColor(26, 26, 46); doc.setFontSize(9); doc.setFont(undefined, 'bold');
+    doc.text(String(value || '—'), m + 55, y);
+    y += 6;
+  }
+
+  const name = getAmlDisplayName(r);
+  const st = AML_STATUS_MAP[r.status] || AML_STATUS_MAP.pending;
+  const risk = AML_RISK_MAP[r.riskCategory] || AML_RISK_MAP.low;
+  const ddLabels = { simplified: 'Zjednodustena', basic: 'Zakladna', enhanced: 'Zvysena' };
+  const pepLabels = { no: 'Nie', yes: 'Ano - priamo', family: 'Rodinny prislusnik', associate: 'Blizka osoba' };
+
+  // Summary
+  secTitle('SUHRN');
+  row('Klient', name);
+  row('Typ', r.clientType === 'fo' ? 'Fyzicka osoba' : 'Pravnicka osoba');
+  row('Status', st.label);
+  row('Riziko', risk.label + ' (skore: ' + (r.riskScore || 0) + ')');
+  row('Due diligence', ddLabels[r.dueDiligenceLevel] || '');
+  y += 4;
+
+  // Identification
+  secTitle('IDENTIFIKACIA (§7)');
+  if (r.clientType === 'fo') {
+    row('Meno a priezvisko', r.firstName + ' ' + r.lastName);
+    row('Rodne cislo', r.birthNumber || '');
+    row('Datum narodenia', r.dateOfBirth || '');
+    row('Statna prislusnost', r.nationality || '');
+    row('Adresa', r.permanentAddress || '');
+    row('Doklad', (AML_DOC_LABELS[r.idDocType] || '') + ' ' + (r.idDocNumber || ''));
+    row('Platnost do', r.idDocExpiry || '');
+  } else {
+    row('Obchodne meno', r.companyName || '');
+    row('ICO', r.ico || '');
+    row('Pravna forma', r.legalForm || '');
+    row('Sidlo', r.registeredOffice || '');
+    row('Statutar', r.statutoryRepName || '');
+    row('UBO', (r.uboName || '') + (r.uboOwnershipPct ? ' (' + r.uboOwnershipPct + '%)' : ''));
+  }
+  y += 4;
+
+  // PEP
+  secTitle('PEP STATUS (§6)');
+  row('PEP', pepLabels[r.pepStatus] || 'Nie');
+  if (r.pepDetails) row('Detaily', r.pepDetails);
+  y += 4;
+
+  // Transaction
+  secTitle('TRANSAKCIA A PROSTRIEDKY (§10)');
+  row('Ucel', AML_PURPOSE_LABELS[r.transactionPurpose] || '');
+  row('Hodnota', r.transactionValue ? Number(r.transactionValue).toLocaleString('sk-SK') + ' EUR' : '');
+  row('Povod prostriedkov', (r.sourceOfFunds || []).map(s => AML_SOURCE_LABELS[s] || s).join(', '));
+  if (r.sourceOfFundsDetail) row('Detail', r.sourceOfFundsDetail);
+  y += 4;
+
+  // Risk factors
+  if (r.riskFactors && r.riskFactors.length) {
+    secTitle('RIZIKOVE FAKTORY');
+    r.riskFactors.forEach(f => row(f.f, '+' + f.s));
+    y += 2;
+    row('CELKOVE SKORE', r.riskScore || 0);
+  }
+
+  // Audit
+  y += 8;
+  doc.setDrawColor(200); doc.line(m, y, pw - m, y); y += 6;
+  doc.setTextColor(100, 116, 139); doc.setFontSize(7); doc.setFont(undefined, 'normal');
+  doc.text('Vytvorene: ' + (r.createdAt ? new Date(r.createdAt).toLocaleString('sk-SK') : ''), m, y);
+  if (r.verifiedBy) {
+    y += 4;
+    doc.text('Schvalil: ' + r.verifiedBy + ' | ' + new Date(r.verifiedAt).toLocaleString('sk-SK'), m, y);
+  }
+  y += 4;
+  doc.text('Tento dokument bol vygenerovany systemom SecPro pre ucely plnenia povinnosti podla zakona 297/2008 Z.z.', m, y);
+
+  doc.save('AML-' + name.replace(/\s+/g, '-') + '-' + new Date().toISOString().slice(0, 10) + '.pdf');
+}
+
 // ==================== DASHBOARD ====================
 function renderDashboard() {
   const props = getProperties();
@@ -10677,6 +11576,11 @@ function renderDashboard() {
     : '0 \u20AC';
   document.getElementById('dash-viewings-count').textContent = totalViewings;
   document.getElementById('dash-sold-count').textContent = soldProps.length;
+
+  // --- AML KPI ---
+  const amlRecords = typeof getAmlRecords === 'function' ? getAmlRecords() : [];
+  const amlPending = amlRecords.filter(r => r.status === 'pending' || r.status === 'flagged').length;
+  document.getElementById('dash-aml-pending').textContent = amlPending;
 
   // --- Pipeline Funnel ---
   renderDashPipeline(props);
