@@ -40,33 +40,11 @@ module.exports = async function handler(req, res) {
     }
 
     const query = name.trim();
-    const nQuery = normalize(query);
-
-    // Debug: find exact entry and test scoring
-    const debugEntry = sanctionsEntries.find(e =>
-      e.normalizedName.includes('bout') || e.name.includes('BOUT')
-    );
-    const debugSample = sanctionsEntries.slice(0, 3).map(e => ({
-      name: e.name, normalized: e.normalizedName, list: e.list
-    }));
-    // Manual score test
-    const queryWords = nQuery.split(/\s+/).filter(w => w.length > 1);
-    let debugScore = null;
-    if (debugEntry) {
-      debugScore = {
-        entry: debugEntry.normalizedName,
-        query: nQuery,
-        queryWords,
-        score: calcScore(queryWords, nQuery, debugEntry.normalizedName),
-        targetWords: debugEntry.normalizedName.split(/\s+/).filter(w => w.length > 1)
-      };
-    }
-
     const matches = searchSanctions(query, birthDate, sanctionsEntries);
 
     // Split by source for response
-    const sanctionMatches = matches.filter(m => m.list === 'OFAC SDN' || m.list === 'UN Sanctions');
-    const pepMatches = matches.filter(m => m.designation && m.designation.length > 0);
+    const sanctionMatches = matches.filter(m => m.datasets === 'OFAC SDN' || m.datasets === 'UN Sanctions');
+    const pepMatches = matches.filter(m => m.position && m.position.length > 0);
 
     const sanctionStatus = determineStatus(sanctionMatches);
     const pepStatus = determineStatus(pepMatches);
@@ -84,9 +62,7 @@ module.exports = async function handler(req, res) {
       },
       checkedAt: new Date().toISOString(),
       query,
-      normalizedQuery: nQuery,
       totalEntries: sanctionsEntries.length,
-      _debug: { boutEntry: debugEntry || 'NOT_FOUND', sampleEntries: debugSample, scoreTest: debugScore },
       source: 'US OFAC SDN + UN Security Council Consolidated List (priame zdroje)'
     });
 
