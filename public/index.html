@@ -4159,6 +4159,38 @@
             </div>
           </div>
 
+          <!-- Sanctions / Register verification -->
+          <div class="aml-form-section">
+            <div class="aml-form-section-title"><i data-lucide="search" style="width:14px;height:14px;"></i> Overenie v registroch a sankčných zoznamoch</div>
+            <p style="font-size:0.78rem;color:var(--text-light);margin:0 0 0.75rem;">Potvrďte, že ste klienta preverili v príslušných zoznamoch. Zaznačte dátum a výsledok overenia.</p>
+            <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:0.75rem;">
+              <div class="form-group">
+                <label>Sankčné zoznamy (EÚ, OSN, OFAC)</label>
+                <select id="aml-sanctions-result" style="width:100%;padding:0.5rem;border-radius:8px;border:1px solid var(--border);">
+                  <option value="clear">Bez nálezu</option>
+                  <option value="hit">Nájdená zhoda</option>
+                  <option value="pending">Neoverené</option>
+                </select>
+              </div>
+              <div class="form-group"><label>Dátum overenia sankčných zoznamov</label><input type="date" id="aml-sanctions-date" /></div>
+            </div>
+            <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:0.75rem;">
+              <div class="form-group">
+                <label>Register PEP / RPVS</label>
+                <select id="aml-register-result" style="width:100%;padding:0.5rem;border-radius:8px;border:1px solid var(--border);">
+                  <option value="clear">Bez nálezu</option>
+                  <option value="hit">Nájdená zhoda</option>
+                  <option value="pending">Neoverené</option>
+                </select>
+              </div>
+              <div class="form-group"><label>Dátum overenia registrov</label><input type="date" id="aml-register-date" /></div>
+            </div>
+            <div class="form-group" style="margin-top:0.25rem;">
+              <label>Poznámka k overeniu</label>
+              <textarea id="aml-register-note" rows="2" placeholder="Napr. zdroj overenia, číslo screenu, odkaz na záznam..."></textarea>
+            </div>
+          </div>
+
           <!-- Source of funds -->
           <div class="aml-form-section">
             <div class="aml-form-section-title"><i data-lucide="banknote" style="width:14px;height:14px;"></i> Pôvod finančných prostriedkov (§10)</div>
@@ -4200,11 +4232,28 @@
             <div class="form-group"><textarea id="aml-notes" rows="2" placeholder="Interné poznámky k prevereniu..."></textarea></div>
           </div>
 
-          <!-- Document upload -->
+          <!-- Document uploads - structured -->
           <div class="aml-form-section">
-            <div class="aml-form-section-title"><i data-lucide="paperclip" style="width:14px;height:14px;"></i> Doklady (scan/fotografia)</div>
-            <input type="file" id="aml-docs" multiple accept="image/*,.pdf" onchange="amlPreviewDocs()" style="font-size:0.82rem;" />
-            <div id="aml-doc-preview" style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-top:0.5rem;"></div>
+            <div class="aml-form-section-title"><i data-lucide="paperclip" style="width:14px;height:14px;"></i> Priložené doklady</div>
+            <p style="font-size:0.78rem;color:var(--text-light);margin:0 0 0.75rem;">Naskenujte alebo ofoťte doklady. Súbory sa uložia lokálne v prehliadači (base64).</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
+              <div class="form-group">
+                <label>Kópia dokladu totožnosti (OP / pas)</label>
+                <input type="file" id="aml-doc-id" accept="image/*,.pdf" onchange="amlPreviewDocCategory('id')" style="font-size:0.8rem;" />
+                <div id="aml-doc-id-preview" style="margin-top:0.35rem;font-size:0.75rem;color:var(--text-light);"></div>
+              </div>
+              <div class="form-group">
+                <label>Doklad o pôvode prostriedkov</label>
+                <input type="file" id="aml-doc-funds" accept="image/*,.pdf" onchange="amlPreviewDocCategory('funds')" style="font-size:0.8rem;" />
+                <div id="aml-doc-funds-preview" style="margin-top:0.35rem;font-size:0.75rem;color:var(--text-light);"></div>
+                <span style="font-size:0.7rem;color:var(--text-light);">Napr. úverová zmluva, potvrdenie o príjme, daňové priznanie</span>
+              </div>
+            </div>
+            <div class="form-group" style="margin-top:0.5rem;">
+              <label>Ďalšie doklady (voliteľné)</label>
+              <input type="file" id="aml-docs" multiple accept="image/*,.pdf" onchange="amlPreviewDocs()" style="font-size:0.8rem;" />
+              <div id="aml-doc-preview" style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-top:0.35rem;"></div>
+            </div>
           </div>
 
           <!-- Actions -->
@@ -11040,9 +11089,22 @@ function openAmlForm(editId) {
         c.classList.toggle('selected', (r.sourceOfFunds || []).includes(c.dataset.val));
       });
       document.getElementById('aml-source-detail').value = r.sourceOfFundsDetail || '';
+      // Register verification
+      document.getElementById('aml-sanctions-result').value = r.sanctionsResult || 'pending';
+      document.getElementById('aml-sanctions-date').value = r.sanctionsDate || '';
+      document.getElementById('aml-register-result').value = r.registerResult || 'pending';
+      document.getElementById('aml-register-date').value = r.registerDate || '';
+      document.getElementById('aml-register-note').value = r.registerNote || '';
+      // Transaction
       document.getElementById('aml-tx-purpose').value = r.transactionPurpose || 'buy';
       document.getElementById('aml-tx-value').value = r.transactionValue || '';
       document.getElementById('aml-notes').value = r.notes || '';
+      // Show existing doc names
+      document.getElementById('aml-doc-id-preview').textContent = r.docIdName ? 'Uložené: ' + r.docIdName : '';
+      document.getElementById('aml-doc-funds-preview').textContent = r.docFundsName ? 'Uložené: ' + r.docFundsName : '';
+      document.getElementById('aml-doc-preview').innerHTML = (r.docsOtherNames || []).map(n =>
+        '<div style="padding:4px 10px;background:#F1F5F9;border-radius:6px;font-size:0.75rem;color:var(--text-light);">' + esc(n) + '</div>'
+      ).join('');
     }
   } else {
     // Reset form
@@ -11050,15 +11112,19 @@ function openAmlForm(editId) {
     amlToggleClientType();
     ['aml-fo-firstname','aml-fo-lastname','aml-fo-birthnum','aml-fo-dob','aml-fo-address','aml-fo-docnum','aml-fo-docexpiry',
      'aml-po-name','aml-po-ico','aml-po-address','aml-po-statname','aml-po-statdoc','aml-po-uboname','aml-po-ubopct','aml-po-ubobirth','aml-po-uboaddr',
-     'aml-pep-note','aml-source-detail','aml-tx-value','aml-notes'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+     'aml-pep-note','aml-source-detail','aml-tx-value','aml-notes','aml-sanctions-date','aml-register-date','aml-register-note'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
     document.getElementById('aml-fo-nationality').value = 'Slovenská republika';
     document.getElementById('aml-fo-doctype').value = 'op';
     document.getElementById('aml-po-form').value = 'sro';
     document.getElementById('aml-tx-purpose').value = 'buy';
+    document.getElementById('aml-sanctions-result').value = 'pending';
+    document.getElementById('aml-register-result').value = 'pending';
     document.querySelector('input[name="aml-pep"][value="no"]').checked = true;
     amlTogglePep();
     document.querySelectorAll('#aml-source-grid .aml-source-chip').forEach(c => c.classList.remove('selected'));
     document.getElementById('aml-doc-preview').innerHTML = '';
+    document.getElementById('aml-doc-id-preview').textContent = '';
+    document.getElementById('aml-doc-funds-preview').textContent = '';
   }
   document.getElementById('aml-modal').style.display = 'block';
 }
@@ -11093,6 +11159,16 @@ function amlPreviewDocs() {
   Array.from(files).forEach(f => {
     preview.innerHTML += '<div style="padding:4px 10px;background:#F1F5F9;border-radius:6px;font-size:0.75rem;color:var(--text-light);">' + esc(f.name) + '</div>';
   });
+}
+function amlPreviewDocCategory(cat) {
+  const input = document.getElementById('aml-doc-' + cat);
+  const preview = document.getElementById('aml-doc-' + cat + '-preview');
+  if (input.files[0]) {
+    preview.textContent = 'Vybrané: ' + input.files[0].name;
+    preview.style.color = '#1A7A8A';
+  } else {
+    preview.textContent = '';
+  }
 }
 
 // --- Risk scoring ---
@@ -11131,6 +11207,14 @@ function amlCalcRisk(record) {
 
   // UBO for PO
   if (record.clientType === 'po' && !record.uboName) { score += 3; factors.push({ f: 'UBO neidentifikovaný', s: 3 }); }
+
+  // Sanctions/register check
+  if (record.sanctionsResult === 'hit') { score += 10; factors.push({ f: 'Zhoda v sankčných zoznamoch', s: 10 }); }
+  else if (record.sanctionsResult === 'pending') { score += 2; factors.push({ f: 'Sankčné zoznamy neoverené', s: 2 }); }
+  else { factors.push({ f: 'Sankčné zoznamy - bez nálezu', s: 0 }); }
+
+  if (record.registerResult === 'hit') { score += 3; factors.push({ f: 'Zhoda v registri PEP/RPVS', s: 3 }); }
+  else if (record.registerResult === 'pending') { score += 1; factors.push({ f: 'Registre neoverené', s: 1 }); }
 
   let category = 'low';
   if (score >= 10) category = 'high';
@@ -11188,6 +11272,13 @@ function saveAml() {
     // Common
     pepStatus: document.querySelector('input[name="aml-pep"]:checked').value,
     pepDetails: document.getElementById('aml-pep-note').value.trim(),
+    // Register verification
+    sanctionsResult: document.getElementById('aml-sanctions-result').value,
+    sanctionsDate: document.getElementById('aml-sanctions-date').value,
+    registerResult: document.getElementById('aml-register-result').value,
+    registerDate: document.getElementById('aml-register-date').value,
+    registerNote: document.getElementById('aml-register-note').value.trim(),
+    // Funds
     sourceOfFunds: sources,
     sourceOfFundsDetail: document.getElementById('aml-source-detail').value.trim(),
     transactionPurpose: document.getElementById('aml-tx-purpose').value,
@@ -11195,6 +11286,20 @@ function saveAml() {
     notes: document.getElementById('aml-notes').value.trim(),
     updatedAt: new Date().toISOString()
   };
+
+  // Document file names (stored as metadata — actual files stay on user's device)
+  const idDocFile = document.getElementById('aml-doc-id').files[0];
+  const fundsDocFile = document.getElementById('aml-doc-funds').files[0];
+  const existingRecords = getAmlRecords();
+  const existingRec = existingRecords.find(x => x.id === record.id);
+  record.docIdName = idDocFile ? idDocFile.name : (existingRec ? existingRec.docIdName : null);
+  record.docFundsName = fundsDocFile ? fundsDocFile.name : (existingRec ? existingRec.docFundsName : null);
+  const otherDocs = document.getElementById('aml-docs').files;
+  if (otherDocs.length > 0) {
+    record.docsOtherNames = Array.from(otherDocs).map(f => f.name);
+  } else {
+    record.docsOtherNames = existingRec ? existingRec.docsOtherNames : [];
+  }
 
   // Calculate risk
   const risk = amlCalcRisk(record);
@@ -11349,12 +11454,33 @@ function openAmlDetail(id) {
   if (r.pepDetails) html += amlDR('Detaily', r.pepDetails);
   html += '</div></div>';
 
+  // Register verification
+  const sanctLabels = { clear: 'Bez nálezu', hit: 'Nájdená zhoda', pending: 'Neoverené' };
+  html += '<div class="aml-form-section"><div class="aml-form-section-title">Overenie v registroch</div><div class="aml-detail-grid">';
+  const sanctResult = r.sanctionsResult || 'pending';
+  const sanctColor = sanctResult === 'clear' ? '#10B981' : sanctResult === 'hit' ? '#EF4444' : '#F59E0B';
+  html += amlDR('Sankčné zoznamy', '<span style="color:' + sanctColor + ';font-weight:600;">' + (sanctLabels[sanctResult] || '—') + '</span>');
+  html += amlDR('Dátum overenia (sankcie)', r.sanctionsDate || '—');
+  const regResult = r.registerResult || 'pending';
+  const regColor = regResult === 'clear' ? '#10B981' : regResult === 'hit' ? '#EF4444' : '#F59E0B';
+  html += amlDR('Register PEP/RPVS', '<span style="color:' + regColor + ';font-weight:600;">' + (sanctLabels[regResult] || '—') + '</span>');
+  html += amlDR('Dátum overenia (registre)', r.registerDate || '—');
+  if (r.registerNote) html += amlDR('Poznámka k overeniu', r.registerNote);
+  html += '</div></div>';
+
   // Source + Transaction
   html += '<div class="aml-form-section"><div class="aml-form-section-title">Transakcia & Prostriedky</div><div class="aml-detail-grid">';
   html += amlDR('Účel', AML_PURPOSE_LABELS[r.transactionPurpose] || '—');
   html += amlDR('Hodnota', r.transactionValue ? Number(r.transactionValue).toLocaleString('sk-SK') + ' €' : '—');
   html += amlDR('Pôvod prostriedkov', (r.sourceOfFunds || []).map(s => AML_SOURCE_LABELS[s] || s).join(', ') || '—');
   if (r.sourceOfFundsDetail) html += amlDR('Detail', r.sourceOfFundsDetail);
+  html += '</div></div>';
+
+  // Documents
+  html += '<div class="aml-form-section"><div class="aml-form-section-title">Priložené doklady</div><div class="aml-detail-grid">';
+  html += amlDR('Doklad totožnosti (OP/pas)', r.docIdName ? '<span style="color:#1A7A8A;">' + esc(r.docIdName) + '</span>' : '<span style="color:#F59E0B;">Nepriložený</span>');
+  html += amlDR('Doklad o pôvode prostriedkov', r.docFundsName ? '<span style="color:#1A7A8A;">' + esc(r.docFundsName) + '</span>' : '<span style="color:#F59E0B;">Nepriložený</span>');
+  if (r.docsOtherNames && r.docsOtherNames.length) html += amlDR('Ďalšie doklady', r.docsOtherNames.map(n => esc(n)).join(', '));
   html += '</div></div>';
 
   // Risk
@@ -11394,7 +11520,7 @@ function amlDR(label, value) {
   return '<div class="aml-detail-row"><span class="aml-detail-label">' + label + '</span><span class="aml-detail-value">' + value + '</span></div>';
 }
 function closeAmlDetail() { document.getElementById('aml-detail-modal').style.display = 'none'; amlDetailId = null; }
-function editAmlFromDetail() { if (amlDetailId) { closeAmlDetail(); openAmlForm(amlDetailId); } }
+function editAmlFromDetail() { const id = amlDetailId; if (id) { closeAmlDetail(); openAmlForm(id); } }
 function deleteAmlFromDetail() {
   if (!amlDetailId || !confirm('Naozaj vymazať toto AML preverenie?')) return;
   const records = getAmlRecords().filter(x => x.id !== amlDetailId);
@@ -11525,12 +11651,29 @@ function generateAmlPdf() {
   if (r.pepDetails) row('Detaily', r.pepDetails);
   y += 4;
 
+  // Register verification
+  secTitle('OVERENIE V REGISTROCH');
+  const sanctLabelsP = { clear: 'Bez nalezu', hit: 'Najdena zhoda', pending: 'Neoverene' };
+  row('Sankcne zoznamy (EU, OSN, OFAC)', sanctLabelsP[r.sanctionsResult] || 'Neoverene');
+  row('Datum overenia sankcii', r.sanctionsDate || 'Nevykonane');
+  row('Register PEP / RPVS', sanctLabelsP[r.registerResult] || 'Neoverene');
+  row('Datum overenia registrov', r.registerDate || 'Nevykonane');
+  if (r.registerNote) row('Poznamka k overeniu', r.registerNote);
+  y += 4;
+
   // Transaction
   secTitle('TRANSAKCIA A PROSTRIEDKY (§10)');
   row('Ucel', AML_PURPOSE_LABELS[r.transactionPurpose] || '');
   row('Hodnota', r.transactionValue ? Number(r.transactionValue).toLocaleString('sk-SK') + ' EUR' : '');
   row('Povod prostriedkov', (r.sourceOfFunds || []).map(s => AML_SOURCE_LABELS[s] || s).join(', '));
   if (r.sourceOfFundsDetail) row('Detail', r.sourceOfFundsDetail);
+  y += 4;
+
+  // Documents evidence
+  secTitle('PRILOZENE DOKLADY');
+  row('Doklad totoznosti (OP/pas)', r.docIdName || 'NEPRILOZENY');
+  row('Doklad o povode prostriedkov', r.docFundsName || 'NEPRILOZENY');
+  if (r.docsOtherNames && r.docsOtherNames.length) row('Dalsie doklady', r.docsOtherNames.join(', '));
   y += 4;
 
   // Risk factors
@@ -11552,6 +11695,8 @@ function generateAmlPdf() {
   }
   y += 4;
   doc.text('Tento dokument bol vygenerovany systemom SecPro pre ucely plnenia povinnosti podla zakona 297/2008 Z.z.', m, y);
+  y += 4;
+  doc.text('Upozornenie: K tomuto zaznamu musia byt fyzicky prilozene kopie dokladov (OP, doklad o povode prostriedkov).', m, y);
 
   doc.save('AML-' + name.replace(/\s+/g, '-') + '-' + new Date().toISOString().slice(0, 10) + '.pdf');
 }
