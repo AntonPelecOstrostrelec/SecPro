@@ -218,8 +218,8 @@ async function handleResetPw(req, res, KV_URL, KV_TOKEN) {
   const SEED_SECRET = process.env.RESET_SECRET;
   const { secret, email, newPassword } = req.body;
 
-  if (secret !== SEED_SECRET) {
-    return res.status(403).json({ error: 'Unauthorized' });
+  if (!SEED_SECRET || secret !== SEED_SECRET) {
+    return res.status(403).json({ error: 'Unauthorized', hint: !SEED_SECRET ? 'RESET_SECRET not set' : 'secret mismatch' });
   }
   if (!email || !newPassword) {
     return res.status(400).json({ error: 'email and newPassword required' });
@@ -229,13 +229,15 @@ async function handleResetPw(req, res, KV_URL, KV_TOKEN) {
   const userKey = `user:${emailLower}`;
 
   try {
-    const user = await kvGet(KV_URL, KV_TOKEN, userKey);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    user.passwordHash = crypto.createHash('sha256').update(newPassword).digest('hex');
-    await kvSet(KV_URL, KV_TOKEN, userKey, user);
+    // Delete old user and create with new password
+    await kvDel(KV_URL, KV_TOKEN, userKey);
+    const passwordHash = crypto.createHash('sha256').update(newPassword).digest('hex');
+    await kvSet(KV_URL, KV_TOKEN, userKey, {
+      name: emailLower.split('@')[0],
+      email: emailLower,
+      passwordHash,
+      createdAt: new Date().toISOString(),
+    });
 
     return res.status(200).json({ success: true, message: 'Password updated for ' + emailLower });
   } catch (err) {
