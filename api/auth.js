@@ -22,6 +22,7 @@ module.exports = async (req, res) => {
       case 'session':  return await handleSession(req, res, KV_URL, KV_TOKEN);
       case 'logout':   return await handleLogout(req, res, KV_URL, KV_TOKEN);
       case 'seed':     return await handleSeed(req, res, KV_URL, KV_TOKEN);
+      case 'reset-pw': return await handleResetPw(req, res, KV_URL, KV_TOKEN);
       default:
         return res.status(400).json({ error: 'Neznáma akcia: ' + action });
     }
@@ -210,4 +211,35 @@ async function handleSeed(req, res, KV_URL, KV_TOKEN) {
   }
 
   return res.status(200).json({ results });
+}
+
+// ── RESET PASSWORD (admin) ──
+async function handleResetPw(req, res, KV_URL, KV_TOKEN) {
+  const SEED_SECRET = process.env.RESET_SECRET;
+  const { secret, email, newPassword } = req.body;
+
+  if (secret !== SEED_SECRET) {
+    return res.status(403).json({ error: 'Unauthorized' });
+  }
+  if (!email || !newPassword) {
+    return res.status(400).json({ error: 'email and newPassword required' });
+  }
+
+  const emailLower = email.trim().toLowerCase();
+  const userKey = `user:${emailLower}`;
+
+  try {
+    const user = await kvGet(KV_URL, KV_TOKEN, userKey);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    user.passwordHash = crypto.createHash('sha256').update(newPassword).digest('hex');
+    await kvSet(KV_URL, KV_TOKEN, userKey, user);
+
+    return res.status(200).json({ success: true, message: 'Password updated for ' + emailLower });
+  } catch (err) {
+    console.error('reset-pw error:', err.message);
+    return res.status(500).json({ error: err.message });
+  }
 }
