@@ -22,7 +22,6 @@ module.exports = async (req, res) => {
       case 'session':  return await handleSession(req, res, KV_URL, KV_TOKEN);
       case 'logout':   return await handleLogout(req, res, KV_URL, KV_TOKEN);
       case 'seed':     return await handleSeed(req, res, KV_URL, KV_TOKEN);
-      case 'debug':    return await handleDebug(req, res, KV_URL, KV_TOKEN);
       default:
         return res.status(400).json({ error: 'Neznáma akcia: ' + action });
     }
@@ -211,25 +210,4 @@ async function handleSeed(req, res, KV_URL, KV_TOKEN) {
   }
 
   return res.status(200).json({ results });
-}
-
-// ── DEBUG (temporary) ──
-async function handleDebug(req, res, KV_URL, KV_TOKEN) {
-  const { key } = req.body;
-  if (!key) return res.status(400).json({ error: 'key required' });
-
-  try {
-    const r = await fetch(`${KV_URL}/get/${encodeURIComponent(key)}`, {
-      headers: { Authorization: `Bearer ${KV_TOKEN}` },
-    });
-    const d = await r.json();
-    return res.status(200).json({
-      rawResult: d.result,
-      type: typeof d.result,
-      length: d.result ? String(d.result).length : 0,
-      preview: d.result ? String(d.result).slice(0, 300) : null,
-    });
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
-  }
 }
