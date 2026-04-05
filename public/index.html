@@ -11589,10 +11589,10 @@ async function validateSession() {
   if (!token) return null;
 
   try {
-    const res = await fetch('/api/auth-session', {
+    const res = await fetch('/api/auth', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token }),
+      body: JSON.stringify({ action: 'session', token }),
     });
     if (!res.ok) {
       clearSession();
@@ -11652,10 +11652,10 @@ async function handleRegister(e) {
   if (btn) { btn.disabled = true; btn.textContent = 'Registrujem...'; }
 
   try {
-    const res = await fetch('/api/auth-register', {
+    const res = await fetch('/api/auth', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password: pass }),
+      body: JSON.stringify({ action: 'register', name, email, password: pass }),
     });
     const data = await res.json();
 
@@ -11684,10 +11684,10 @@ async function handleLogin(e) {
   if (btn) { btn.disabled = true; btn.textContent = 'Prihlasujem...'; }
 
   try {
-    const res = await fetch('/api/auth-login', {
+    const res = await fetch('/api/auth', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password: pass, remember }),
+      body: JSON.stringify({ action: 'login', email, password: pass, remember }),
     });
     const data = await res.json();
 
@@ -11779,10 +11779,10 @@ function handleLogout() {
   const token = getStoredToken();
   // Invalidate server session (fire-and-forget)
   if (token) {
-    fetch('/api/auth-logout', {
+    fetch('/api/auth', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token }),
+      body: JSON.stringify({ action: 'logout', token }),
     }).catch(() => {});
   }
   clearSession();
