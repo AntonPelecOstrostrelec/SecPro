@@ -1,28 +1,24 @@
 const crypto = require('crypto');
+const { kvGet, kvSet, kvDel, handleCors, getKV } = require('../lib/kv');
 
 module.exports = async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (handleCors(req, res)) return;
 
-  const KV_URL = process.env.KV_REST_API_URL;
-  const KV_TOKEN = process.env.KV_REST_API_TOKEN;
-  if (!KV_URL || !KV_TOKEN) {
-    return res.status(500).json({ error: 'Server nie je nakonfigurovaný (KV)' });
-  }
+  const { KV_URL, KV_TOKEN, ok } = getKV();
+  if (!ok) return res.status(500).json({ error: 'Server nie je nakonfigurovaný (KV)' });
 
   const { action } = req.body || {};
 
   try {
     switch (action) {
-      case 'register': return await handleRegister(req, res, KV_URL, KV_TOKEN);
-      case 'login':    return await handleLogin(req, res, KV_URL, KV_TOKEN);
-      case 'session':  return await handleSession(req, res, KV_URL, KV_TOKEN);
-      case 'logout':   return await handleLogout(req, res, KV_URL, KV_TOKEN);
-      case 'seed':     return await handleSeed(req, res, KV_URL, KV_TOKEN);
-      case 'reset-pw': return await handleResetPw(req, res, KV_URL, KV_TOKEN);
+      case 'register':          return await handleRegister(req, res, KV_URL, KV_TOKEN);
+      case 'login':             return await handleLogin(req, res, KV_URL, KV_TOKEN);
+      case 'session':           return await handleSession(req, res, KV_URL, KV_TOKEN);
+      case 'logout':            return await handleLogout(req, res, KV_URL, KV_TOKEN);
+      case 'seed':              return await handleSeed(req, res, KV_URL, KV_TOKEN);
+      case 'reset-pw':          return await handleResetPw(req, res, KV_URL, KV_TOKEN);
+      case 'send-reset-code':   return await handleSendResetCode(req, res);
+      case 'verify-reset-code': return await handleVerifyResetCode(req, res, KV_URL, KV_TOKEN);
       default:
         return res.status(400).json({ error: 'Neznáma akcia: ' + action });
     }
@@ -31,38 +27,6 @@ module.exports = async (req, res) => {
     return res.status(500).json({ error: 'Interná chyba servera.', detail: err.message });
   }
 };
-
-// ── Helper: Redis GET ──
-async function kvGet(KV_URL, KV_TOKEN, key) {
-  const r = await fetch(`${KV_URL}/get/${encodeURIComponent(key)}`, {
-    headers: { Authorization: `Bearer ${KV_TOKEN}` },
-  });
-  const d = await r.json();
-  if (!d.result) return null;
-  try {
-    return typeof d.result === 'string' ? JSON.parse(d.result) : d.result;
-  } catch (e) {
-    console.error('kvGet parse error for key', key, ':', typeof d.result, String(d.result).slice(0, 200));
-    throw e;
-  }
-}
-
-// ── Helper: Redis SET ──
-async function kvSet(KV_URL, KV_TOKEN, key, value, exSeconds) {
-  const encoded = encodeURIComponent(JSON.stringify(value));
-  const url = exSeconds
-    ? `${KV_URL}/set/${encodeURIComponent(key)}/${encoded}/ex/${exSeconds}`
-    : `${KV_URL}/set/${encodeURIComponent(key)}/${encoded}`;
-  const r = await fetch(url, { headers: { Authorization: `Bearer ${KV_TOKEN}` } });
-  return r.ok;
-}
-
-// ── Helper: Redis DEL ──
-async function kvDel(KV_URL, KV_TOKEN, key) {
-  await fetch(`${KV_URL}/del/${encodeURIComponent(key)}`, {
-    headers: { Authorization: `Bearer ${KV_TOKEN}` },
-  });
-}
 
 // ── REGISTER ──
 async function handleRegister(req, res, KV_URL, KV_TOKEN) {
@@ -116,9 +80,8 @@ async function handleLogin(req, res, KV_URL, KV_TOKEN) {
       return res.status(401).json({ error: 'Nesprávny e-mail alebo heslo.' });
     }
 
-    // Generate session token
     const token = crypto.randomBytes(32).toString('hex');
-    const expiresIn = remember ? 30 * 24 * 60 * 60 : 24 * 60 * 60; // 30 days or 24h
+    const expiresIn = remember ? 30 * 24 * 60 * 60 : 24 * 60 * 60;
     const expiresAt = new Date(Date.now() + expiresIn * 1000).toISOString();
 
     await kvSet(KV_URL, KV_TOKEN, `session:${token}`, {
@@ -143,15 +106,11 @@ async function handleLogin(req, res, KV_URL, KV_TOKEN) {
 // ── SESSION VALIDATE ──
 async function handleSession(req, res, KV_URL, KV_TOKEN) {
   const { token } = req.body;
-  if (!token) {
-    return res.status(401).json({ error: 'Token chýba.' });
-  }
+  if (!token) return res.status(401).json({ error: 'Token chýba.' });
 
   try {
     const session = await kvGet(KV_URL, KV_TOKEN, `session:${token}`);
-    if (!session) {
-      return res.status(401).json({ error: 'Sedenie vypršalo alebo neexistuje.' });
-    }
+    if (!session) return res.status(401).json({ error: 'Sedenie vypršalo alebo neexistuje.' });
 
     if (new Date(session.expiresAt) < new Date()) {
       await kvDel(KV_URL, KV_TOKEN, `session:${token}`);
@@ -172,9 +131,7 @@ async function handleSession(req, res, KV_URL, KV_TOKEN) {
 async function handleLogout(req, res, KV_URL, KV_TOKEN) {
   const { token } = req.body;
   if (token) {
-    try {
-      await kvDel(KV_URL, KV_TOKEN, `session:${token}`);
-    } catch {}
+    try { await kvDel(KV_URL, KV_TOKEN, `session:${token}`); } catch {}
   }
   return res.status(200).json({ success: true });
 }
@@ -184,12 +141,8 @@ async function handleSeed(req, res, KV_URL, KV_TOKEN) {
   const SEED_SECRET = process.env.RESET_SECRET;
   const { secret, users } = req.body;
 
-  if (secret !== SEED_SECRET) {
-    return res.status(403).json({ error: 'Unauthorized' });
-  }
-  if (!users || !Array.isArray(users)) {
-    return res.status(400).json({ error: 'users array required' });
-  }
+  if (secret !== SEED_SECRET) return res.status(403).json({ error: 'Unauthorized' });
+  if (!users || !Array.isArray(users)) return res.status(400).json({ error: 'users array required' });
 
   const results = [];
   for (const u of users) {
@@ -221,15 +174,12 @@ async function handleResetPw(req, res, KV_URL, KV_TOKEN) {
   if (!SEED_SECRET || secret !== SEED_SECRET) {
     return res.status(403).json({ error: 'Unauthorized', hint: !SEED_SECRET ? 'RESET_SECRET not set' : 'secret mismatch' });
   }
-  if (!email || !newPassword) {
-    return res.status(400).json({ error: 'email and newPassword required' });
-  }
+  if (!email || !newPassword) return res.status(400).json({ error: 'email and newPassword required' });
 
   const emailLower = email.trim().toLowerCase();
   const userKey = `user:${emailLower}`;
 
   try {
-    // Delete old user and create with new password
     await kvDel(KV_URL, KV_TOKEN, userKey);
     const passwordHash = crypto.createHash('sha256').update(newPassword).digest('hex');
     await kvSet(KV_URL, KV_TOKEN, userKey, {
@@ -244,4 +194,119 @@ async function handleResetPw(req, res, KV_URL, KV_TOKEN) {
     console.error('reset-pw error:', err.message);
     return res.status(500).json({ error: err.message });
   }
+}
+
+// ── SEND RESET CODE (email via Resend) ──
+async function handleSendResetCode(req, res) {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email is required' });
+
+  const RESEND_API_KEY = process.env.RESEND_API_KEY;
+  const RESET_SECRET = process.env.RESET_SECRET;
+  if (!RESEND_API_KEY || !RESET_SECRET) {
+    console.error('Missing env vars:', { hasResendKey: !!RESEND_API_KEY, hasResetSecret: !!RESET_SECRET });
+    return res.status(500).json({ error: 'Server not configured', detail: 'Missing: ' + (!RESEND_API_KEY ? 'RESEND_API_KEY ' : '') + (!RESET_SECRET ? 'RESET_SECRET' : '') });
+  }
+
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  const exp = Date.now() + 10 * 60 * 1000;
+
+  const codeHash = crypto.createHash('sha256').update(code).digest('hex');
+  const payload = JSON.stringify({ email: email.toLowerCase(), codeHash, exp });
+  const payloadB64 = Buffer.from(payload).toString('base64');
+  const signature = crypto.createHmac('sha256', RESET_SECRET).update(payloadB64).digest('hex');
+  const token = payloadB64 + '.' + signature;
+
+  try {
+    const emailRes = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: 'SecPro <onboarding@resend.dev>',
+        to: [email],
+        subject: 'SecPro — Kód na obnovenie hesla',
+        html: `
+          <div style="font-family:Arial,sans-serif;max-width:400px;margin:0 auto;padding:24px">
+            <h2 style="color:#0B2A3C;margin-bottom:8px">SecPro</h2>
+            <p style="color:#666;margin-bottom:24px">Váš kód na obnovenie hesla:</p>
+            <div style="background:#f0f2f5;border-radius:12px;padding:20px;text-align:center;margin-bottom:24px">
+              <span style="font-size:32px;font-weight:700;letter-spacing:8px;color:#0B2A3C">${code}</span>
+            </div>
+            <p style="color:#999;font-size:13px">Kód platí 10 minút. Ak ste o reset nepožiadali, ignorujte tento email.</p>
+          </div>
+        `,
+      }),
+    });
+
+    if (!emailRes.ok) {
+      const err = await emailRes.json();
+      console.error('Resend API error:', JSON.stringify(err));
+      return res.status(500).json({ error: 'Failed to send email', detail: err.message || JSON.stringify(err) });
+    }
+
+    return res.status(200).json({ token });
+  } catch (err) {
+    console.error('Send email exception:', err.message, err.stack);
+    return res.status(500).json({ error: 'Failed to send email', detail: err.message });
+  }
+}
+
+// ── VERIFY RESET CODE ──
+async function handleVerifyResetCode(req, res, KV_URL, KV_TOKEN) {
+  const { token, code, newPassword } = req.body;
+  if (!token || !code) return res.status(400).json({ error: 'Token and code are required' });
+
+  const RESET_SECRET = process.env.RESET_SECRET;
+  if (!RESET_SECRET) return res.status(500).json({ error: 'Server not configured' });
+
+  const parts = token.split('.');
+  if (parts.length !== 2) return res.status(400).json({ error: 'Invalid token' });
+
+  const [payloadB64, signature] = parts;
+  const expectedSig = crypto.createHmac('sha256', RESET_SECRET).update(payloadB64).digest('hex');
+  if (signature !== expectedSig) return res.status(400).json({ error: 'Invalid token' });
+
+  let payload;
+  try {
+    payload = JSON.parse(Buffer.from(payloadB64, 'base64').toString());
+  } catch {
+    return res.status(400).json({ error: 'Invalid token' });
+  }
+
+  if (Date.now() > payload.exp) {
+    return res.status(400).json({ error: 'Kód vypršal. Požiadajte o nový.' });
+  }
+
+  const codeHash = crypto.createHash('sha256').update(code.trim()).digest('hex');
+  if (codeHash !== payload.codeHash) {
+    return res.status(400).json({ error: 'Nesprávny kód.' });
+  }
+
+  if (newPassword && KV_URL && KV_TOKEN) {
+    try {
+      const emailLower = payload.email.toLowerCase();
+      const userKey = `user:${emailLower}`;
+      const user = await kvGet(KV_URL, KV_TOKEN, userKey);
+      const passwordHash = crypto.createHash('sha256').update(newPassword).digest('hex');
+
+      if (user) {
+        user.passwordHash = passwordHash;
+        await kvSet(KV_URL, KV_TOKEN, userKey, user);
+      } else {
+        await kvSet(KV_URL, KV_TOKEN, userKey, {
+          name: emailLower.split('@')[0],
+          email: emailLower,
+          passwordHash,
+          createdAt: new Date().toISOString(),
+        });
+      }
+    } catch (err) {
+      console.error('verify-reset-code: Failed to update password:', err.message);
+    }
+  }
+
+  return res.status(200).json({ verified: true, email: payload.email });
 }

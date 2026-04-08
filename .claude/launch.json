@@ -2,11 +2,11 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "secpro-server",
-      "runtimeExecutable": "node",
-      "runtimeArgs": ["node_modules/serve/build/main.js", "public", "-l", "3000", "-s"],
+      "name": "secpro-dev",
+      "runtimeExecutable": "/usr/local/bin/node",
+      "runtimeArgs": ["server.js"],
       "port": 3000,
-      "autoPort": true
+      "cwd": "/Users/matej/Desktop/Projects/SecPro"
     }
   ]
 }
