@@ -12363,6 +12363,43 @@ function _setCached(collection, data) {
   _saveToServer(collection, data);
 }
 
+// ===== TOAST NOTIFICATIONS =====
+function showToast(message, type = 'error') {
+  const colors = { error: '#EF4444', warning: '#F59E0B', success: '#22C55E' };
+  const accent = colors[type] || colors.error;
+  const el = document.createElement('div');
+  el.style.cssText = `
+    position: fixed; top: 1.25rem; right: 1.25rem; z-index: 100000;
+    background: #1E293B; color: #F8FAFC; padding: 0.85rem 1.25rem;
+    border-radius: 0.625rem; font-family: 'Inter', sans-serif; font-size: 0.875rem;
+    font-weight: 500; box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+    border-left: 4px solid ${accent}; max-width: 380px;
+    opacity: 0; transform: translateX(20px); transition: all 0.3s ease;
+  `;
+  el.textContent = message;
+  document.body.appendChild(el);
+  requestAnimationFrame(() => { el.style.opacity = '1'; el.style.transform = 'translateX(0)'; });
+  setTimeout(() => {
+    el.style.opacity = '0'; el.style.transform = 'translateX(20px)';
+    setTimeout(() => el.remove(), 300);
+  }, 4000);
+}
+
+// ===== SECURE FETCH WRAPPER (401 detection) =====
+let _redirectingToLogin = false;
+
+async function secureFetch(url, options) {
+  const res = await fetch(url, options);
+  if (res.status === 401 && !_redirectingToLogin) {
+    _redirectingToLogin = true;
+    clearSession();
+    document.getElementById('loginOverlay').classList.remove('hidden');
+    showToast('Relácia vypršala. Prihláste sa znova.', 'warning');
+    setTimeout(() => { _redirectingToLogin = false; }, 3000);
+  }
+  return res;
+}
+
 let _saveQueue = {};
 let _saveTimer = null;
 
@@ -12379,14 +12416,23 @@ async function _flushSaves() {
   const token = getStoredToken();
   if (!token) return;
   for (const [collection, data] of Object.entries(queue)) {
-    try {
-      await fetch('/api/data', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-        body: JSON.stringify({ action: 'set', collection, data }),
-      });
-    } catch (err) {
-      console.warn('[SecPro] Server save failed:', collection, err.message);
+    let success = false;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const res = await secureFetch('/api/data', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+          body: JSON.stringify({ action: 'set', collection, data }),
+        });
+        if (res.status === 401) { success = true; break; } // handled by secureFetch
+        if (res.ok) { success = true; break; }
+      } catch (err) {
+        console.warn('[SecPro] Server save attempt', attempt + 1, 'failed:', collection, err.message);
+      }
+      if (attempt < 2) await new Promise(r => setTimeout(r, 2000));
+    }
+    if (!success) {
+      showToast('Ukladanie zlyhalo. Dáta sú uložené lokálne.', 'warning');
     }
   }
 }
@@ -12395,7 +12441,7 @@ async function loadAllData() {
   const token = getStoredToken();
   if (!token) return false;
   try {
-    const res = await fetch('/api/data', {
+    const res = await secureFetch('/api/data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
       body: JSON.stringify({ action: 'get-all' }),
@@ -12443,7 +12489,7 @@ async function migrateLocalData() {
   if (!hasData) return;
 
   try {
-    const res = await fetch('/api/data', {
+    const res = await secureFetch('/api/data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
       body: JSON.stringify({ action: 'migrate', collections }),
