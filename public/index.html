@@ -4,10 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SecPro - Centrum pre moderných maklérov</title>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="jspdf.umd.min.js"></script>
   <script src="jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
     :root {
@@ -393,6 +397,174 @@
     }
     .lead-link-btn:hover { background: #1A7A8A; color: white; }
     .lead-link-btn svg { width: 14px; height: 14px; }
+
+    /* ===== SEARCH LEAD CARDS ===== */
+    /* ── Lead Cards v2 ── */
+    .lead-cards-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 1.1rem;
+    }
+    .lead-card {
+      background: white; border-radius: 16px; overflow: hidden;
+      border: 1px solid rgba(0,0,0,0.06);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03);
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+      display: flex; flex-direction: column; position: relative;
+    }
+    .lead-card:hover { transform: translateY(-3px); box-shadow: 0 8px 30px rgba(0,0,0,0.1); }
+    .lead-card.lc-hidden { opacity: 0.35; filter: grayscale(0.6); }
+    .lead-card.lc-hidden:hover { opacity: 0.75; filter: grayscale(0); }
+
+    /* Hero strip */
+    .lc-hero {
+      position: relative;
+      padding: 0.85rem 1rem 0.65rem;
+      background: linear-gradient(135deg, #0B2A3C 0%, #0D4F5F 60%, #1A7A8A 100%);
+      color: white;
+    }
+    .lc-hero-top {
+      display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;
+    }
+    .lc-source {
+      font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px;
+      background: rgba(255,255,255,0.13); padding: 3px 10px; border-radius: 20px;
+      backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.1);
+    }
+    .lc-dismiss {
+      width: 26px; height: 26px; border-radius: 8px; border: none;
+      background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.6);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      font-size: 0.85rem; transition: all 0.15s; backdrop-filter: blur(4px);
+    }
+    .lc-dismiss:hover { background: rgba(239,68,68,0.25); color: #FCA5A5; }
+    .lc-title {
+      font-size: 0.88rem; font-weight: 600; line-height: 1.35;
+      display: -webkit-box; -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical; overflow: hidden;
+    }
+
+    /* Body */
+    .lc-body {
+      padding: 0.85rem 1rem; flex: 1; display: flex; flex-direction: column; gap: 0.65rem;
+    }
+
+    /* Price & location row */
+    .lc-info-row {
+      display: flex; align-items: baseline; gap: 0.75rem; flex-wrap: wrap;
+    }
+    .lc-price {
+      font-size: 1.1rem; font-weight: 800; color: #1A7A8A;
+      font-family: 'JetBrains Mono', 'Inter', monospace; letter-spacing: -0.02em;
+    }
+    .lc-location {
+      font-size: 0.76rem; color: var(--text-light); display: flex; align-items: center; gap: 0.3rem;
+    }
+    .lc-location svg { width: 13px; height: 13px; opacity: 0.45; flex-shrink: 0; }
+    .lc-size {
+      font-size: 0.72rem; font-weight: 600; padding: 2px 8px; border-radius: 6px;
+      background: #F0F2F5; color: #4A5568;
+    }
+    .lc-phone {
+      margin-top: -0.2rem;
+    }
+    .lc-phone a {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      font-size: 0.8rem; font-weight: 600; color: #1A7A8A; text-decoration: none;
+      padding: 4px 10px; border-radius: 8px; background: rgba(26,122,138,0.06);
+      transition: background 0.15s;
+    }
+    .lc-phone a:hover { background: rgba(26,122,138,0.12); }
+    .lc-phone a svg { width: 13px; height: 13px; }
+
+    /* Status pills row */
+    .lc-statuses {
+      display: flex; gap: 0.3rem; flex-wrap: wrap;
+    }
+    .lead-status-pill {
+      padding: 5px 12px; border-radius: 8px; font-size: 0.7rem; font-weight: 600;
+      border: 1.5px solid transparent; cursor: pointer; transition: all 0.2s;
+      background: #F4F6F8; color: #64748B; position: relative;
+    }
+    .lead-status-pill:hover { background: #EEF1F5; transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .lead-status-pill.active {
+      border-color: currentColor; font-weight: 700;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+
+    /* Note section */
+    .lc-note-wrap {
+      display: flex; gap: 0.4rem; align-items: center;
+    }
+    .lc-note-input {
+      flex: 1; font-size: 0.78rem; border: 1.5px solid #E9ECF1; border-radius: 10px;
+      padding: 7px 12px; font-family: 'Inter', sans-serif; background: #FAFBFC;
+      transition: all 0.2s; min-height: 34px;
+    }
+    .lc-note-input:focus { outline: none; border-color: #1A7A8A; background: white; box-shadow: 0 0 0 3px rgba(26,122,138,0.08); }
+    .lc-note-save {
+      padding: 7px 14px; border-radius: 10px; border: none;
+      background: linear-gradient(135deg, #0D4F5F, #1A7A8A); color: white;
+      font-size: 0.72rem; font-weight: 600; cursor: pointer; white-space: nowrap;
+      transition: all 0.2s; font-family: 'Inter', sans-serif;
+    }
+    .lc-note-save:hover { transform: translateY(-1px); box-shadow: 0 3px 10px rgba(26,122,138,0.3); }
+
+    /* History */
+    .lc-history-toggle {
+      font-size: 0.7rem; color: var(--text-light); cursor: pointer;
+      display: inline-flex; align-items: center; gap: 4px; padding: 2px 0;
+      transition: color 0.15s;
+    }
+    .lc-history-toggle:hover { color: #1A7A8A; }
+    .lead-history-log {
+      margin-top: 0.3rem; padding: 0.5rem 0.65rem; background: #F8FAFB; border-radius: 10px;
+      border: 1px solid #EEF1F5; max-height: 150px; overflow-y: auto;
+    }
+    .lead-history-entry {
+      font-size: 0.7rem; color: var(--text-light); padding: 4px 0;
+      border-bottom: 1px solid #F1F5F9; line-height: 1.4;
+    }
+    .lead-history-entry:last-child { border-bottom: none; }
+    .lead-history-entry .lh-time { color: #94A3B8; margin-right: 6px; font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; }
+    .lead-history-entry .lh-action { color: var(--text); font-weight: 500; }
+
+    /* Actions row */
+    .lc-actions {
+      display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center;
+      padding-top: 0.55rem; border-top: 1px solid #F0F2F5; margin-top: auto;
+    }
+    .lc-act-btn {
+      font-size: 0.72rem; font-weight: 600; padding: 6px 14px; border-radius: 10px;
+      border: none; cursor: pointer; transition: all 0.2s; font-family: 'Inter', sans-serif;
+      text-decoration: none; display: inline-flex; align-items: center; gap: 0.3rem;
+    }
+    .lc-act-open { background: #F0F7FF; color: #0B6BCB; }
+    .lc-act-open:hover { background: #E0EFFF; transform: translateY(-1px); }
+    .lc-act-save { background: #EFF8F6; color: #1A7A8A; }
+    .lc-act-save:hover { background: #E0F2EF; transform: translateY(-1px); }
+    .lc-act-saved { background: #ECFDF5; color: #10B981; cursor: default; }
+
+    /* Filter bar */
+    .leads-filter-bar {
+      display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;
+      margin-bottom: 1rem; padding: 0.65rem 1rem;
+      background: white; border-radius: 12px; border: 1px solid rgba(0,0,0,0.06);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    }
+    .leads-filter-bar label {
+      font-size: 0.78rem; color: var(--text-light); display: flex; align-items: center; gap: 6px; cursor: pointer;
+    }
+    .leads-filter-bar input[type="checkbox"] { accent-color: #1A7A8A; }
+    .leads-status-filter {
+      padding: 5px 12px; border-radius: 10px; border: 1.5px solid #E9ECF1; background: #FAFBFC;
+      font-size: 0.78rem; cursor: pointer; font-family: 'Inter', sans-serif;
+      transition: border-color 0.15s;
+    }
+    .leads-status-filter:focus { outline: none; border-color: #1A7A8A; }
+
+    @media (max-width: 768px) {
+      .lead-cards-grid { grid-template-columns: 1fr; }
+    }
+
     /* ===== PROPERTY PIPELINE TRACKER ===== */
     .prop-pipeline {
       display: flex;
@@ -1595,20 +1767,157 @@
     }
     .calc-card-title { font-weight: 700; color: var(--primary-dark); font-size: 0.88rem; line-height: 1.3; }
     .calc-card-desc { font-size: 0.76rem; color: var(--text-light); line-height: 1.4; }
+    /* ===== HAMBURGER BUTTON ===== */
+    .hamburger-btn {
+      display: none;
+      background: none;
+      border: none;
+      color: white;
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 8px;
+      transition: background 0.2s;
+    }
+    .hamburger-btn:hover { background: rgba(255,255,255,0.1); }
+    .hamburger-btn svg { display: block; }
+
+    /* ===== SIDEBAR OVERLAY (mobile) ===== */
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 199;
+      backdrop-filter: blur(2px);
+    }
+    .sidebar-overlay.active { display: block; }
+
     /* ===== RESPONSIVE ===== */
     @media (max-width: 768px) {
-      .sidebar { display: none; }
+      .hamburger-btn { display: flex; align-items: center; justify-content: center; }
+      .sidebar {
+        display: block;
+        position: fixed;
+        top: 0;
+        left: -300px;
+        width: 280px;
+        height: 100vh;
+        z-index: 200;
+        transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: none;
+        padding-top: 0;
+        padding-bottom: 5rem;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      .sidebar.mobile-open {
+        left: 0;
+        box-shadow: 4px 0 30px rgba(0,0,0,0.3);
+      }
+      .sidebar-mobile-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid rgba(46,196,212,0.15);
+      }
+      .sidebar-close-btn {
+        background: none; border: none; color: rgba(255,255,255,0.7);
+        cursor: pointer; padding: 6px; border-radius: 6px; transition: all 0.2s;
+      }
+      .sidebar-close-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+      .sidebar.mobile-open .sidebar-mobile-header { display: flex !important; }
+
       .main-content { padding: 1rem; }
+      .header { padding: 0 1rem; }
+      .header-subtitle { display: none; }
+      .logo { font-size: 1.2rem; }
       .form-grid { grid-template-columns: 1fr; }
       .results-grid { grid-template-columns: 1fr 1fr; }
       .card { padding: 1.25rem; }
-      .welcome-hero { padding: 2rem 1.5rem; }
-      .stats-row { grid-template-columns: repeat(2, 1fr); }
+      .welcome-hero { padding: 1.5rem 1rem; }
+      .stats-row { grid-template-columns: repeat(2, 1fr); gap: 0.6rem; }
+
+      /* Touch targets */
+      .btn, button { min-height: 44px; }
+      input[type="text"], input[type="number"], input[type="email"],
+      input[type="password"], input[type="tel"], input[type="date"],
+      select, textarea {
+        min-height: 44px;
+        font-size: 16px !important;
+      }
+      .nav-item { min-height: 44px; padding: 0.6rem 1.25rem; }
+
+      /* Fonts */
+      label, .form-label { font-size: 0.82rem !important; }
+
+      /* Tables */
+      .table-wrap { -webkit-overflow-scrolling: touch; }
+      #contact-table, #leads-table, #met-table { font-size: 0.8rem; }
+      #contact-table th, #contact-table td,
+      #leads-table th, #leads-table td { padding: 0.5rem; }
+
+      /* Modals */
+      #prop-modal > div,
+      #aml-form-modal > div { width: 95% !important; max-width: 95% !important; margin: 1rem auto; }
+      #prop-modal, #aml-form-modal { padding: 0.5rem; }
+
+      .btn-logout { font-size: 0.75rem; padding: 0.4rem 0.8rem; }
+
+      /* ===== DASHBOARD MOBILE ===== */
+      .stat-card { padding: 0.85rem 1rem; gap: 0.7rem; }
+      .stat-value { font-size: 1.05rem; }
+      .stat-label { font-size: 0.7rem; }
+      .stat-icon { width: 38px; height: 38px; border-radius: 10px; }
+      .stat-icon svg { width: 18px; height: 18px; }
+
+      .dash-pipeline { padding: 1rem; margin-bottom: 1.25rem; }
+      .dash-funnel { flex-wrap: wrap; gap: 4px; }
+      .dash-funnel-stage {
+        min-width: 0;
+        flex: 1 1 calc(33.33% - 4px);
+        padding: 0.6rem 0.3rem;
+        border-radius: 6px !important;
+      }
+      .dash-funnel-count { font-size: 1.1rem; }
+      .dash-funnel-label { font-size: 0.58rem; }
+
+      .dash-charts-row, .dash-bottom-row { grid-template-columns: 1fr !important; }
+      .dash-chart-card { padding: 1rem; }
+      .dash-chart-canvas { height: 180px; }
+
+      .dash-actions-row {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 0.5rem; margin-bottom: 1.25rem;
+      }
+      .dash-action-btn { padding: 0.75rem 0.6rem; gap: 0.5rem; }
+      .dash-action-icon { width: 32px; height: 32px; }
+      .dash-action-icon svg { width: 16px; height: 16px; }
+      .dash-action-label { font-size: 0.75rem; }
+      .dash-action-sub { font-size: 0.64rem; }
+
+      .dash-card { padding: 1rem; }
+      .dash-section-header { flex-direction: column; align-items: flex-start; gap: 0.3rem; }
+      .section-heading { font-size: 0.82rem; margin-bottom: 0.75rem; }
+
+      /* Login */
+      .login-box { padding: 1.5rem 1.25rem 1.25rem; margin: 0 0.75rem; }
+      .login-overlay { padding: 1rem; }
     }
     @media (max-width: 480px) {
       .results-grid { grid-template-columns: 1fr; }
       .stats-row { grid-template-columns: 1fr; }
       .result-value { font-size: 1.3rem; }
+      .header-user-name { display: none; }
+      .logo { font-size: 1.05rem; gap: 0.4rem; }
+      .logo-icon { width: 28px; height: 28px; font-size: 0.9rem; }
+      .header { height: 52px; }
+      .app-layout { min-height: calc(100vh - 52px); }
+      .dash-actions-row { grid-template-columns: 1fr !important; }
+      .dash-funnel-stage { flex: 1 1 calc(50% - 4px); }
+      .stat-value { font-size: 0.95rem; }
+      .dash-chart-canvas { height: 160px; }
+      .login-box { padding: 1.5rem 1.25rem 1.25rem; margin: 0 0.75rem; }
     }
     /* ===== TOAST ===== */
     .toast { position:fixed;top:20px;right:20px;background:#0D4F5F;color:white;padding:12px 24px;border-radius:var(--radius-sm);font-weight:600;font-size:0.88rem;z-index:9999;box-shadow:0 8px 30px rgba(0,0,0,0.2);transform:translateY(-20px);opacity:0;transition:all 0.3s ease;pointer-events:none;backdrop-filter:blur(8px) }
@@ -2346,15 +2655,125 @@
     .prop-picker-meta { font-size: 0.7rem; color: var(--text-light); }
     .prop-picker-empty { text-align: center; padding: 1.5rem; font-size: 0.82rem; color: var(--text-light); }
 
+    /* --- Dokumenty page --- */
+    .docs-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:1.25rem; }
+    .docs-category { margin-bottom:2rem; }
+    .docs-category-title { font-size:1.05rem; font-weight:700; color:var(--dark); margin-bottom:0.75rem; padding-bottom:0.5rem; border-bottom:2px solid var(--primary); display:flex; align-items:center; gap:0.5rem; }
+    .docs-category-title svg { width:20px; height:20px; color:var(--primary); }
+    .docs-category-count { font-size:0.75rem; font-weight:400; color:var(--text-light); margin-left:0.25rem; }
+    .doc-card { background:#fff; border:1px solid #E5E7EB; border-radius:12px; padding:1rem 1.15rem; display:flex; align-items:center; gap:0.85rem; transition:all 0.15s; cursor:pointer; }
+    .doc-card:hover { border-color:var(--primary); box-shadow:0 2px 8px rgba(46,196,212,0.12); transform:translateY(-1px); }
+    .doc-icon { width:42px; height:42px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .doc-icon.docx { background:#E8F0FE; color:#2B5797; }
+    .doc-icon.doc { background:#FFF3E0; color:#E65100; }
+    .doc-info { flex:1; min-width:0; }
+    .doc-name { font-size:0.88rem; font-weight:600; color:var(--dark); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .doc-meta { font-size:0.72rem; color:var(--text-light); margin-top:0.15rem; }
+    .doc-dl-btn { width:36px; height:36px; border-radius:8px; border:none; background:var(--primary-light); color:var(--primary); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; transition:all 0.15s; }
+    .doc-dl-btn:hover { background:var(--primary); color:#fff; }
+    .docs-search-wrap { position:relative; max-width:400px; }
+    .docs-search-wrap input { width:100%; padding:0.6rem 0.75rem 0.6rem 2.25rem; border:1px solid #D1D5DB; border-radius:10px; font-size:0.85rem; background:#fff; }
+    .docs-search-wrap input:focus { outline:none; border-color:var(--primary); box-shadow:0 0 0 3px rgba(46,196,212,0.12); }
+    .docs-search-wrap svg { position:absolute; left:0.65rem; top:50%; transform:translateY(-50%); width:16px; height:16px; color:#9CA3AF; }
+    .docs-filter-chips { display:flex; flex-wrap:wrap; gap:0.4rem; }
+    .docs-filter-chip { padding:0.35rem 0.85rem; border-radius:20px; font-size:0.78rem; font-weight:500; border:1px solid #D1D5DB; background:#fff; color:var(--dark); cursor:pointer; transition:all 0.15s; }
+    .docs-filter-chip:hover { border-color:var(--primary); color:var(--primary); }
+    .docs-filter-chip.active { background:var(--primary); color:#fff; border-color:var(--primary); }
+    @media(max-width:768px) { .docs-grid { grid-template-columns:1fr; } }
+
+    /* --- Document form modal --- */
+    .docform-overlay { display:none; position:fixed; inset:0; z-index:10005; background:rgba(0,0,0,0.55); padding:1rem; overflow-y:auto; }
+    .docform-modal { max-width:900px; margin:1rem auto; background:#fff; border-radius:16px; overflow:hidden; }
+    .docform-header { background:linear-gradient(135deg,#0B2A3C,#1A4A5C); color:#fff; padding:1.1rem 1.5rem; display:flex; justify-content:space-between; align-items:center; }
+    .docform-header h3 { margin:0; font-size:1.05rem; }
+    .docform-close { background:none; border:none; color:#fff; font-size:1.5rem; cursor:pointer; padding:0 0.3rem; opacity:0.7; }
+    .docform-close:hover { opacity:1; }
+    .docform-body { padding:1.5rem; max-height:75vh; overflow-y:auto; }
+    .docform-section { margin-bottom:1.25rem; }
+    .docform-section-title { font-size:0.9rem; font-weight:700; color:#0B2A3C; padding:0.5rem 0.75rem; background:#F0F9FF; border-left:3px solid var(--primary); border-radius:0 6px 6px 0; margin-bottom:0.75rem; }
+    .docform-grid { display:grid; grid-template-columns:1fr 1fr; gap:0.6rem 1rem; }
+    .docform-field { display:flex; flex-direction:column; }
+    .docform-field.full { grid-column:1/-1; }
+    .docform-field label { font-size:0.76rem; font-weight:600; color:#374151; margin-bottom:0.2rem; }
+    .docform-field input, .docform-field select, .docform-field textarea { padding:0.5rem 0.65rem; border:1px solid #D1D5DB; border-radius:8px; font-size:0.84rem; font-family:inherit; }
+    .docform-field input:focus, .docform-field select:focus, .docform-field textarea:focus { outline:none; border-color:var(--primary); box-shadow:0 0 0 3px rgba(46,196,212,0.12); }
+    .docform-footer { padding:1rem 1.5rem; border-top:1px solid #E5E7EB; display:flex; gap:0.75rem; justify-content:flex-end; }
+    .docform-btn { padding:0.6rem 1.25rem; border-radius:10px; font-size:0.85rem; font-weight:600; border:none; cursor:pointer; display:flex; align-items:center; gap:0.4rem; }
+    .docform-btn-pdf { background:var(--primary); color:#fff; }
+    .docform-btn-pdf:hover { background:#25b3c4; }
+    .docform-btn-tpl { background:#E5F5F1; color:#0B2A3C; }
+    .docform-btn-tpl:hover { background:#d0ede6; }
+    @media(max-width:768px) { .docform-grid { grid-template-columns:1fr; } .docform-modal { margin:0.5rem; } }
+
     /* --- Náborový list modal --- */
     .nabor-overlay {
       display: none; position: fixed; inset: 0; z-index: 10003;
       background: rgba(0,0,0,0.5); padding: 1rem; overflow-y: auto;
     }
     .nabor-modal {
-      max-width: 780px; margin: 1.5rem auto;
+      max-width: 1400px; margin: 1rem auto;
       background: #fff; border-radius: 16px; overflow: hidden;
       box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: loginSlideUp 0.25s ease;
+    }
+    .nabor-split {
+      display: flex; gap: 0;
+    }
+    .nabor-form-side {
+      flex: 1; min-width: 0;
+    }
+    .nabor-preview-side {
+      flex: 1; min-width: 0; border-left: 1px solid #E2E8F0;
+      background: #F8FAFC; display: flex; flex-direction: column;
+    }
+    .nabor-preview-header {
+      padding: 0.65rem 1rem; background: #F1F5F9; border-bottom: 1px solid #E2E8F0;
+      font-size: 0.75rem; font-weight: 700; color: #64748B; text-transform: uppercase;
+      letter-spacing: 1px; display: flex; align-items: center; gap: 0.5rem;
+    }
+    .nabor-preview-scroll {
+      flex: 1; overflow-y: auto; padding: 1.5rem;
+      max-height: calc(100vh - 140px);
+    }
+    .nabor-preview-page {
+      background: white; box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+      border-radius: 4px; padding: 2rem 2.2rem; min-height: 600px;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 11px; color: #1e1e1e; line-height: 1.5;
+    }
+    .np-title-bar {
+      background: #0B2A3C; color: white; padding: 0.6rem 1rem;
+      border-radius: 6px; text-align: center; font-weight: 700;
+      font-size: 14px; letter-spacing: 0.5px; margin-bottom: 1rem;
+    }
+    .np-section {
+      background: #0B2A3C; color: white; padding: 3px 8px;
+      border-radius: 4px; font-weight: 700; font-size: 9px;
+      text-transform: uppercase; letter-spacing: 1.2px;
+      margin: 0.8rem 0 0.4rem;
+    }
+    .np-row {
+      display: flex; padding: 3px 0; border-bottom: 1px solid #F1F5F9;
+      font-size: 10px; min-height: 18px;
+    }
+    .np-row:last-child { border-bottom: none; }
+    .np-label {
+      width: 140px; flex-shrink: 0; font-weight: 700;
+      color: #464650; font-size: 10px;
+    }
+    .np-value {
+      flex: 1; color: #141414;
+    }
+    .np-row2 { display: flex; gap: 0.5rem; }
+    .np-row2 > div { flex: 1; }
+    .np-multi { background: #F8FAFC; border-radius: 3px; padding: 4px 6px; margin: 2px 0 4px; white-space: pre-wrap; font-size: 10px; }
+    .np-empty { color: #CBD5E1; font-style: italic; }
+    .np-footer {
+      margin-top: 1rem; padding-top: 0.5rem; border-top: 1px solid #E2E8F0;
+      text-align: center; font-size: 9px; color: #94A3B8;
+    }
+    @media (max-width: 900px) {
+      .nabor-split { flex-direction: column; }
+      .nabor-preview-side { border-left: none; border-top: 1px solid #E2E8F0; max-height: 50vh; }
     }
     .nabor-header {
       background: linear-gradient(135deg, #0B2A3C, #1A7A8A);
@@ -2588,13 +3007,27 @@
       padding: 1.5rem;
     }
     .protocol-modal {
-      max-width: 680px;
+      max-width: 1200px;
       margin: 0 auto;
       background: #fff;
       border-radius: 18px;
       overflow: hidden;
       box-shadow: 0 20px 60px rgba(0,0,0,0.25);
       animation: loginSlideUp 0.3s ease;
+    }
+    .protocol-split {
+      display: flex; gap: 0;
+    }
+    .protocol-form-side {
+      flex: 1; min-width: 0;
+    }
+    .protocol-preview-side {
+      flex: 1; min-width: 0; border-left: 1px solid #E2E8F0;
+      background: #F8FAFC; display: flex; flex-direction: column;
+    }
+    @media (max-width: 900px) {
+      .protocol-split { flex-direction: column; }
+      .protocol-preview-side { border-left: none; border-top: 1px solid #E2E8F0; max-height: 50vh; }
     }
     .protocol-header {
       background: linear-gradient(135deg, #0B2A3C, #1A7A8A);
@@ -2866,7 +3299,10 @@
 </div>
 
 <div class="header">
-  <div style="display:flex;align-items:center;gap:1rem">
+  <div style="display:flex;align-items:center;gap:0.75rem">
+    <button class="hamburger-btn" onclick="toggleMobileSidebar()" aria-label="Menu">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
     <div class="logo" onclick="showPage('home')">
       <div class="logo-icon">S</div>
       SecPro
@@ -2880,8 +3316,16 @@
   </div>
 </div>
 
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeMobileSidebar()"></div>
 <div class="app-layout">
-  <nav class="sidebar">
+  <nav class="sidebar" id="mobileSidebar">
+    <!-- Mobile header -->
+    <div class="sidebar-mobile-header" style="display:none;">
+      <span style="color:#fff;font-weight:700;font-size:1rem;letter-spacing:0.5px;">Menu</span>
+      <button class="sidebar-close-btn" onclick="closeMobileSidebar()">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
     <!-- Global items - always visible -->
     <div class="sidebar-global">
       <div class="nav-item active" onclick="showPage('home')">
@@ -2913,6 +3357,12 @@
       </div>
       <div class="nav-item" onclick="showPage('ai')">
         <span class="nav-icon"><i data-lucide="sparkles"></i></span> AI Nastavenia
+      </div>
+      <div class="nav-item" onclick="showPage('orsr')">
+        <span class="nav-icon"><i data-lucide="building-2"></i></span> Obchodný register
+      </div>
+      <div class="nav-item" onclick="showPage('dokumenty')">
+        <span class="nav-icon"><i data-lucide="file-text"></i></span> Dokumenty
       </div>
     </div>
 
@@ -4147,27 +4597,24 @@
       <!-- Source status badges -->
       <div id="leads-source-status" style="display:none;margin-bottom:1rem;display:flex;flex-wrap:wrap;gap:0.5rem;"></div>
 
-      <!-- Results -->
+      <!-- Filter bar -->
+      <div id="leads-filter-bar" class="leads-filter-bar" style="display:none;">
+        <select id="leads-status-filter" class="leads-status-filter" onchange="reRenderLeadCards()">
+          <option value="">Všetky statusy</option>
+          <option value="none">Bez statusu</option>
+          <option value="na_spracovanie">Na spracovanie</option>
+          <option value="prevzaty">Prevzatý</option>
+          <option value="nedovolany">Nedovolaný</option>
+          <option value="nechce_rk">Nechce RK</option>
+          <option value="predane">Predané</option>
+        </select>
+        <label><input type="checkbox" id="leads-show-hidden" onchange="reRenderLeadCards()" /> Zobraziť skryté</label>
+        <span id="leads-visible-count" style="font-size:0.78rem;color:var(--text-light);margin-left:auto;"></span>
+      </div>
+
+      <!-- Results as cards -->
       <div id="leads-results-wrap" style="display:none;">
-        <div class="card" style="padding:0;overflow:hidden;">
-          <div class="table-wrap" style="margin-top:0;border:none;">
-            <table id="leads-table">
-              <thead>
-                <tr>
-                  <th style="text-align:left">Zdroj</th>
-                  <th style="text-align:left">Názov</th>
-                  <th style="text-align:left">Lokalita</th>
-                  <th style="text-align:right">Cena</th>
-                  <th style="text-align:right">m²</th>
-                  <th style="text-align:center">Telefón</th>
-                  <th style="text-align:center">Odkaz</th>
-                  <th style="text-align:center">Uložiť</th>
-                </tr>
-              </thead>
-              <tbody id="leads-tbody"></tbody>
-            </table>
-          </div>
-        </div>
+        <div id="leads-cards-grid" class="lead-cards-grid"></div>
       </div>
 
       <div id="leads-empty" style="display:none;text-align:center;padding:3rem;color:var(--text-light);">
@@ -4345,6 +4792,106 @@
         <div style="font-size:2.5rem;margin-bottom:0.75rem;">🛡️</div>
         <p style="color:var(--text-light);margin-bottom:1rem;">Zatiaľ žiadne AML preverenia</p>
         <button class="btn btn-primary" onclick="openAmlForm()">Pridať prvé preverenie</button>
+      </div>
+    </div>
+
+    <!-- ==================== OBCHODNÝ REGISTER SR ==================== -->
+    <div id="page-orsr" class="page">
+      <div style="margin-bottom:1.5rem;">
+        <h2 style="margin:0;font-size:1.35rem;color:var(--dark);display:flex;align-items:center;gap:0.5rem;">
+          <i data-lucide="building-2" style="width:24px;height:24px;color:var(--primary-light);"></i>
+          Obchodný register SR
+        </h2>
+        <p style="margin:0.3rem 0 0;color:#64748B;font-size:0.85rem;">Vyhľadávanie v Obchodnom registri Slovenskej republiky (orsr.sk)</p>
+      </div>
+
+      <!-- Search tabs -->
+      <div class="card" style="margin-bottom:1.25rem;">
+        <div style="display:flex;border-bottom:2px solid var(--border);margin-bottom:1.25rem;">
+          <div class="orsr-tab active" onclick="switchOrsrTab('ico')" data-tab="ico" style="flex:1;padding:0.65rem;text-align:center;font-size:0.85rem;font-weight:600;color:var(--text-light);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all 0.2s;">Podľa IČO</div>
+          <div class="orsr-tab" onclick="switchOrsrTab('name')" data-tab="name" style="flex:1;padding:0.65rem;text-align:center;font-size:0.85rem;font-weight:600;color:var(--text-light);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all 0.2s;">Podľa názvu</div>
+          <div class="orsr-tab" onclick="switchOrsrTab('person')" data-tab="person" style="flex:1;padding:0.65rem;text-align:center;font-size:0.85rem;font-weight:600;color:var(--text-light);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all 0.2s;">Podľa osoby</div>
+        </div>
+
+        <!-- ICO search -->
+        <div id="orsr-form-ico" class="orsr-form active">
+          <div style="display:flex;gap:0.75rem;align-items:flex-end;flex-wrap:wrap;">
+            <div class="form-group" style="flex:1;min-width:200px;margin:0;">
+              <label>IČO</label>
+              <input type="text" id="orsr-ico" placeholder="napr. 36862321" maxlength="8" style="font-size:1.1rem;letter-spacing:1px;font-weight:600;">
+            </div>
+            <button class="btn btn-primary" onclick="orsrSearch('ico')" id="orsr-btn-ico" style="white-space:nowrap;">
+              <i data-lucide="search" style="width:16px;height:16px;margin-right:0.3rem;"></i> Vyhľadať
+            </button>
+          </div>
+        </div>
+
+        <!-- Name search -->
+        <div id="orsr-form-name" class="orsr-form" style="display:none;">
+          <div style="display:flex;gap:0.75rem;align-items:flex-end;flex-wrap:wrap;">
+            <div class="form-group" style="flex:1;min-width:200px;margin:0;">
+              <label>Obchodné meno</label>
+              <input type="text" id="orsr-name" placeholder="napr. Slovenský plynárenský priemysel">
+            </div>
+            <button class="btn btn-primary" onclick="orsrSearch('name')" id="orsr-btn-name" style="white-space:nowrap;">
+              <i data-lucide="search" style="width:16px;height:16px;margin-right:0.3rem;"></i> Vyhľadať
+            </button>
+          </div>
+        </div>
+
+        <!-- Person search -->
+        <div id="orsr-form-person" class="orsr-form" style="display:none;">
+          <div style="display:flex;gap:0.75rem;align-items:flex-end;flex-wrap:wrap;">
+            <div class="form-group" style="flex:1;min-width:140px;margin:0;">
+              <label>Priezvisko *</label>
+              <input type="text" id="orsr-surname" placeholder="napr. Novák">
+            </div>
+            <div class="form-group" style="flex:1;min-width:140px;margin:0;">
+              <label>Meno</label>
+              <input type="text" id="orsr-firstname" placeholder="napr. Ján">
+            </div>
+            <button class="btn btn-primary" onclick="orsrSearch('person')" id="orsr-btn-person" style="white-space:nowrap;">
+              <i data-lucide="search" style="width:16px;height:16px;margin-right:0.3rem;"></i> Vyhľadať
+            </button>
+          </div>
+        </div>
+
+        <!-- Loading -->
+        <div id="orsr-loading" style="display:none;text-align:center;padding:2rem;color:var(--text-light);">
+          <div style="width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--primary-light);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 1rem;"></div>
+          <p style="font-size:0.9rem;">Vyhľadávam v Obchodnom registri...</p>
+        </div>
+        <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+
+        <!-- Error -->
+        <div id="orsr-error" style="display:none;margin-top:1rem;padding:0.75rem 1rem;background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;color:#DC2626;font-size:0.85rem;"></div>
+      </div>
+
+      <!-- Search results list -->
+      <div id="orsr-results" style="display:none;margin-bottom:1.25rem;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
+          <h3 style="font-size:1rem;color:var(--dark);margin:0;">Výsledky vyhľadávania</h3>
+          <span id="orsr-results-count" style="font-size:0.82rem;color:#64748B;"></span>
+        </div>
+        <div id="orsr-results-list"></div>
+      </div>
+
+      <!-- Company detail -->
+      <div id="orsr-detail" style="display:none;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;">
+          <h3 style="font-size:1.1rem;color:var(--dark);margin:0;">Detail subjektu</h3>
+          <button class="btn" onclick="document.getElementById('orsr-detail').style.display='none';document.getElementById('orsr-results').style.display='block';" style="font-size:0.8rem;padding:0.4rem 0.8rem;background:#F1F5F9;color:#64748B;border:1px solid var(--border);">
+            <i data-lucide="arrow-left" style="width:14px;height:14px;margin-right:0.25rem;"></i> Späť na výsledky
+          </button>
+        </div>
+        <div id="orsr-detail-content"></div>
+      </div>
+
+      <!-- Empty state -->
+      <div id="orsr-empty" style="text-align:center;padding:3rem;color:#94a3b8;">
+        <i data-lucide="building-2" style="width:48px;height:48px;margin-bottom:1rem;stroke-width:1.5;"></i>
+        <p style="font-size:1rem;">Zadajte IČO, názov firmy alebo meno osoby</p>
+        <p style="font-size:0.85rem;">Výsledky sa zobrazia priamo z Obchodného registra SR</p>
       </div>
     </div>
 
@@ -4884,6 +5431,55 @@
       </div>
     </div>
 
+    <!-- DOKUMENTY PAGE -->
+    <div id="page-dokumenty" class="page">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap;gap:0.75rem;">
+        <div>
+          <h2 style="margin:0;font-size:1.35rem;color:var(--dark);">Dokumenty a šablóny</h2>
+          <p style="margin:0.25rem 0 0;font-size:0.82rem;color:var(--text-light);">Šablóny zmlúv, GDPR dokumentov a formulárov pre realitnú prax</p>
+        </div>
+        <div class="docs-search-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="text" id="docs-search" placeholder="Hľadať dokument..." oninput="filterDocs()" />
+        </div>
+      </div>
+
+      <div class="docs-filter-chips" style="margin-bottom:1.25rem;">
+        <div class="docs-filter-chip active" onclick="filterDocsCategory('all',this)">Všetky</div>
+        <div class="docs-filter-chip" onclick="filterDocsCategory('zmluvy',this)">Sprostredkovateľské zmluvy</div>
+        <div class="docs-filter-chip" onclick="filterDocsCategory('najom',this)">Nájomné zmluvy</div>
+        <div class="docs-filter-chip" onclick="filterDocsCategory('nabor',this)">Náborové listy</div>
+        <div class="docs-filter-chip" onclick="filterDocsCategory('kataster',this)">Kataster / Vecné bremená</div>
+        <div class="docs-filter-chip" onclick="filterDocsCategory('financne',this)">Finančné</div>
+        <div class="docs-filter-chip" onclick="filterDocsCategory('gdpr',this)">GDPR / Súhlasy</div>
+        <div class="docs-filter-chip" onclick="filterDocsCategory('spracuvanie',this)">Spracúvanie OU</div>
+        <div class="docs-filter-chip" onclick="filterDocsCategory('ostatne',this)">Ostatné</div>
+      </div>
+
+      <div id="docs-container"></div>
+    </div>
+
+    <!-- DOCUMENT FORM MODAL -->
+    <div class="docform-overlay" id="docFormOverlay">
+      <div class="docform-modal">
+        <div class="docform-header">
+          <h3 id="docform-title">Vyplnenie dokumentu</h3>
+          <button class="docform-close" onclick="closeDocForm()">&times;</button>
+        </div>
+        <div class="docform-body" id="docform-body"></div>
+        <div class="docform-footer">
+          <button class="docform-btn docform-btn-tpl" onclick="downloadDoc(_currentDocFile)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Stiahnuť šablónu
+          </button>
+          <button class="docform-btn docform-btn-pdf" onclick="generateFilledDocx()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            Vygenerovať DOCX
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- NÁBOROVÝ LIST MODAL -->
     <div class="nabor-overlay" id="naborModal">
       <div class="nabor-modal">
@@ -4891,6 +5487,8 @@
           <h3 id="nabor-title">Náborový list - Byt</h3>
           <button onclick="closeNaborModal()" style="background:none;border:none;color:#fff;cursor:pointer;font-size:1.5rem;line-height:1;">&times;</button>
         </div>
+        <div class="nabor-split">
+        <div class="nabor-form-side">
         <div class="nabor-body">
           <input type="hidden" id="nabor-prop-id" />
           <input type="hidden" id="nabor-type" />
@@ -5450,6 +6048,23 @@
             </div>
           </div>
         </div>
+        </div><!-- /nabor-form-side -->
+
+        <div class="nabor-preview-side" id="naborPreviewSide">
+          <div class="nabor-preview-header">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            Náhľad dokumentu
+          </div>
+          <div class="nabor-preview-scroll">
+            <div class="nabor-preview-page" id="naborPreviewContent">
+              <div style="text-align:center;padding:3rem;color:#94A3B8;">
+                <p style="font-size:13px;">Začnite vypĺňať formulár — náhľad sa aktualizuje automaticky</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        </div><!-- /nabor-split -->
+
         <div class="nabor-footer">
           <button class="nabor-btn nabor-btn-cancel" onclick="closeNaborModal()">Zavrieť</button>
           <button class="nabor-btn nabor-btn-pdf" onclick="generateNaborPDF()">
@@ -5469,6 +6084,8 @@
           <h3>Protokol o prehliadke nehnuteľnosti</h3>
           <button onclick="closeProtocolModal()" style="background:none;border:none;color:#fff;cursor:pointer;font-size:1.5rem;line-height:1;">&times;</button>
         </div>
+        <div class="protocol-split">
+        <div class="protocol-form-side">
         <div class="protocol-body">
           <input type="hidden" id="proto-prop-id" />
 
@@ -5531,6 +6148,22 @@
             Vygenerovať a stiahnuť PDF protokol
           </button>
         </div>
+        </div><!-- /protocol-form-side -->
+
+        <div class="protocol-preview-side">
+          <div class="nabor-preview-header">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            Náhľad protokolu
+          </div>
+          <div class="nabor-preview-scroll">
+            <div class="nabor-preview-page" id="protocolPreviewContent">
+              <div style="text-align:center;padding:3rem;color:#94A3B8;">
+                <p style="font-size:13px;">Vyberte prehliadku a vyplňte údaje — náhľad sa aktualizuje automaticky</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        </div><!-- /protocol-split -->
       </div>
     </div>
 
@@ -6098,6 +6731,7 @@ function restoreSidebarState() {
 }
 
 function showPage(id) {
+  closeMobileSidebar();
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   const page = document.getElementById('page-' + id);
@@ -6120,6 +6754,7 @@ function showPage(id) {
   if (id === 'aml') renderAmlList();
   if (id === 'ai') renderAiSettingsPage();
   if (id === 'saved-leads') renderSavedLeads();
+  if (id === 'dokumenty') renderDocs();
   window.scrollTo(0, 0);
 }
 
@@ -7358,10 +7993,8 @@ const HIST_TYPES = {
   'metodika': { label: 'Porovnanie bánk', color: '#dc2626', bg: '#fef2f2', icon: '&#9878;' }
 };
 
-function getHistory() {
-  try { return JSON.parse(localStorage.getItem(HIST_KEY) || '[]'); } catch { return []; }
-}
-function setHistory(arr) { localStorage.setItem(HIST_KEY, JSON.stringify(arr)); }
+function getHistory() { return _getCached('history', []); }
+function setHistory(arr) { _setCached('history', arr); }
 
 function showToast(msg, isError) {
   let t = document.getElementById('finio-toast');
@@ -8536,6 +9169,12 @@ async function searchLeads() {
   document.getElementById('leads-empty').style.display = 'none';
   document.getElementById('leads-source-status').style.display = 'none';
 
+  // Reset filters on new search
+  const sfEl = document.getElementById('leads-status-filter');
+  if (sfEl) sfEl.value = '';
+  const shEl = document.getElementById('leads-show-hidden');
+  if (shEl) shEl.checked = false;
+
   try {
     const params = new URLSearchParams();
     if (location) params.set('location', location);
@@ -8577,12 +9216,14 @@ async function searchLeads() {
 
     // Render results
     if (leadsData.length > 0) {
-      renderLeadsTable(leadsData);
+      renderLeadCards(leadsData);
       document.getElementById('leads-results-wrap').style.display = 'block';
+      document.getElementById('leads-filter-bar').style.display = 'flex';
       document.getElementById('leads-empty').style.display = 'none';
       document.getElementById('leads-status').textContent = `Nájdených ${leadsData.length} inzerátov`;
     } else {
       document.getElementById('leads-results-wrap').style.display = 'none';
+      document.getElementById('leads-filter-bar').style.display = 'none';
       document.getElementById('leads-empty').style.display = 'block';
       document.getElementById('leads-status').textContent = '';
     }
@@ -8594,91 +9235,205 @@ async function searchLeads() {
   }
 }
 
-function renderLeadsTable(leads) {
-  const tbody = document.getElementById('leads-tbody');
-  tbody.innerHTML = '';
+// ── Search Lead Status System ──
+const SEARCH_LEAD_STATUSES = [
+  { key: 'na_spracovanie', label: 'Na spracovanie', color: '#3B82F6', bg: '#EFF6FF' },
+  { key: 'prevzaty', label: 'Prevzatý', color: '#10B981', bg: '#ECFDF5' },
+  { key: 'nedovolany', label: 'Nedovolaný', color: '#F59E0B', bg: '#FEF3C7' },
+  { key: 'nechce_rk', label: 'Nechce RK', color: '#EF4444', bg: '#FEF2F2' },
+  { key: 'predane', label: 'Predané', color: '#64748B', bg: '#F1F5F9' },
+];
+
+function getLeadStatuses() { return _getCached('lead_statuses', {}); }
+function saveLeadStatuses(obj) { _setCached('lead_statuses', obj); }
+
+function getLeadMeta(url) {
+  const all = getLeadStatuses();
+  return all[url] || null;
+}
+
+function setSearchLeadStatus(url, status) {
+  const all = getLeadStatuses();
+  if (!all[url]) all[url] = { status: null, notes: '', hidden: false, history: [] };
+  const prev = all[url].status;
+  if (prev === status) {
+    all[url].status = null;
+    all[url].history.push({ action: 'status_removed', value: status, at: new Date().toISOString() });
+  } else {
+    all[url].status = status;
+    all[url].history.push({ action: 'status', value: status, at: new Date().toISOString() });
+  }
+  all[url].updatedAt = new Date().toISOString();
+  saveLeadStatuses(all);
+  // Reset status filter so the card doesn't vanish
+  const sfEl = document.getElementById('leads-status-filter');
+  if (sfEl && sfEl.value) sfEl.value = '';
+  reRenderLeadCards();
+}
+
+function saveSearchLeadNote(url) {
+  const input = document.getElementById('lead-note-' + _leadUrlHash(url));
+  if (!input) return;
+  const note = input.value.trim();
+  const all = getLeadStatuses();
+  if (!all[url]) all[url] = { status: null, notes: '', hidden: false, history: [] };
+  all[url].notes = note;
+  all[url].history.push({ action: 'note', value: note, at: new Date().toISOString() });
+  all[url].updatedAt = new Date().toISOString();
+  saveLeadStatuses(all);
+  input.style.borderColor = '#10B981';
+  setTimeout(() => { input.style.borderColor = '#E5E7EB'; }, 1000);
+}
+
+function toggleSearchLeadHidden(url) {
+  const all = getLeadStatuses();
+  if (!all[url]) all[url] = { status: null, notes: '', hidden: false, history: [] };
+  all[url].hidden = !all[url].hidden;
+  all[url].history.push({ action: all[url].hidden ? 'hidden' : 'unhidden', at: new Date().toISOString() });
+  all[url].updatedAt = new Date().toISOString();
+  saveLeadStatuses(all);
+  reRenderLeadCards();
+}
+
+function toggleLeadHistory(url) {
+  const hash = _leadUrlHash(url);
+  const el = document.getElementById('lead-hist-' + hash);
+  if (!el) return;
+  if (el.style.display === 'none') {
+    const meta = getLeadMeta(url);
+    const history = (meta && meta.history) || [];
+    if (history.length === 0) {
+      el.innerHTML = '<div class="lead-history-entry" style="color:#94A3B8;">Zatiaľ žiadna história</div>';
+    } else {
+      el.innerHTML = [...history].reverse().map(h => {
+        const d = new Date(h.at);
+        const time = d.toLocaleDateString('sk-SK', { day: 'numeric', month: 'numeric', year: 'numeric' })
+          + ' ' + d.toLocaleTimeString('sk-SK', { hour: '2-digit', minute: '2-digit' });
+        let label = '';
+        if (h.action === 'status') {
+          const st = SEARCH_LEAD_STATUSES.find(s => s.key === h.value);
+          label = 'Zmenené na: <span class="lh-action">' + (st ? st.label : h.value) + '</span>';
+        } else if (h.action === 'status_removed') {
+          label = 'Status odstránený';
+        } else if (h.action === 'note') {
+          label = 'Poznámka: <span class="lh-action">' + esc(h.value || '(prázdna)') + '</span>';
+        } else if (h.action === 'hidden') {
+          label = 'Lead skrytý';
+        } else if (h.action === 'unhidden') {
+          label = 'Lead odkrytý';
+        }
+        return '<div class="lead-history-entry"><span class="lh-time">' + time + '</span> — ' + label + '</div>';
+      }).join('');
+    }
+    el.style.display = 'block';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+function _leadUrlHash(url) {
+  let h = 0;
+  for (let i = 0; i < url.length; i++) { h = ((h << 5) - h + url.charCodeAt(i)) | 0; }
+  return 'u' + Math.abs(h).toString(36);
+}
+
+function reRenderLeadCards() {
+  if (typeof leadsData !== 'undefined' && leadsData.length > 0) renderLeadCards(leadsData);
+}
+
+function renderLeadCards(leads) {
+  const grid = document.getElementById('leads-cards-grid');
+  if (!grid) return;
+
+  const showHidden = document.getElementById('leads-show-hidden')?.checked || false;
+  const statusFilter = document.getElementById('leads-status-filter')?.value || '';
+  const allMeta = getLeadStatuses();
+  const savedLeads = getSavedLeads();
+
+  let visible = 0;
+  let html = '';
 
   for (const lead of leads) {
-    const tr = document.createElement('tr');
+    const meta = allMeta[lead.url] || null;
+    const isHidden = meta && meta.hidden;
+    const leadStatus = meta ? meta.status : null;
+    const leadNotes = meta ? (meta.notes || '') : '';
 
-    // Source
-    const tdSource = document.createElement('td');
-    tdSource.style.textAlign = 'left';
-    tdSource.style.fontSize = '0.72rem';
-    tdSource.style.color = 'var(--text-light)';
-    tdSource.textContent = lead.source;
-    tr.appendChild(tdSource);
+    // Filter: hidden
+    if (isHidden && !showHidden) continue;
+    // Filter: status
+    if (statusFilter === 'none' && leadStatus) continue;
+    if (statusFilter && statusFilter !== 'none' && leadStatus !== statusFilter) continue;
 
-    // Title
-    const tdTitle = document.createElement('td');
-    tdTitle.style.textAlign = 'left';
-    tdTitle.className = 'lead-title';
-    tdTitle.textContent = lead.title;
-    tdTitle.title = lead.title;
-    tr.appendChild(tdTitle);
+    visible++;
+    const hash = _leadUrlHash(lead.url);
+    const alreadySaved = savedLeads.some(s => s.url === lead.url);
 
-    // Location
-    const tdLoc = document.createElement('td');
-    tdLoc.style.textAlign = 'left';
-    tdLoc.textContent = lead.location || '-';
-    tr.appendChild(tdLoc);
+    const escUrl = esc(lead.url.replace(/'/g, "\\'"));
 
-    // Price
-    const tdPrice = document.createElement('td');
-    tdPrice.style.textAlign = 'right';
-    tdPrice.style.fontWeight = '600';
-    tdPrice.textContent = lead.priceText || '-';
-    tr.appendChild(tdPrice);
-
-    // Size
-    const tdSize = document.createElement('td');
-    tdSize.style.textAlign = 'right';
-    tdSize.textContent = lead.size ? `${lead.size} m²` : '-';
-    tr.appendChild(tdSize);
+    // Status pills
+    const pills = SEARCH_LEAD_STATUSES.map(s => {
+      const active = leadStatus === s.key;
+      return '<span class="lead-status-pill' + (active ? ' active' : '') + '" '
+        + 'style="' + (active ? 'background:' + s.bg + ';color:' + s.color + ';border-color:' + s.color + ';' : '') + '" '
+        + 'onclick="setSearchLeadStatus(\'' + escUrl + '\', \'' + s.key + '\')">'
+        + s.label + '</span>';
+    }).join('');
 
     // Phone
-    const tdPhone = document.createElement('td');
-    tdPhone.style.textAlign = 'center';
-    if (lead.phone) {
-      tdPhone.innerHTML = `<a href="tel:${lead.phone}" style="color:#1A7A8A;font-weight:600;text-decoration:none;">${lead.phone}</a>`;
-    } else {
-      const btn = document.createElement('button');
-      btn.className = 'lead-phone-btn';
-      btn.textContent = 'Načítať';
-      btn.onclick = () => fetchLeadPhone(lead.url, tdPhone);
-      tdPhone.appendChild(btn);
-    }
-    tr.appendChild(tdPhone);
+    const phoneHtml = lead.phone
+      ? '<div class="lc-phone"><a href="tel:' + lead.phone + '"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>' + esc(lead.phone) + '</a></div>'
+      : '';
 
-    // Link
-    const tdLink = document.createElement('td');
-    tdLink.style.textAlign = 'center';
-    tdLink.innerHTML = `<a href="${lead.url}" target="_blank" rel="noopener" class="lead-link-btn" title="Otvoriť inzerát"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>`;
-    tr.appendChild(tdLink);
+    // Location
+    const locHtml = lead.location
+      ? '<span class="lc-location"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>' + esc(lead.location) + '</span>'
+      : '';
 
-    // Save button
-    const tdSave = document.createElement('td');
-    tdSave.style.textAlign = 'center';
-    const savedLeads = getSavedLeads();
-    const alreadySaved = savedLeads.some(s => s.url === lead.url);
-    if (alreadySaved) {
-      tdSave.innerHTML = '<span style="font-size:0.72rem;color:#10B981;font-weight:600;">✓ Uložený</span>';
-    } else {
-      const saveBtn = document.createElement('button');
-      saveBtn.className = 'lead-phone-btn';
-      saveBtn.style.background = '#EFF8F6';
-      saveBtn.style.color = '#1A7A8A';
-      saveBtn.textContent = '+ Uložiť';
-      saveBtn.onclick = () => {
-        saveLead(lead);
-        tdSave.innerHTML = '<span style="font-size:0.72rem;color:#10B981;font-weight:600;">✓ Uložený</span>';
-        updateNavLeadCount();
-      };
-      tdSave.appendChild(saveBtn);
-    }
-    tr.appendChild(tdSave);
+    html += '<div class="lead-card' + (isHidden ? ' lc-hidden' : '') + '" id="lcard-' + hash + '">'
+      // Hero strip
+      + '<div class="lc-hero">'
+        + '<div class="lc-hero-top">'
+          + '<span class="lc-source">' + esc(lead.source) + '</span>'
+          + '<button class="lc-dismiss" onclick="toggleSearchLeadHidden(\'' + escUrl + '\')" title="' + (isHidden ? 'Odkryť' : 'Skryť') + '">'
+          + (isHidden ? '&#x21A9;' : '&#x2715;') + '</button>'
+        + '</div>'
+        + '<div class="lc-title" title="' + esc(lead.title) + '">' + esc(lead.title || 'Bez názvu') + '</div>'
+      + '</div>'
+      // Body
+      + '<div class="lc-body">'
+        + '<div class="lc-info-row">'
+          + '<span class="lc-price">' + esc(lead.priceText || 'Dohodou') + '</span>'
+          + locHtml
+          + (lead.size ? '<span class="lc-size">' + lead.size + ' m&sup2;</span>' : '')
+        + '</div>'
+        + phoneHtml
+        + '<div class="lc-statuses">' + pills + '</div>'
+        + '<div class="lc-note-wrap">'
+          + '<input type="text" class="lc-note-input" id="lead-note-' + hash + '" value="' + esc(leadNotes).replace(/"/g, '&quot;') + '" placeholder="Poznámka..." '
+          + 'onkeydown="if(event.key===\'Enter\')saveSearchLeadNote(\'' + escUrl + '\')" />'
+          + '<button class="lc-note-save" onclick="saveSearchLeadNote(\'' + escUrl + '\')">Uložiť</button>'
+        + '</div>'
+        + '<span class="lc-history-toggle" onclick="toggleLeadHistory(\'' + escUrl + '\')">'
+          + '&#9662; zobraziť históriu</span>'
+        + '<div class="lead-history-log" id="lead-hist-' + hash + '" style="display:none;"></div>'
+        + '<div class="lc-actions">'
+          + '<a href="' + esc(lead.url) + '" target="_blank" rel="noopener" class="lc-act-btn lc-act-open">Otvoriť inzerát</a>'
+          + (alreadySaved
+            ? '<span class="lc-act-btn lc-act-saved">&#10003; Uložený</span>'
+            : '<button class="lc-act-btn lc-act-save" onclick="saveLead(leadsData.find(l=>l.url===\'' + escUrl + '\'));this.outerHTML=\'<span class=lc-act-btn\\ lc-act-saved>&#10003; Uložený</span>\';updateNavLeadCount();">+ Uložiť do leadov</button>')
+        + '</div>'
+      + '</div>'
+    + '</div>';
+  }
 
-    tbody.appendChild(tr);
+  grid.innerHTML = html;
+
+  const countEl = document.getElementById('leads-visible-count');
+  if (countEl) {
+    const total = leads.length;
+    const hiddenCount = leads.filter(l => { const m = allMeta[l.url]; return m && m.hidden; }).length;
+    countEl.textContent = visible + ' z ' + total + ' zobrazených' + (hiddenCount > 0 ? ' (' + hiddenCount + ' skrytých)' : '');
   }
 }
 
@@ -8700,16 +9455,23 @@ async function fetchLeadPhone(url, tdElement) {
 
 function exportLeadsCSV() {
   if (!leadsData.length) return;
-  const headers = ['Zdroj','Názov','Lokalita','Cena','m²','Telefón','Odkaz'];
-  const rows = leadsData.map(l => [
-    l.source,
-    `"${(l.title||'').replace(/"/g,'""')}"`,
-    `"${(l.location||'').replace(/"/g,'""')}"`,
-    l.price || '',
-    l.size || '',
-    l.phone || '',
-    l.url
-  ]);
+  const allMeta = getLeadStatuses();
+  const headers = ['Zdroj','Názov','Lokalita','Cena','m²','Telefón','Status','Poznámka','Odkaz'];
+  const rows = leadsData.map(l => {
+    const meta = allMeta[l.url] || {};
+    const st = SEARCH_LEAD_STATUSES.find(s => s.key === meta.status);
+    return [
+      l.source,
+      `"${(l.title||'').replace(/"/g,'""')}"`,
+      `"${(l.location||'').replace(/"/g,'""')}"`,
+      l.price || '',
+      l.size || '',
+      l.phone || '',
+      st ? st.label : '',
+      `"${(meta.notes||'').replace(/"/g,'""')}"`,
+      l.url
+    ];
+  });
   const csv = [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n');
   const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
   const a = document.createElement('a');
@@ -8783,20 +9545,8 @@ async function unpublishFromLeonis(id) {
 }
 // ──────────────────────────────────────────────────────────────────────────
 
-function getProperties() {
-  try { return JSON.parse(localStorage.getItem(PROP_STORAGE_KEY)) || []; }
-  catch { return []; }
-}
-function saveProperties(arr) {
-  try {
-    localStorage.setItem(PROP_STORAGE_KEY, JSON.stringify(arr));
-  } catch (e) {
-    if (e.name === 'QuotaExceededError') {
-      alert('Úložisko prehliadača je plné. Skúste odstrániť fotografie z existujúcich nehnuteľností alebo vymazať staré záznamy.');
-    }
-    throw e;
-  }
-}
+function getProperties() { return _getCached('properties', []); }
+function saveProperties(arr) { _setCached('properties', arr); }
 
 // Pipeline stages (ordered)
 const PROP_PIPELINE = [
@@ -9460,6 +10210,7 @@ function transferInterested(targetPropId) {
 // ===== NÁBOROVÝ LIST =====
 function naborChip(el) {
   el.classList.toggle('active');
+  if (typeof updateNaborPreview === 'function') updateNaborPreview();
 }
 
 function getActiveChips(containerId) {
@@ -9518,6 +10269,7 @@ function openNaborModal(propId) {
   }
 
   document.getElementById('naborModal').style.display = 'block';
+  setTimeout(updateNaborPreview, 50);
 }
 
 function closeNaborModal() {
@@ -9953,6 +10705,7 @@ function openProtocolModal(propId) {
   setTimeout(() => {
     initSignaturePad('sig-broker');
     initSignaturePad('sig-client');
+    if (typeof updateProtocolPreview === 'function') updateProtocolPreview();
   }, 50);
 }
 
@@ -9987,6 +10740,7 @@ function updateProtocolViewing() {
 
   // Pre-fill client name
   document.getElementById('proto-client-name').value = v.personName || '';
+  if (typeof updateProtocolPreview === 'function') updateProtocolPreview();
 }
 
 // ===== PROTOCOL PDF =====
@@ -10894,13 +11648,8 @@ const AI_PROVIDERS = {
   },
 };
 
-function getAiSettings() {
-  try { return JSON.parse(localStorage.getItem('secpro_ai_settings') || '{}'); }
-  catch { return {}; }
-}
-function saveAiSettingsData(data) {
-  localStorage.setItem('secpro_ai_settings', JSON.stringify(data));
-}
+function getAiSettings() { return _getCached('ai_settings', {}); }
+function saveAiSettingsData(data) { _setCached('ai_settings', data); }
 
 function onAiProviderChange() {
   const provider = document.getElementById('ai-provider').value;
@@ -11076,13 +11825,8 @@ function saveAiSettingsPage() {
 }
 
 // Sample Ads (user's style)
-function getSampleAds() {
-  try { return JSON.parse(localStorage.getItem('secpro_sample_ads') || '[]'); }
-  catch { return []; }
-}
-function saveSampleAdsData(ads) {
-  localStorage.setItem('secpro_sample_ads', JSON.stringify(ads));
-}
+function getSampleAds() { return _getCached('sample_ads', []); }
+function saveSampleAdsData(ads) { _setCached('sample_ads', ads); }
 
 function openSampleAds() {
   const modal = document.getElementById('sample-ads-modal');
@@ -11348,11 +12092,8 @@ window.addEventListener('load', () => {
 // ===== CONTACTS MODULE =====
 const CONTACTS_KEY = 'secpro_contacts';
 
-function getContacts() {
-  try { return JSON.parse(localStorage.getItem(CONTACTS_KEY)) || []; }
-  catch { return []; }
-}
-function saveContacts(arr) { localStorage.setItem(CONTACTS_KEY, JSON.stringify(arr)); }
+function getContacts() { return _getCached('contacts', []); }
+function saveContacts(arr) { _setCached('contacts', arr); }
 
 const CONTACT_CATEGORY_LABELS = {
   klient: 'Klient',
@@ -11578,9 +12319,149 @@ function clearSession() {
   localStorage.removeItem(AUTH_USER_KEY);
   sessionStorage.removeItem(AUTH_TOKEN_KEY);
   sessionStorage.removeItem(AUTH_USER_KEY);
-  // Also clean up legacy keys
   localStorage.removeItem('secpro_session');
   sessionStorage.removeItem('secpro_session');
+  // Clear data cache on logout
+  Object.keys(_dataCache).forEach(k => delete _dataCache[k]);
+  _dataSynced = false;
+}
+
+// ===== DATA CACHE & SERVER SYNC =====
+const _dataCache = {};
+let _dataSynced = false;
+
+const _LS_MAP = {
+  properties: 'secpro_properties',
+  contacts: 'secpro_contacts',
+  saved_leads: 'secpro_saved_leads',
+  aml: 'secpro_aml',
+  history: 'finio-history',
+  ai_settings: 'secpro_ai_settings',
+  sample_ads: 'secpro_sample_ads',
+  lead_statuses: 'secpro_lead_statuses',
+};
+
+function _getCached(collection, defaultVal) {
+  if (_dataCache[collection] !== undefined) return _dataCache[collection];
+  const lsKey = _LS_MAP[collection];
+  if (!lsKey) return defaultVal;
+  try {
+    const raw = localStorage.getItem(lsKey);
+    return raw ? JSON.parse(raw) : defaultVal;
+  } catch { return defaultVal; }
+}
+
+function _setCached(collection, data) {
+  _dataCache[collection] = data;
+  const lsKey = _LS_MAP[collection];
+  if (lsKey) {
+    try { localStorage.setItem(lsKey, JSON.stringify(data)); }
+    catch (e) {
+      if (e.name === 'QuotaExceededError') {
+        console.warn('[SecPro] localStorage full for', collection);
+      }
+    }
+  }
+  _saveToServer(collection, data);
+}
+
+let _saveQueue = {};
+let _saveTimer = null;
+
+function _saveToServer(collection, data) {
+  _saveQueue[collection] = data;
+  if (_saveTimer) clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(_flushSaves, 500);
+}
+
+async function _flushSaves() {
+  const queue = _saveQueue;
+  _saveQueue = {};
+  _saveTimer = null;
+  const token = getStoredToken();
+  if (!token) return;
+  for (const [collection, data] of Object.entries(queue)) {
+    try {
+      await fetch('/api/data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({ action: 'set', collection, data }),
+      });
+    } catch (err) {
+      console.warn('[SecPro] Server save failed:', collection, err.message);
+    }
+  }
+}
+
+async function loadAllData() {
+  const token = getStoredToken();
+  if (!token) return false;
+  try {
+    const res = await fetch('/api/data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ action: 'get-all' }),
+    });
+    if (!res.ok) return false;
+    const result = await res.json();
+    if (result.data) {
+      for (const [col, val] of Object.entries(result.data)) {
+        if (val !== null && val !== undefined) {
+          _dataCache[col] = val;
+          const lsKey = _LS_MAP[col];
+          if (lsKey) {
+            try { localStorage.setItem(lsKey, JSON.stringify(val)); } catch {}
+          }
+        }
+      }
+    }
+    _dataSynced = true;
+    return true;
+  } catch (err) {
+    console.warn('[SecPro] Failed to load data:', err.message);
+    return false;
+  }
+}
+
+async function migrateLocalData() {
+  const token = getStoredToken();
+  if (!token) return;
+
+  const collections = {};
+  let hasData = false;
+  for (const [col, lsKey] of Object.entries(_LS_MAP)) {
+    try {
+      const raw = localStorage.getItem(lsKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && (Array.isArray(parsed) ? parsed.length > 0 : Object.keys(parsed).length > 0)) {
+          collections[col] = parsed;
+          hasData = true;
+        }
+      }
+    } catch {}
+  }
+
+  if (!hasData) return;
+
+  try {
+    const res = await fetch('/api/data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ action: 'migrate', collections }),
+    });
+    if (res.ok) console.log('[SecPro] Local data migrated to server');
+  } catch (err) {
+    console.warn('[SecPro] Migration failed:', err.message);
+  }
+}
+
+function _reRenderAll() {
+  try { renderDashboard(); } catch {}
+  try { renderProperties(); } catch {}
+  try { renderContacts(); } catch {}
+  try { renderAmlList(); } catch {}
+  try { updateNavLeadCount(); } catch {}
 }
 
 // Validate session token against server
@@ -11664,6 +12545,13 @@ async function handleRegister(e) {
       return;
     }
 
+    // Store userRecord for login verification
+    if (data.userRecord) {
+      const records = JSON.parse(localStorage.getItem('secpro_user_records') || '{}');
+      records[email] = data.userRecord;
+      localStorage.setItem('secpro_user_records', JSON.stringify(records));
+    }
+
     document.getElementById('registerForm').reset();
     showLoginSuccess('Účet vytvorený! Teraz sa môžete prihlásiť.');
     setTimeout(() => switchLoginTab('login'), 1500);
@@ -11684,10 +12572,14 @@ async function handleLogin(e) {
   if (btn) { btn.disabled = true; btn.textContent = 'Prihlasujem...'; }
 
   try {
+    // Retrieve stored userRecord for this email
+    const records = JSON.parse(localStorage.getItem('secpro_user_records') || '{}');
+    const userRecord = records[email] || null;
+
     const res = await fetch('/api/auth', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'login', email, password: pass, remember }),
+      body: JSON.stringify({ action: 'login', email, password: pass, userRecord }),
     });
     const data = await res.json();
 
@@ -11697,7 +12589,11 @@ async function handleLogin(e) {
     }
 
     saveAuthLocal(data.token, data.user, remember);
-    enterApp(data.user);
+    enterApp(data.user, true);
+    // Migrate local data then load server data
+    await migrateLocalData();
+    await loadAllData();
+    _reRenderAll();
   } catch (err) {
     showLoginError('Chyba pripojenia k serveru.');
   } finally {
@@ -11717,10 +12613,10 @@ async function handleForgotSendCode(e) {
   btn.disabled = true;
 
   try {
-    const res = await fetch('/api/send-reset-code', {
+    const res = await fetch('/api/auth', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ action: 'send-reset-code', email }),
     });
     const data = await res.json();
 
@@ -11753,10 +12649,10 @@ async function handleForgotVerify(e) {
   if (!resetToken) { showLoginError('Najprv si vyžiadajte kód.'); return; }
 
   try {
-    const res = await fetch('/api/verify-reset-code', {
+    const res = await fetch('/api/auth', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token: resetToken, code, newPassword: pass }),
+      body: JSON.stringify({ action: 'verify-reset-code', token: resetToken, code, newPassword: pass }),
     });
     const data = await res.json();
 
@@ -11792,17 +12688,20 @@ function handleLogout() {
   document.getElementById('loginSuccess').style.display = 'none';
 }
 
-function enterApp(user) {
+function enterApp(user, skipDataLoad) {
   document.getElementById('loginOverlay').classList.add('hidden');
   document.getElementById('headerUserName').textContent = user.name;
   const initials = user.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
   document.getElementById('headerUserAvatar').textContent = initials;
+  if (!skipDataLoad && !_dataSynced) {
+    migrateLocalData().then(() => loadAllData()).then(() => _reRenderAll());
+  }
 }
 
 // ==================== AML ====================
 const AML_KEY = 'secpro_aml';
-function getAmlRecords() { try { return JSON.parse(localStorage.getItem(AML_KEY)) || []; } catch { return []; } }
-function saveAmlRecords(arr) { localStorage.setItem(AML_KEY, JSON.stringify(arr)); }
+function getAmlRecords() { return _getCached('aml', []); }
+function saveAmlRecords(arr) { _setCached('aml', arr); }
 
 const AML_STATUS_MAP = {
   pending:  { label: 'Čaká', color: '#64748B', bg: '#F1F5F9' },
@@ -12494,9 +13393,9 @@ function approveAml() {
   const records = getAmlRecords();
   const r = records.find(x => x.id === amlDetailId);
   if (!r) return;
-  const session = JSON.parse(localStorage.getItem('secpro_session') || '{}');
+  const currentUser = getStoredUser();
   r.status = 'approved';
-  r.verifiedBy = session.name || 'Neznámy';
+  r.verifiedBy = (currentUser && currentUser.name) || 'Neznámy';
   r.verifiedAt = new Date().toISOString();
   // Update linked contact
   if (r.contactId) {
@@ -12707,8 +13606,8 @@ function generateAmlPdf() {
 
 // ==================== SAVED LEADS ====================
 const SAVED_LEADS_KEY = 'secpro_saved_leads';
-function getSavedLeads() { return JSON.parse(localStorage.getItem(SAVED_LEADS_KEY) || '[]'); }
-function saveSavedLeads(arr) { localStorage.setItem(SAVED_LEADS_KEY, JSON.stringify(arr)); }
+function getSavedLeads() { return _getCached('saved_leads', []); }
+function saveSavedLeads(arr) { _setCached('saved_leads', arr); }
 
 const LEAD_PIPELINE = [
   { key: 'novy', label: 'Nový', color: '#3B82F6' },
@@ -13246,22 +14145,1748 @@ function renderDashRecentContacts(contacts) {
   // Immediately show cached user for fast UX
   const cachedUser = getStoredUser();
   if (cachedUser && cachedUser.name) {
-    enterApp(cachedUser);
+    enterApp(cachedUser, true); // skip data load, we'll do it after validation
   }
+  // Render with localStorage data immediately for fast UX
+  renderDashboard();
+  updateNavLeadCount();
   // Then validate against server in background
   const token = getStoredToken();
   if (token) {
     const validUser = await validateSession();
     if (!validUser) {
-      // Session expired or invalid — force re-login
       clearSession();
       document.getElementById('loginOverlay').classList.remove('hidden');
+    } else {
+      // Migrate local data (if any) then load from server
+      await migrateLocalData();
+      await loadAllData();
+      _reRenderAll();
     }
   }
-  // Render dashboard on initial load
-  renderDashboard();
-  updateNavLeadCount();
 })();
+
+// ===== MOBILE SIDEBAR =====
+function toggleMobileSidebar() {
+  const sidebar = document.getElementById('mobileSidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+  const mobileHeader = sidebar.querySelector('.sidebar-mobile-header');
+  sidebar.classList.toggle('mobile-open');
+  overlay.classList.toggle('active');
+  if (mobileHeader) mobileHeader.style.display = sidebar.classList.contains('mobile-open') ? 'flex' : 'none';
+  document.body.style.overflow = sidebar.classList.contains('mobile-open') ? 'hidden' : '';
+}
+function closeMobileSidebar() {
+  const sidebar = document.getElementById('mobileSidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+  const mobileHeader = sidebar ? sidebar.querySelector('.sidebar-mobile-header') : null;
+  if (sidebar) sidebar.classList.remove('mobile-open');
+  if (overlay) overlay.classList.remove('active');
+  if (mobileHeader) mobileHeader.style.display = 'none';
+  document.body.style.overflow = '';
+}
+// Swipe to close sidebar
+(function() {
+  let touchStartX = 0;
+  document.addEventListener('touchstart', function(e) { touchStartX = e.touches[0].clientX; }, { passive: true });
+  document.addEventListener('touchend', function(e) {
+    const sidebar = document.getElementById('mobileSidebar');
+    if (!sidebar || !sidebar.classList.contains('mobile-open')) return;
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    if (dx < -60) closeMobileSidebar();
+  }, { passive: true });
+})();
+
+// ==================== OBCHODNÝ REGISTER SR ====================
+
+function switchOrsrTab(tab) {
+  document.querySelectorAll('.orsr-tab').forEach(t => {
+    t.style.color = 'var(--text-light)';
+    t.style.borderBottomColor = 'transparent';
+  });
+  const active = document.querySelector(`.orsr-tab[data-tab="${tab}"]`);
+  if (active) {
+    active.style.color = '#0B2A3C';
+    active.style.borderBottomColor = '#1A7A8A';
+  }
+  document.querySelectorAll('.orsr-form').forEach(f => f.style.display = 'none');
+  const form = document.getElementById('orsr-form-' + tab);
+  if (form) form.style.display = 'block';
+}
+
+async function orsrSearch(type) {
+  const loadingEl = document.getElementById('orsr-loading');
+  const errorEl = document.getElementById('orsr-error');
+  const resultsEl = document.getElementById('orsr-results');
+  const detailEl = document.getElementById('orsr-detail');
+  const emptyEl = document.getElementById('orsr-empty');
+
+  errorEl.style.display = 'none';
+  resultsEl.style.display = 'none';
+  detailEl.style.display = 'none';
+  emptyEl.style.display = 'none';
+  loadingEl.style.display = 'block';
+
+  let body = {};
+  if (type === 'ico') {
+    const ico = document.getElementById('orsr-ico').value.trim();
+    if (!ico) { orsrShowError('Zadajte IČO'); return; }
+    body = { action: 'searchICO', ico };
+  } else if (type === 'name') {
+    const name = document.getElementById('orsr-name').value.trim();
+    if (!name || name.length < 2) { orsrShowError('Zadajte aspoň 2 znaky'); return; }
+    body = { action: 'searchName', name };
+  } else if (type === 'person') {
+    const surname = document.getElementById('orsr-surname').value.trim();
+    if (!surname || surname.length < 2) { orsrShowError('Zadajte priezvisko (min 2 znaky)'); return; }
+    const firstname = document.getElementById('orsr-firstname').value.trim();
+    body = { action: 'searchPerson', surname, firstname };
+  }
+
+  try {
+    const res = await fetch('/api/orsr', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    loadingEl.style.display = 'none';
+
+    if (!res.ok) {
+      orsrShowError(data.error || 'Chyba pri vyhľadávaní');
+      return;
+    }
+
+    if (!data.results || data.results.length === 0) {
+      orsrShowError('Žiadne výsledky. Skúste upraviť hľadaný výraz.');
+      return;
+    }
+
+    // If ICO search returns exactly 1 result, go directly to detail
+    if (type === 'ico' && data.results.length === 1) {
+      orsrLoadDetail(data.results[0].id, data.results[0].sid, data.results[0].name);
+      return;
+    }
+
+    orsrShowResults(data.results);
+  } catch (err) {
+    loadingEl.style.display = 'none';
+    orsrShowError('Chyba pripojenia k serveru. Skúste to znova.');
+  }
+}
+
+function orsrShowError(msg) {
+  document.getElementById('orsr-loading').style.display = 'none';
+  const el = document.getElementById('orsr-error');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function orsrShowResults(results) {
+  const el = document.getElementById('orsr-results');
+  const listEl = document.getElementById('orsr-results-list');
+  const countEl = document.getElementById('orsr-results-count');
+
+  countEl.textContent = results.length + ' výsledkov';
+  listEl.innerHTML = results.map(r => `
+    <div style="background:white;border:1px solid var(--border);border-radius:10px;padding:0.85rem 1.1rem;margin-bottom:0.5rem;display:flex;justify-content:space-between;align-items:center;cursor:pointer;transition:all 0.15s;" onmouseover="this.style.borderColor='rgba(46,196,212,0.4)';this.style.boxShadow='0 2px 8px rgba(0,0,0,0.06)'" onmouseout="this.style.borderColor='var(--border)';this.style.boxShadow='none'" onclick="orsrLoadDetail('${r.id}','${r.sid}','${r.name.replace(/'/g, "\\'")}')">
+      <div>
+        <div style="font-weight:600;font-size:0.92rem;color:var(--dark);">${r.name}</div>
+        <div style="font-size:0.75rem;color:#94A3B8;margin-top:2px;">ID: ${r.id} | Súd: ${r.sid}</div>
+      </div>
+      <i data-lucide="chevron-right" style="width:18px;height:18px;color:#94A3B8;flex-shrink:0;"></i>
+    </div>
+  `).join('');
+
+  el.style.display = 'block';
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+async function orsrLoadDetail(id, sid, name) {
+  const loadingEl = document.getElementById('orsr-loading');
+  const errorEl = document.getElementById('orsr-error');
+  const resultsEl = document.getElementById('orsr-results');
+  const detailEl = document.getElementById('orsr-detail');
+  const emptyEl = document.getElementById('orsr-empty');
+
+  errorEl.style.display = 'none';
+  resultsEl.style.display = 'none';
+  emptyEl.style.display = 'none';
+  loadingEl.style.display = 'block';
+
+  try {
+    const res = await fetch('/api/orsr', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'detail', id, sid }),
+    });
+    const data = await res.json();
+    loadingEl.style.display = 'none';
+
+    if (!res.ok) {
+      orsrShowError(data.error || 'Chyba pri načítaní detailu');
+      return;
+    }
+
+    orsrRenderDetail(data.detail || {}, name);
+  } catch (err) {
+    loadingEl.style.display = 'none';
+    orsrShowError('Chyba pripojenia k serveru.');
+  }
+}
+
+function orsrRenderDetail(d, fallbackName) {
+  const detailEl = document.getElementById('orsr-detail');
+  const contentEl = document.getElementById('orsr-detail-content');
+
+  const companyName = d.obchodne_meno || fallbackName || 'Neznámy subjekt';
+  const ico = d.ico || '—';
+
+  let statusBadge = '<span style="font-size:0.75rem;padding:0.2rem 0.6rem;border-radius:6px;background:#F0FDF4;color:#16A34A;font-weight:600;">Aktívny</span>';
+  if (d.den_vymazu) {
+    statusBadge = '<span style="font-size:0.75rem;padding:0.2rem 0.6rem;border-radius:6px;background:#FEF2F2;color:#DC2626;font-weight:600;">Vymazaný</span>';
+  }
+
+  function row(label, value, icon) {
+    if (!value) return '';
+    const val = Array.isArray(value) ? value.join('<br>') : value;
+    return `<div style="display:flex;gap:0.75rem;padding:0.75rem 0;border-bottom:1px solid #F1F5F9;">
+      <div style="width:36px;height:36px;border-radius:8px;background:#F0F9F7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <i data-lucide="${icon}" style="width:16px;height:16px;color:var(--primary-light);"></i>
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:0.72rem;color:#94A3B8;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">${label}</div>
+        <div style="font-size:0.88rem;color:var(--dark);margin-top:2px;line-height:1.5;">${val}</div>
+      </div>
+    </div>`;
+  }
+
+  let activitiesHtml = '';
+  if (d.predmet_cinnosti && Array.isArray(d.predmet_cinnosti) && d.predmet_cinnosti.length) {
+    activitiesHtml = `<div class="card" style="margin-top:1rem;">
+      <div style="font-weight:700;font-size:0.88rem;color:var(--dark);margin-bottom:0.75rem;display:flex;align-items:center;gap:0.5rem;">
+        <i data-lucide="list" style="width:16px;height:16px;color:var(--primary-light);"></i>
+        Predmet činnosti (${d.predmet_cinnosti.length})
+      </div>
+      <div style="max-height:300px;overflow-y:auto;">
+        ${d.predmet_cinnosti.map((a, i) => `<div style="padding:0.4rem 0;border-bottom:1px solid #F8FAFC;font-size:0.82rem;color:var(--text);display:flex;gap:0.5rem;">
+          <span style="color:#94A3B8;font-size:0.75rem;min-width:20px;">${i+1}.</span> ${a}
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  let statutoryHtml = '';
+  if (d.statutarny_organ && Array.isArray(d.statutarny_organ) && d.statutarny_organ.length) {
+    statutoryHtml = `<div class="card" style="margin-top:1rem;">
+      <div style="font-weight:700;font-size:0.88rem;color:var(--dark);margin-bottom:0.75rem;display:flex;align-items:center;gap:0.5rem;">
+        <i data-lucide="users" style="width:16px;height:16px;color:var(--primary-light);"></i>
+        Štatutárny orgán
+      </div>
+      ${d.statutarny_organ.map(s => `<div style="padding:0.5rem 0;border-bottom:1px solid #F8FAFC;font-size:0.85rem;color:var(--text);">${s}</div>`).join('')}
+    </div>`;
+  }
+
+  let partnersHtml = '';
+  if (d.spolocnici && Array.isArray(d.spolocnici) && d.spolocnici.length) {
+    partnersHtml = `<div class="card" style="margin-top:1rem;">
+      <div style="font-weight:700;font-size:0.88rem;color:var(--dark);margin-bottom:0.75rem;display:flex;align-items:center;gap:0.5rem;">
+        <i data-lucide="user-check" style="width:16px;height:16px;color:var(--primary-light);"></i>
+        Spoločníci
+      </div>
+      ${d.spolocnici.map(s => `<div style="padding:0.5rem 0;border-bottom:1px solid #F8FAFC;font-size:0.85rem;color:var(--text);">${s}</div>`).join('')}
+    </div>`;
+  }
+
+  let dozornaRadaHtml = '';
+  if (d.dozorna_rada && Array.isArray(d.dozorna_rada) && d.dozorna_rada.length) {
+    dozornaRadaHtml = `<div class="card" style="margin-top:1rem;">
+      <div style="font-weight:700;font-size:0.88rem;color:var(--dark);margin-bottom:0.75rem;display:flex;align-items:center;gap:0.5rem;">
+        <i data-lucide="eye" style="width:16px;height:16px;color:var(--primary-light);"></i>
+        Dozorná rada
+      </div>
+      ${d.dozorna_rada.map(s => `<div style="padding:0.5rem 0;border-bottom:1px solid #F8FAFC;font-size:0.85rem;color:var(--text);">${s}</div>`).join('')}
+    </div>`;
+  }
+
+  contentEl.innerHTML = `
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:0.75rem;margin-bottom:1rem;">
+        <div>
+          <h2 style="font-size:1.15rem;color:var(--dark);margin:0;">${companyName}</h2>
+          <div style="font-size:0.85rem;color:#64748B;margin-top:0.25rem;">IČO: <strong>${ico}</strong></div>
+        </div>
+        ${statusBadge}
+      </div>
+      ${row('Príslušný súd', d.prislusny_sud, 'landmark')}
+      ${row('Oddiel / Vložka', (d.oddiel && d.vlozka) ? d.oddiel + ' / ' + d.vlozka : (d.oddiel || d.vlozka), 'file-text')}
+      ${row('Sídlo', d.sidlo, 'map-pin')}
+      ${row('Právna forma', d.pravna_forma, 'briefcase')}
+      ${row('Deň zápisu', d.den_zapisu, 'calendar-plus')}
+      ${d.den_vymazu ? row('Deň výmazu', d.den_vymazu, 'calendar-x') : ''}
+      ${d.dovod_vymazu ? row('Dôvod výmazu', d.dovod_vymazu, 'alert-triangle') : ''}
+      ${d.spolocnost_zrusena ? row('Spoločnosť zrušená', d.spolocnost_zrusena, 'x-circle') : ''}
+      ${row('Základné imanie', d.zakladne_imanie, 'coins')}
+      ${d.vyska_vkladu ? row('Výška vkladu', d.vyska_vkladu, 'wallet') : ''}
+      ${d.akcie ? row('Akcie', d.akcie, 'ticket') : ''}
+      ${row('Konanie', d.konanie, 'scale')}
+      ${d.zastupovanie ? row('Zastupovanie', d.zastupovanie, 'handshake') : ''}
+      ${d.bydlisko ? row('Bydlisko', d.bydlisko, 'home') : ''}
+      ${d.miesto_podnikania ? row('Miesto podnikania', d.miesto_podnikania, 'store') : ''}
+      ${d.likvidacia ? row('Likvidácia', d.likvidacia, 'alert-octagon') : ''}
+      ${d.likvidator ? row('Likvidátor', d.likvidator, 'user-x') : ''}
+      ${d.vyhlasenie_konkurzu ? row('Vyhlásenie konkurzu', d.vyhlasenie_konkurzu, 'gavel') : ''}
+      ${d.spravca_konkurznej_podstaty ? row('Správca konkurznej podstaty', d.spravca_konkurznej_podstaty, 'shield') : ''}
+      ${d.pravny_nastupca ? row('Právny nástupca', d.pravny_nastupca, 'arrow-right-circle') : ''}
+      ${d.zlucenie_splynutie ? row('Zlúčenie/splynutie', d.zlucenie_splynutie, 'merge') : ''}
+      ${row('Dátum aktualizácie', d.datum_aktualizacie, 'refresh-cw')}
+    </div>
+    ${statutoryHtml}
+    ${partnersHtml}
+    ${dozornaRadaHtml}
+    ${activitiesHtml}
+    <div style="text-align:center;margin-top:1.25rem;">
+      <a href="${d.srcUrl ? 'https://www.orsr.sk/' + d.srcUrl : '#'}" target="_blank" rel="noopener" style="font-size:0.82rem;color:var(--primary-light);text-decoration:none;">
+        Zobraziť originálny výpis na orsr.sk <i data-lucide="external-link" style="width:12px;height:12px;"></i>
+      </a>
+    </div>
+  `;
+
+  detailEl.style.display = 'block';
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+// ==================== DOCUMENT LIVE PREVIEW ====================
+
+function _npRow(label, value) {
+  if (!value) return '';
+  return `<div class="np-row"><div class="np-label">${label}:</div><div class="np-value">${value}</div></div>`;
+}
+function _npRow2(l1, v1, l2, v2) {
+  if (!v1 && !v2) return '';
+  return `<div class="np-row np-row2"><div>${v1 ? `<div class="np-row"><div class="np-label">${l1}:</div><div class="np-value">${v1}</div></div>` : ''}</div><div>${v2 ? `<div class="np-row"><div class="np-label">${l2}:</div><div class="np-value">${v2}</div></div>` : ''}</div></div>`;
+}
+function _npMulti(label, value) {
+  if (!value) return '';
+  return `<div class="np-row" style="flex-direction:column;"><div class="np-label">${label}:</div><div class="np-multi">${value}</div></div>`;
+}
+function _npSection(title) {
+  return `<div class="np-section">${title}</div>`;
+}
+
+/* ─── DOKUMENTY ─── */
+const DOCS_DATA = [
+  // Sprostredkovateľské zmluvy
+  { file:'nova-sz.docx', name:'Sprostredkovateľská zmluva (nová)', cat:'zmluvy' },
+  { file:'nevyhradna-sz-2025-jeden-klient.docx', name:'Nevýhradná SZ - jeden klient (2025)', cat:'zmluvy' },
+  { file:'nevyhradna-sz-viaceri-klienti.docx', name:'Nevýhradná SZ - viacerí klienti', cat:'zmluvy' },
+  { file:'sz-najom.docx', name:'Sprostredkovateľská zmluva - nájom', cat:'zmluvy' },
+  { file:'pp-predaj.docx', name:'Plná moc - predaj', cat:'zmluvy' },
+  // Nájomné zmluvy
+  { file:'najomna-zmluva-obciansky-zakonnik.docx', name:'Nájomná zmluva (Občiansky zákonník)', cat:'najom' },
+  { file:'najomna-zmluva-rodinny-dom.docx', name:'Nájomná zmluva - rodinný dom', cat:'najom' },
+  { file:'vzor-najomna-zmluva.doc', name:'Vzor nájomnej zmluvy', cat:'najom' },
+  { file:'nz-dodatok.doc', name:'Dodatok k nájomnej zmluve', cat:'najom' },
+  { file:'nz-nebyt-dodatok.docx', name:'Dodatok - nebytový priestor', cat:'najom' },
+  { file:'ukoncenie-najmu-dohoda.docx', name:'Ukončenie nájmu dohodou', cat:'najom' },
+  // Náborové listy
+  { file:'nabor-byt-ak.docx', name:'Náborový list - byt (AK)', cat:'nabor' },
+  { file:'nabor-dom-ak.docx', name:'Náborový list - dom (AK)', cat:'nabor' },
+  // Preberacie protokoly
+  { file:'preb.-protokol-najom.docx', name:'Preberací protokol - nájom', cat:'nabor' },
+  // Kataster / Vecné bremená
+  { file:'vb-vklad.docx', name:'Vecné bremeno - vklad', cat:'kataster' },
+  { file:'vb-zriadenie.docx', name:'Vecné bremeno - zriadenie', cat:'kataster' },
+  { file:'vklad-zrusenie-vb-do-kn.docx', name:'Vklad / zrušenie VB do katastra', cat:'kataster' },
+  { file:'zrusenie-vb.docx', name:'Zrušenie vecného bremena', cat:'kataster' },
+  // Finančné
+  { file:'zlozenie-zalohy-moderny-makler.docx', name:'Zloženie zálohy', cat:'financne' },
+  { file:'vratenie-financnej-zabezpeky-2025.docx', name:'Vrátenie finančnej zabezpeky (2025)', cat:'financne' },
+  // GDPR / Súhlasy
+  { file:'gdpr-zamestnanec.docx', name:'GDPR - zamestnanec', cat:'gdpr' },
+  { file:'suhlas.-uchadzac-o-zamestnaniedocx.docx', name:'Súhlas - uchádzač o zamestnanie', cat:'gdpr' },
+  { file:'suhlas_marketingovy-ucel_potencialny-klient.docx', name:'Súhlas - marketing (potenciálny klient)', cat:'gdpr' },
+  { file:'informovanie-dotknutej-osoby-klient.docx', name:'Informovanie dotknutej osoby - klient', cat:'gdpr' },
+  { file:'informovanie-dotknutej-osoby-potencialny-klient-marketingovy-ucel.docx', name:'Informovanie DO - potenciálny klient (marketing)', cat:'gdpr' },
+  { file:'informovanie-dotknutej-osoby-staly-klient-marketingovy-ucel.docx', name:'Informovanie DO - stály klient (marketing)', cat:'gdpr' },
+  { file:'informovanie-dotknutej-osoby-uchadzac-o-zamestnanie.docx', name:'Informovanie DO - uchádzač o zamestnanie', cat:'gdpr' },
+  { file:'informovanie-dotknutej-osoby-zaujemca-o-cenovu-ponuku.docx', name:'Informovanie DO - záujemca o cenovú ponuku', cat:'gdpr' },
+  { file:'informovanie-dotknutych-osob-webova-stranka.docx', name:'Informovanie DO - webová stránka', cat:'gdpr' },
+  { file:'poucenie-o-povereni-opravnenej-osoby-zamestnanec.docx', name:'Poučenie oprávnenej osoby - zamestnanec', cat:'gdpr' },
+  { file:'pouzitie-dokumentacie.docx', name:'Použitie dokumentácie', cat:'gdpr' },
+  { file:'zoznam-osob.docx', name:'Zoznam osôb', cat:'gdpr' },
+  // Spracúvanie osobných údajov
+  { file:'zmluva-o-spracuvani-osobnych-udajov-bozp.docx', name:'Zmluva o spracúvaní OU - BOZP', cat:'spracuvanie' },
+  { file:'zmluva-o-spracuvani-osobnych-udajov-ekonom-uctovnik.docx', name:'Zmluva o spracúvaní OU - ekonóm/účtovník', cat:'spracuvanie' },
+  { file:'zmluva-o-spracuvani-osobnych-udajov-pzs.docx', name:'Zmluva o spracúvaní OU - PZS', cat:'spracuvanie' },
+  { file:'zmluva-o-spracuvani-osobnych-udajov-szco.docx', name:'Zmluva o spracúvaní OU - SZČO', cat:'spracuvanie' },
+  // Ostatné
+  { file:'b.-smernica-o-bezpecnostnych-opatreniach-prevadzkovatela.docx', name:'Smernica o bezpečnostných opatreniach', cat:'ostatne' },
+  { file:'cestne-vyhlasenie-o-poskytnuti-ubytovania.docx', name:'Čestné vyhlásenie o poskytnutí ubytovania', cat:'ostatne' },
+  { file:'informacna-povinnost-dotknuta-osoba_kamery.docx', name:'Informačná povinnosť - kamery', cat:'ostatne' },
+];
+
+const DOCS_CAT_NAMES = {
+  zmluvy: 'Sprostredkovateľské zmluvy',
+  najom: 'Nájomné zmluvy',
+  nabor: 'Náborové listy a protokoly',
+  kataster: 'Kataster / Vecné bremená',
+  financne: 'Finančné dokumenty',
+  gdpr: 'GDPR / Súhlasy a informovanie',
+  spracuvanie: 'Zmluvy o spracúvaní osobných údajov',
+  ostatne: 'Ostatné dokumenty'
+};
+
+const DOCS_CAT_ICONS = {
+  zmluvy: 'file-signature',
+  najom: 'key',
+  nabor: 'clipboard-list',
+  kataster: 'landmark',
+  financne: 'banknote',
+  gdpr: 'shield',
+  spracuvanie: 'lock',
+  ostatne: 'folder'
+};
+
+let _docsActiveCategory = 'all';
+
+function renderDocs() {
+  const search = (document.getElementById('docs-search')?.value || '').toLowerCase();
+  const container = document.getElementById('docs-container');
+  if (!container) return;
+
+  const cats = ['zmluvy','najom','nabor','kataster','financne','gdpr','spracuvanie','ostatne'];
+  let html = '';
+
+  for (const cat of cats) {
+    if (_docsActiveCategory !== 'all' && _docsActiveCategory !== cat) continue;
+    const items = DOCS_DATA.filter(d => d.cat === cat && (!search || d.name.toLowerCase().includes(search) || d.file.toLowerCase().includes(search)));
+    if (!items.length) continue;
+
+    const icon = DOCS_CAT_ICONS[cat] || 'folder';
+    html += `<div class="docs-category" data-cat="${cat}">`;
+    html += `<div class="docs-category-title"><i data-lucide="${icon}"></i> ${DOCS_CAT_NAMES[cat]} <span class="docs-category-count">(${items.length})</span></div>`;
+    html += `<div class="docs-grid">`;
+    for (const d of items) {
+      const ext = d.file.endsWith('.doc') ? 'doc' : 'docx';
+      const hasForm = DOC_FORMS[d.file] !== undefined && DOC_FORMS[d.file] !== null;
+      html += `<div class="doc-card" style="cursor:default;">`;
+      html += `<div class="doc-icon ${ext}"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>`;
+      html += `<div class="doc-info"><div class="doc-name">${d.name}</div><div class="doc-meta">.${ext} | ${DOCS_CAT_NAMES[d.cat]}</div></div>`;
+      html += `<div style="display:flex;gap:0.35rem;">`;
+      if (hasForm) {
+        html += `<div class="doc-dl-btn" style="background:#E8F5E9;color:#2E7D32;" onclick="event.stopPropagation();openDocForm('${d.file}')" title="Vyplniť formulár"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>`;
+      }
+      html += `<div class="doc-dl-btn" onclick="event.stopPropagation();downloadDoc('${d.file}')" title="Stiahnuť šablónu"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>`;
+      html += `</div></div>`;
+    }
+    html += `</div></div>`;
+  }
+
+  if (!html) {
+    html = `<div style="text-align:center;padding:3rem;color:var(--text-light);font-size:0.9rem;">Žiadne dokumenty nezodpovedajú vyhľadávaniu</div>`;
+  }
+  container.innerHTML = html;
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function filterDocs() { renderDocs(); }
+
+function filterDocsCategory(cat, el) {
+  _docsActiveCategory = cat;
+  document.querySelectorAll('.docs-filter-chip').forEach(c => c.classList.remove('active'));
+  if (el) el.classList.add('active');
+  renderDocs();
+}
+
+function downloadDoc(filename) {
+  const a = document.createElement('a');
+  a.href = '/templates/' + filename;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+/* ═══════════════════════════════════════════════════════
+   DOCUMENT FORM SYSTEM - DOCX filler for all templates
+   ═══════════════════════════════════════════════════════ */
+
+function _escXml(s) {
+  if (!s) return '';
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Field helpers - return arrays of [id, label, type?, fullWidth?]
+function _fPerson(pfx, lbl) {
+  return [
+    { title: lbl, fields: [
+      [pfx+'meno','Meno a priezvisko'],
+      [pfx+'rod','Rodné priezvisko'],
+      [pfx+'nar','Dátum narodenia','date'],
+      [pfx+'rc','Rodné číslo'],
+      [pfx+'adresa','Adresa trvalého pobytu','text',true],
+      [pfx+'obcianstvo','Štátna príslušnosť'],
+      [pfx+'email','E-mail','email'],
+      [pfx+'tel','Telefón','tel'],
+      [pfx+'iban','IBAN'],
+    ]}
+  ];
+}
+
+function _fPersonBasic(pfx, lbl) {
+  return [
+    { title: lbl, fields: [
+      [pfx+'meno','Meno a priezvisko'],
+      [pfx+'nar','Dátum narodenia','date'],
+      [pfx+'rc','Rodné číslo'],
+      [pfx+'adresa','Adresa trvalého pobytu','text',true],
+      [pfx+'email','E-mail','email'],
+      [pfx+'tel','Telefón','tel'],
+    ]}
+  ];
+}
+
+function _fPersonFull(pfx, lbl) {
+  return [
+    { title: lbl, fields: [
+      [pfx+'meno','Meno a priezvisko / Názov spoločnosti','text',true],
+      [pfx+'nar','Dátum narodenia / IČO'],
+      [pfx+'dic','DIČ'],
+      [pfx+'adresa','Trvalý pobyt / Sídlo spoločnosti','text',true],
+      [pfx+'email','E-mail','email'],
+      [pfx+'tel','Telefón','tel'],
+    ]}
+  ];
+}
+
+function _fProperty() {
+  return [
+    { title: 'Nehnuteľnosť', fields: [
+      ['n_lv','List vlastníctva č.'],
+      ['n_kataster','Katastrálne územie'],
+      ['n_okres','Okres'],
+      ['n_obec','Obec'],
+      ['n_parcela','Parcela č.'],
+      ['n_vymera','Výmera (m²)'],
+      ['n_byt','Byt č.'],
+      ['n_poschodie','Poschodie'],
+      ['n_vchod','Vchod č.'],
+      ['n_ulica','Ulica','text',true],
+      ['n_supisne','Súpisné číslo'],
+      ['n_podiel','Spoluvlastnícky podiel'],
+    ]}
+  ];
+}
+
+function _fPropertyShort() {
+  return [
+    { title: 'Nehnuteľnosť', fields: [
+      ['n_lv','List vlastníctva č.'],
+      ['n_kataster','Katastrálne územie'],
+      ['n_okres','Okres'],
+      ['n_obec','Obec'],
+      ['n_parcela','Parcela č.'],
+      ['n_ulica','Ulica','text',true],
+      ['n_supisne','Súpisné číslo'],
+    ]}
+  ];
+}
+
+function _fSignature() {
+  return [
+    { title: 'Podpis', fields: [
+      ['p_miesto','Miesto podpisu'],
+      ['p_datum','Dátum podpisu','date'],
+    ]}
+  ];
+}
+
+// All document form definitions
+// Each doc has: title, sections (UI form), repl (DOCX replacement rules)
+// repl format: ['fieldId', 'labelContext'] - finds label in XML, replaces next dot/underscore sequence
+// Special: ['fieldId', 'labelContext', 'bullet'] for [ • ] markers
+// Special: ['fieldId', 'labelContext', 'XX'] for XX markers
+// Special: ['fieldId', 'exactText', 'exact'] for exact string replacement
+const DOC_FORMS = {
+  // ─── SPROSTREDKOVATEĽSKÉ ZMLUVY ───
+  'nova-sz.docx': {
+    title: 'Zmluva o výhradnom poskytovaní realitných služieb',
+    sections: [
+      ..._fPerson('z1_','Záujemca 1'),
+      ..._fPerson('z2_','Záujemca 2'),
+      ..._fProperty(),
+      { title: 'Zmluvné podmienky', fields: [
+        ['f_kupna_cena','Kúpna cena (EUR)','number'],
+        ['f_kupna_slovom','Kúpna cena slovom','text',true],
+        ['f_lehota','Lehota na podpis rezervačnej zmluvy'],
+        ['f_doba','Doba trvania zmluvy'],
+        ['f_typ','Typ nehnuteľnosti','select:Byt|Rodinný dom|Pozemok|Iné'],
+      ]},
+      ..._fSignature(),
+    ],
+    pattern: 'bullets', // uses [ • ] markers, replaced in order
+    bulletOrder: [
+      'z1_meno','z1_adresa','z1_nar','z1_podiel','z1_email','z1_tel',
+      'z2_meno','z2_adresa','z2_nar','z2_podiel','z2_email','z2_tel',
+      'n_parcela','n_vymera','n_typ_stavby','n_lv','n_kataster','n_okres','n_obec','n_okresny_urad',
+      'f_kupna_cena','f_kupna_slovom','f_lehota',null,null,null,'f_kupna_cena2','f_kupna_datum',
+    ],
+    repl: [
+      ['f_doba', '_________', 'exact'],
+      ['n_lv','LV č.'],['n_okres','okres:'],['n_obec','obec:'],['n_kataster','územie:'],
+      ['p_meno','Meno a priezvisko:'],['p_datum','Dátum:'],
+    ]
+  },
+  'nevyhradna-sz-2025-jeden-klient.docx': {
+    title: 'Nevýhradná SZ - jeden klient (2025)',
+    sections: [
+      ..._fPerson('z1_','Záujemca'),
+      ..._fPropertyShort(),
+      { title: 'Zmluvné podmienky', fields: [
+        ['f_kupna_cena','Kúpna cena (EUR)','number'],
+        ['f_kupna_slovom','Kúpna cena slovom','text',true],
+        ['f_provizia','Výška provízie'],
+        ['f_platna_do','Zmluva platná do','date'],
+        ['f_typ','Typ nehnuteľnosti','select:Byt|Rodinný dom|Pozemok|Iné'],
+      ]},
+      ..._fSignature(),
+    ],
+    repl: [
+      ['f_kupna_cena','je ','dots',' EUR'],['f_kupna_slovom','slovom '],['f_provizia',''],
+      ['f_platna_do','do '],
+      ['n_lv','LV č'],['n_okres','okres:'],['n_obec','obec:'],['n_kataster','územie:'],
+      ['p_meno','Meno a priezvisko:'],['p_datum','Dátum:'],
+      ['f_sprostredkovatelia','spoločnostiam '],
+    ]
+  },
+  'nevyhradna-sz-viaceri-klienti.docx': {
+    title: 'Nevýhradná SZ - viacerí klienti',
+    sections: [
+      ..._fPerson('z1_','Záujemca 1'),
+      ..._fPerson('z2_','Záujemca 2'),
+      ..._fPropertyShort(),
+      { title: 'Zmluvné podmienky', fields: [
+        ['f_kupna_cena','Kúpna cena (EUR)','number'],
+        ['f_kupna_slovom','Kúpna cena slovom','text',true],
+        ['f_provizia','Výška provízie'],
+        ['f_platna_do','Zmluva platná do','date'],
+        ['f_typ','Typ nehnuteľnosti','select:Byt|Rodinný dom|Pozemok|Iné'],
+      ]},
+      ..._fSignature(),
+    ],
+    repl: [
+      ['f_kupna_cena','je ','dots',' EUR'],['f_kupna_slovom','slovom '],['f_provizia',''],
+      ['f_platna_do','do '],
+      ['n_lv','LV č'],['n_okres','okres:'],['n_obec','obec:'],['n_kataster','územie:'],
+      ['p_meno','Meno a priezvisko:'],['p_datum','Dátum:'],
+    ]
+  },
+  'sz-najom.docx': {
+    title: 'Sprostredkovateľská zmluva - nájom',
+    sections: [
+      ..._fPerson('z1_','Záujemca (prenajímateľ)'),
+      ..._fProperty(),
+      { title: 'Podmienky nájmu', fields: [
+        ['f_cislo_zmluvy','Číslo zmluvy'],
+        ['f_cena_najmu','Cena nájmu (EUR)','number'],
+        ['f_najom_slovom','Cena nájmu slovom','text',true],
+        ['f_poplatky','Poplatky za energie (EUR)','number'],
+        ['f_provizia','Provízia (EUR)','number'],
+        ['f_doba_od','Doba trvania od','date'],
+        ['f_doba_do','Doba trvania do','date'],
+      ]},
+      ..._fSignature(),
+    ],
+    pattern: 'mixed',
+    repl: [
+      ['f_cislo_zmluvy','_________','exact'],
+      ['n_lv','LV č'],['n_kataster','územie'],['n_okres','okres'],['n_obec','obec'],
+      ['n_okresny_urad','úrad'],['n_byt','Byt č'],['n_poschodie','poschodí'],
+      ['n_supisne','súpisné'],['n_typ_stavby','stavby'],['n_popis','Popis'],
+      ['n_vchod','Vchod'],['n_parcela','parc'],['n_druh','pozemku'],['n_vymera','Výmera'],
+      ['n_podiel','podiel'],
+      ['f_provizia','Províz'],['f_cena_najmu','nájmu'],['f_najom_slovom','slovom'],
+      ['f_poplatky','výške'],['f_doba_od','obdobie od'],['f_doba_do','do '],
+      ['p_meno','Meno a priezvisko:'],['p_datum','Dátum:'],
+    ]
+  },
+  'pp-predaj.docx': {
+    title: 'Preberací protokol - predaj',
+    sections: [
+      ..._fPersonFull('od_','Odovzdávajúci'),
+      ..._fPersonFull('pr_','Preberajúci'),
+      ..._fProperty(),
+      { title: 'Stav a merania', fields: [
+        ['m_vady','Vady zistené pri preberaní','text',true],
+        ['m_elektromer','Elektromer č. / stav'],
+        ['m_vodomer_tepla','Vodomer teplá voda č. / stav'],
+        ['m_vodomer_studena','Vodomer studená voda č. / stav'],
+        ['m_plynomer','Plynomer č. / stav'],
+        ['m_teplo','Merače tepla / stav'],
+      ]},
+      { title: 'Kľúče', fields: [
+        ['k_byt','Kľúče od bytu (počet)','number'],
+        ['k_vchod','Kľúče od vchodu (počet)','number'],
+        ['k_pivnica','Kľúče od pivnice (počet)','number'],
+        ['k_garaz','Kľúče od garáže (počet)','number'],
+        ['k_schranka','Kľúče od schránky (počet)','number'],
+      ]},
+      { title: 'Zariadenie bytu', fields: [
+        ['z_kuchyna','Kuchyňa','text',true],
+        ['z_kupelna','Kúpeľňa a WC','text',true],
+        ['z_ine','Iné','text',true],
+      ]},
+      ..._fSignature(),
+    ],
+    repl: [
+      ['m_vady','Vady'],['m_elektromer','Elektromer'],
+      ['m_vodomer_tepla','teplá voda'],['m_vodomer_studena','studená voda'],
+      ['m_plynomer','Plynomer'],
+    ]
+  },
+
+  // ─── NÁJOMNÉ ZMLUVY ───
+  'najomna-zmluva-obciansky-zakonnik.docx': {
+    title: 'Sprostredkovateľská zmluva - nájom bytu (OZ)',
+    sections: [
+      ..._fPersonBasic('z1_','Záujemca (vlastník)'),
+      ..._fProperty(),
+      { title: 'Podmienky', fields: [
+        ['f_najomne','Cena nájomného (EUR)','number'],
+        ['f_najomne_slovom','Cena nájomného slovom','text',true],
+        ['f_provizia','Výška provízie (EUR)','number'],
+        ['f_provizia_slovom','Výška provízie slovom','text',true],
+        ['f_platna_do','Zmluva platná do','date'],
+        ['f_parking_lv','LV č. parkovacie státie'],
+      ]},
+      ..._fSignature(),
+    ],
+    repl: [
+      ['n_lv','LV č.'],['f_najomne','je '],['f_najomne_slovom','slovom '],
+      ['f_provizia','výške '],['f_provizia_slovom','slovom '],
+      ['f_platna_do','do '],
+      ['n_lv','LV č'],['n_okres','okres:'],['n_obec','obec:'],['n_kataster','územie:'],
+      ['p_meno','Meno a priezvisko:'],['p_datum','Dátum:'],
+    ]
+  },
+  'najomna-zmluva-rodinny-dom.docx': {
+    title: 'Nájomná zmluva - rodinný dom',
+    sections: [
+      ..._fPerson('p1_','Prenajímateľ 1'),
+      ..._fPerson('p2_','Prenajímateľ 2'),
+      { title: 'Bankové spojenie prenajímateľov', fields: [
+        ['pb_iban','IBAN'],
+      ]},
+      ..._fPerson('n1_','Nájomca 1'),
+      ..._fPerson('n2_','Nájomca 2'),
+      ..._fProperty(),
+      { title: 'Podmienky nájmu', fields: [
+        ['f_najomne','Mesačné nájomné (EUR)','number'],
+        ['f_energie','Záloha za energie (EUR)','number'],
+        ['f_zabezpeka','Peňažná zabezpeka (EUR)','number'],
+        ['f_doba_od','Doba nájmu od','date'],
+        ['f_doba_do','Doba nájmu do','date'],
+      ]},
+      ..._fSignature(),
+    ],
+    repl: [
+      ['n_lv','LV č'],
+    ]
+  },
+  'vzor-najomna-zmluva.doc': {
+    title: 'Nájomná zmluva - krátkodobý nájom bytu',
+    sections: [
+      ..._fPerson('pr_','Prenajímateľ'),
+      ..._fPerson('na_','Nájomca'),
+      ..._fProperty(),
+      { title: 'Podmienky nájmu', fields: [
+        ['f_plocha','Celková podlahová plocha (m²)','number'],
+        ['f_pocet_osob','Počet osôb','number'],
+        ['f_doba_od','Nájom od','date'],
+        ['f_doba_do','Nájom do','date'],
+        ['f_najomne','Mesačné nájomné (EUR)','number'],
+        ['f_najomne_slovom','Nájomné slovom','text',true],
+        ['f_kaucia','Kaucia (EUR)','number'],
+        ['f_kaucia_slovom','Kaucia slovom'],
+        ['f_elektrina','Elektrická energia (EUR)','number'],
+        ['f_voda','Vodné a stočné (EUR)','number'],
+        ['f_celkovo','Celkovo (EUR)','number'],
+      ]},
+      ..._fSignature(),
+    ]
+  },
+  'nz-dodatok.doc': {
+    title: 'Dodatok č. 1 k nájomnej zmluve',
+    sections: [
+      ..._fPerson('pr_','Prenajímateľ'),
+      ..._fPerson('na_','Nájomca'),
+      { title: 'Dodatok', fields: [
+        ['d_povodna_zmluva','Dátum pôvodnej zmluvy','date'],
+        ['d_predlzenie_do','Predĺženie nájmu do','date'],
+        ['d_nove_najomne','Nové nájomné (EUR)','number'],
+      ]},
+      ..._fSignature(),
+    ],
+    repl: [] // .doc format - no DOCX replacement available
+  },
+  'nz-nebyt-dodatok.docx': {
+    title: 'Dodatok - nebytový priestor',
+    sections: [
+      ..._fPersonBasic('pr_','Prenajímateľ'),
+      ..._fPersonBasic('na_','Nájomca'),
+      ..._fProperty(),
+      { title: 'Dodatok', fields: [
+        ['d_povodna_zmluva','Dátum pôvodnej zmluvy','date'],
+        ['d_nazov_zmluvy','Názov pôvodnej zmluvy','text',true],
+        ['d_np_druh','Druh nebytového priestoru'],
+        ['d_np_podiel','Podiel priestoru'],
+        ['d_najomne_parking','Nájomné za park. státie (EUR)','number'],
+        ['d_najomne_byt','Pôvodné nájomné za byt (EUR)','number'],
+        ['d_celkove_najomne','Nová celková výška nájomného (EUR)','number'],
+      ]},
+      ..._fSignature(),
+    ],
+    repl: [['d_povodna_zmluva','dňa'],['p_datum','dňa']]
+  },
+  'ukoncenie-najmu-dohoda.docx': {
+    title: 'Dohoda o skončení nájmu bytu',
+    sections: [
+      ..._fPersonBasic('pr_','Prenajímateľ'),
+      ..._fPersonBasic('na_','Nájomca'),
+      { title: 'Ukončenie', fields: [
+        ['u_povodna_zmluva','Dátum pôvodnej zmluvy','date'],
+        ['u_datum_ukoncenia','Dátum skončenia nájmu','date'],
+        ['u_iban','IBAN nájomcu (na vrátenie depozitu)'],
+      ]},
+      { title: 'Stav meračov', fields: [
+        ['m_studena','Studená voda (m³)'],
+        ['m_tepla','Teplá voda (m³)'],
+        ['m_elektrika','Elektrika (kWh)'],
+        ['m_teplo','Teplo'],
+        ['m_kluceOdovzdane','Počet odovzdaných kľúčov'],
+      ]},
+      { title: 'Stav bytu', fields: [
+        ['u_stav','Stav bytu','text',true],
+      ]},
+      ..._fSignature(),
+    ],
+    repl: [
+      ['u_povodna_zmluva','zo dňa'],['u_datum_ukoncenia','ku dňu'],
+      ['u_iban','IBAN'],
+      ['m_studena','studenej vody'],['m_tepla','teplej vody'],
+      ['m_elektrika','elektriky'],['m_teplo','tepla stav'],
+      ['m_kluceOdovzdane','kľúčov'],
+    ]
+  },
+
+  // ─── NÁBOROVÉ LISTY ───
+  'nabor-byt-ak.docx': {
+    title: 'Náborový list - byt',
+    sections: [
+      { title: 'Základné údaje', fields: [
+        ['b_lokalita','Lokalita','text',true],
+        ['b_izby','Počet izieb','number'],
+        ['b_poschodie','Poschodie z/poschodí'],
+        ['b_cena','Cena (EUR)','number'],
+        ['b_vah','Výťah','select:Áno|Nie'],
+        ['b_vek','Vek','select:Starý|Novostavba'],
+      ]},
+      { title: 'Plochy a parametre', fields: [
+        ['b_plocha','Obytná plocha (m²)','number'],
+        ['b_material','Materiál domu','select:Panel|Tehla|Železobetón|Iné'],
+        ['b_orientacia','Orientácia (svetové strany)'],
+        ['b_vstup','Vstup do domu','select:Voľný|Zámok|Zvonček|Vrátnik'],
+        ['b_parkovanie','Parkovanie','select:Garáž|Garáž. státie|Parkovisko|Iné'],
+        ['b_balkon','Balkón (m²)'],
+        ['b_terasa','Terasa (m²)'],
+        ['b_pivnica','Pivnica','select:Áno|Nie'],
+      ]},
+      { title: 'Stav a vybavenie', fields: [
+        ['b_stav','Stav bytu','select:Pôvodný|Čiastočne rekonštr.|Kompletne rekonštr.|Novostavba'],
+        ['b_kupelna','Kúpeľňa'],
+        ['b_wc','WC','select:Samostatné|Spoločné'],
+        ['b_okna','Okná'],
+        ['b_dvere','Vchodové dvere','select:Pôvodné|Bezpečnostné'],
+        ['b_tv','TV a internet','select:Optika|Bezdrôtový|ADSL'],
+      ]},
+      { title: 'Ďalšie informácie', fields: [
+        ['b_financovanie','Financovanie','select:Hotovosť|Hypotéka + ŠFRB'],
+        ['b_popis','Ďalší popis nehnuteľnosti','text',true],
+        ['b_rekonstrukcie_domu','Rekonštrukcie byt. domu','text',true],
+        ['b_rekonstrukcie_bytu','Rekonštrukcie bytu','text',true],
+        ['b_podmienky_prevod','Prevod podmienený','text',true],
+        ['b_podmienky_prenajom','Prenájom podmienený','text',true],
+        ['b_poznamky','Iné poznámky','text',true],
+        ['b_uvery','Úverové a záložné zmluvy','text',true],
+      ]},
+    ],
+    repl: [['b_balkon','balkón'],['b_terasa','terasa']]
+  },
+  'nabor-dom-ak.docx': {
+    title: 'Náborový list - dom',
+    sections: [
+      { title: 'Základné údaje', fields: [
+        ['d_lokalita','Lokalita','text',true],
+        ['d_izby','Počet izieb','number'],
+        ['d_poschodia','Počet poschodí','number'],
+        ['d_cena','Cena (EUR)','number'],
+        ['d_vek','Vek (rok kolaudácie)'],
+        ['d_rekonstruovany','Rekonštruovaný (rok)'],
+      ]},
+      { title: 'Plochy a parametre', fields: [
+        ['d_plocha','Úžitková plocha (m²)','number'],
+        ['d_pozemok','Pozemok (m²)','number'],
+        ['d_material','Materiál domu','select:Panel|Tehla|Železobetón|Iné'],
+        ['d_orientacia','Orientácia domu (svetové strany)'],
+        ['d_orientacia_zahrada','Orientácia záhrady'],
+        ['d_zateplenie','Zateplenie'],
+        ['d_typ','Typ domu','select:Samostatný|Rohový|Radový|Dvojdom|Trojdom'],
+      ]},
+      { title: 'Vybavenie', fields: [
+        ['d_parkovanie','Parkovanie','select:Garáž|Státie|Prístrešok|Parkovisko|Iné'],
+        ['d_balkon','Balkón'],
+        ['d_terasa','Terasa'],
+        ['d_pivnica','Pivnica'],
+        ['d_stav','Stav domu','select:Pôvodný|Čiastočne rekonštr.|Kompletne rekonštr.|Novostavba'],
+        ['d_kurenie','Kúrenie','select:Centrálne|Lokálne|Elektrické|Tuhé palivo|Plyn|Iné'],
+        ['d_okna','Okná'],
+        ['d_dvere','Vchodové dvere','select:Pôvodné|Bezpečnostné'],
+        ['d_strecha','Materiál strechy'],
+        ['d_tv','TV a internet','select:Optika|Bezdrôtový|ADSL'],
+      ]},
+      { title: 'Ďalšie informácie', fields: [
+        ['d_financovanie','Financovanie','select:Hotovosť|Hypotéka + ŠFRB'],
+        ['d_popis','Ďalší popis nehnuteľnosti','text',true],
+        ['d_zahrada','Vybavenie záhrady','text',true],
+        ['d_podmienky_prevod','Prevod podmienený','text',true],
+        ['d_podmienky_kupa','Kúpa podmienená','text',true],
+        ['d_poznamky','Iné poznámky','text',true],
+        ['d_uvery','Úverové a záložné zmluvy','text',true],
+      ]},
+    ],
+    repl: []
+  },
+
+  // ─── PREBERACIE PROTOKOLY ───
+  'preb.-protokol-najom.docx': {
+    title: 'Preberací protokol - nájom',
+    sections: [
+      ..._fPersonFull('od_','Odovzdávajúci'),
+      ..._fPersonFull('pr_','Preberajúci'),
+      { title: 'Nehnuteľnosť', fields: [
+        ['n_popis','Popis nehnuteľnosti','text',true],
+      ]},
+      { title: 'Zariadenie a vybavenie', fields: [
+        ['z_kuchyna','Kuchyňa','text',true],
+        ['z_kupelna','Kúpeľňa a WC','text',true],
+        ['z_ine','Iné','text',true],
+      ]},
+      { title: 'Stav bytu', fields: [
+        ['s_stav','Stav bytu','text',true],
+        ['s_vady','Vady zistené pri preberaní','text',true],
+      ]},
+      { title: 'Stav meračov', fields: [
+        ['m_elektromer','Elektromer č. / stav'],
+        ['m_vodomer_tepla','Vodomer teplá voda č. / stav'],
+        ['m_vodomer_studena','Vodomer studená voda č. / stav'],
+        ['m_plynomer','Plynomer č. / stav'],
+        ['m_teplo1','Merač tepla - izba 1'],['m_teplo2','Merač tepla - izba 2'],
+        ['m_teplo3','Merač tepla - izba 3'],['m_teplo4','Merač tepla - kuchyňa'],
+      ]},
+      { title: 'Kľúče', fields: [
+        ['k_byt','Od bytu (počet)','number'],['k_vchod','Od vchodu (počet)','number'],
+        ['k_pivnica','Od pivnice (počet)','number'],['k_garaz','Od garáže (počet)','number'],
+        ['k_schranka','Od schránky (počet)','number'],
+      ]},
+      { title: 'Kontakt na správcu', fields: [
+        ['sp_meno','Meno správcu'],['sp_kontakt','Kontakt na správcu'],
+      ]},
+      ..._fSignature(),
+    ],
+    repl: [
+      ['m_elektromer','Elektromer'],['m_vodomer_tepla','teplá voda'],
+      ['m_vodomer_studena','studená voda'],['m_plynomer','Plynomer'],
+    ]
+  },
+
+  // ─── VECNÉ BREMENÁ ───
+  'vb-vklad.docx': {
+    title: 'Návrh na vklad vecného bremena do katastra',
+    sections: [
+      ..._fPerson('pov_','Povinný z vecného bremena'),
+      ..._fPerson('opr_','Oprávnený z vecného bremena'),
+      ..._fProperty(),
+      { title: 'Okresný úrad', fields: [
+        ['ou_nazov','Názov okresného úradu','text',true],
+        ['ou_adresa','Adresa okresného úradu','text',true],
+      ]},
+      ..._fSignature(),
+    ],
+    repl: []
+  },
+  'vb-zriadenie.docx': {
+    title: 'Zmluva o zriadení vecného bremena',
+    sections: [
+      ..._fPerson('pov_','Povinný z vecného bremena'),
+      ..._fPerson('opr_','Oprávnený z vecného bremena'),
+      ..._fProperty(),
+      ..._fSignature(),
+    ],
+    repl: []
+  },
+  'vklad-zrusenie-vb-do-kn.docx': {
+    title: 'Návrh na zrušenie vecného bremena v katastri',
+    sections: [
+      ..._fPerson('pov_','Povinný z vecného bremena'),
+      ..._fPerson('opr_','Oprávnený z vecného bremena'),
+      ..._fProperty(),
+      { title: 'Referencia', fields: [
+        ['r_z_cislo','Z-číslo (pôvodná evidencia)'],
+        ['r_z_datum','Dátum pôvodnej evidencie','date'],
+      ]},
+      { title: 'Okresný úrad', fields: [
+        ['ou_nazov','Názov okresného úradu','text',true],
+        ['ou_adresa','Adresa okresného úradu','text',true],
+      ]},
+      ..._fSignature(),
+    ],
+    repl: []
+  },
+  'zrusenie-vb.docx': {
+    title: 'Zmluva o zrušení vecného bremena',
+    sections: [
+      ..._fPerson('pov_','Povinný z vecného bremena'),
+      ..._fPerson('opr_','Oprávnený z vecného bremena'),
+      ..._fProperty(),
+      { title: 'Referencia', fields: [
+        ['r_z_cislo','Z-číslo (pôvodná evidencia)'],
+        ['r_z_datum','Dátum pôvodnej evidencie','date'],
+      ]},
+      ..._fSignature(),
+    ],
+    repl: []
+  },
+
+  // ─── FINANČNÉ ───
+  'zlozenie-zalohy-moderny-makler.docx': {
+    title: 'Vyhlásenie o zložení finančnej zabezpeky',
+    sections: [
+      ..._fPerson('z1_','Záujemca - nájomca'),
+      ..._fProperty(),
+      { title: 'Finančné údaje', fields: [
+        ['f_najomne','Výška nájomného (EUR)','number'],
+        ['f_zaloha','Záloha za služby (EUR)','number'],
+        ['f_zabezpeka','Finančná zabezpeka (EUR)','number'],
+        ['f_deadline','Najneskôr do (podpis NZ)','date'],
+      ]},
+      ..._fSignature(),
+    ],
+    repl: [
+      ['n_ulica','na ulici'],['n_supisne','súpisné č.'],['n_lv','LV č'],
+      ['n_byt','priestor č.'],['n_parking','státie č.'],
+    ]
+  },
+  'vratenie-financnej-zabezpeky-2025.docx': {
+    title: 'Vyhlásenie o vrátení finančnej zabezpeky',
+    sections: [
+      ..._fPerson('z1_','Záujemca - nájomca'),
+      ..._fProperty(),
+      { title: 'Finančné údaje', fields: [
+        ['f_datum_nz','Dátum podpisu nájomnej zmluvy','date'],
+        ['f_suma','Výška vrátenej zabezpeky (EUR)','number'],
+      ]},
+      ..._fSignature(),
+    ],
+    repl: [
+      ['n_byt','č.'],['n_ulica','ulici'],['n_supisne','súpisné č.'],['n_lv','LV č'],
+      ['f_datum_nz','dňa'],['f_suma','výške'],
+    ]
+  },
+
+  // ─── GDPR - jednoduché ───
+  'gdpr-zamestnanec.docx': {
+    title: 'GDPR informovanie - zamestnanec',
+    sections: [
+      { title: 'Dotknutá osoba', fields: [['do_meno','Meno a priezvisko','text',true]] },
+      ..._fSignature(),
+    ],
+    repl: [['do_meno','preserve">.']] // first large dots = name
+  },
+  'informovanie-dotknutej-osoby-klient.docx': {
+    title: 'GDPR informovanie - klient',
+    sections: [
+      { title: 'Dotknutá osoba', fields: [['do_meno','Meno a priezvisko dotknutej osoby','text',true]] },
+      ..._fSignature(),
+    ],
+    repl: [['do_meno','preserve">.']]
+  },
+  'informovanie-dotknutej-osoby-uchadzac-o-zamestnanie.docx': {
+    title: 'GDPR informovanie - uchádzač o zamestnanie',
+    sections: [
+      { title: 'Dotknutá osoba', fields: [['do_meno','Meno a priezvisko dotknutej osoby','text',true]] },
+      ..._fSignature(),
+    ],
+    repl: [['do_meno','preserve">.']]
+  },
+  'informovanie-dotknutej-osoby-zaujemca-o-cenovu-ponuku.docx': {
+    title: 'GDPR informovanie - záujemca o cenovú ponuku',
+    sections: [
+      { title: 'Dotknutá osoba', fields: [['do_meno','Meno a priezvisko dotknutej osoby','text',true]] },
+      ..._fSignature(),
+    ],
+    repl: [['do_meno','preserve">.']]
+  },
+  'informovanie-dotknutej-osoby-potencialny-klient-marketingovy-ucel.docx': {
+    title: 'GDPR informovanie - potenciálny klient (marketing)',
+    sections: [ ..._fSignature() ],
+    repl: []
+  },
+  'informovanie-dotknutej-osoby-staly-klient-marketingovy-ucel.docx': {
+    title: 'GDPR informovanie - stály klient (marketing)',
+    sections: [ ..._fSignature() ],
+    repl: []
+  },
+
+  // ─── GDPR - súhlasy ───
+  'suhlas.-uchadzac-o-zamestnaniedocx.docx': {
+    title: 'Súhlas - uchádzač o zamestnanie',
+    sections: [
+      { title: 'Dotknutá osoba', fields: [
+        ['do_meno','Meno a priezvisko'],
+        ['do_adresa','Adresa pobytu','text',true],
+        ['do_nar','Dátum narodenia','date'],
+        ['do_email','E-mail','email'],
+      ]},
+      ..._fSignature(),
+    ],
+    // 4 dot sequences = name, address, DOB, email (in order)
+    repl: []
+  },
+  'suhlas_marketingovy-ucel_potencialny-klient.docx': {
+    title: 'Súhlas - marketingový účel (potenciálny klient)',
+    sections: [
+      { title: 'Dotknutá osoba', fields: [
+        ['do_meno','Meno a priezvisko'],
+        ['do_adresa','Adresa pobytu','text',true],
+        ['do_nar','Dátum narodenia','date'],
+        ['do_email','E-mail','email'],
+      ]},
+      ..._fSignature(),
+    ],
+    repl: []
+  },
+
+  // ─── GDPR - poučenie ───
+  'poucenie-o-povereni-opravnenej-osoby-zamestnanec.docx': {
+    title: 'Poučenie oprávnenej osoby - zamestnanec',
+    sections: [
+      { title: 'Oprávnená osoba', fields: [
+        ['oo_meno','Titul, meno, priezvisko'],
+        ['oo_pozicia','Pracovná pozícia'],
+      ]},
+      { title: 'Poučujúca osoba', fields: [
+        ['po_meno','Titul, meno, priezvisko'],
+      ]},
+      { title: 'Dátum', fields: [
+        ['p_datum','Dátum poučenia','date'],
+      ]},
+    ],
+    repl: [
+      ['oo_meno','meno, priezvisko:'],['oo_pozicia','pozícia:'],
+    ]
+  },
+
+  // ─── ZMLUVY O SPRACÚVANÍ OÚ ───
+  'zmluva-o-spracuvani-osobnych-udajov-bozp.docx': {
+    title: 'Zmluva o spracúvaní OÚ - BOZP',
+    sections: [
+      { title: 'Sprostredkovateľ', fields: [
+        ['sp_nazov','Názov spoločnosti','text',true],
+        ['sp_pravna','Právna forma'],
+        ['sp_sidlo','Sídlo','text',true],
+        ['sp_ico','IČO'],
+        ['sp_sud','Okresný súd'],
+        ['sp_oddiel','Oddiel'],
+        ['sp_vlozka','Vložka číslo'],
+        ['sp_konatel','V mene koho koná'],
+      ]},
+      { title: 'Hlavná zmluva', fields: [
+        ['hz_nazov','Názov zmluvy','text',true],
+        ['hz_datum','Dátum zmluvy','date'],
+      ]},
+      ..._fSignature(),
+    ],
+    repl: [
+      ['sp_nazov','Názov:'],['sp_pravna','Právna forma:'],['sp_sidlo','Sídlo:'],
+      ['sp_ico','IČO:'],['sp_sud','súdu '],['sp_oddiel','Oddiel:'],
+      ['sp_vlozka','Vložka číslo:'],['sp_konatel','koná:'],
+    ]
+  },
+  'zmluva-o-spracuvani-osobnych-udajov-ekonom-uctovnik.docx': {
+    title: 'Zmluva o spracúvaní OÚ - ekonóm/účtovník',
+    sections: [
+      { title: 'Sprostredkovateľ', fields: [
+        ['sp_nazov','Názov spoločnosti','text',true],['sp_pravna','Právna forma'],
+        ['sp_sidlo','Sídlo','text',true],['sp_ico','IČO'],
+        ['sp_sud','Okresný súd'],['sp_oddiel','Oddiel'],['sp_vlozka','Vložka číslo'],
+        ['sp_konatel','V mene koho koná'],
+      ]},
+      { title: 'Hlavná zmluva', fields: [
+        ['hz_nazov','Názov zmluvy','text',true],['hz_datum','Dátum zmluvy','date'],
+      ]},
+      ..._fSignature(),
+    ],
+    repl: [
+      ['sp_nazov','Názov:'],['sp_pravna','Právna forma:'],['sp_sidlo','Sídlo:'],
+      ['sp_ico','IČO:'],['sp_sud','súdu '],['sp_oddiel','Oddiel:'],
+      ['sp_vlozka','Vložka číslo:'],['sp_konatel','koná:'],
+    ]
+  },
+  'zmluva-o-spracuvani-osobnych-udajov-pzs.docx': {
+    title: 'Zmluva o spracúvaní OÚ - PZS',
+    sections: [
+      { title: 'Sprostredkovateľ', fields: [
+        ['sp_nazov','Názov spoločnosti','text',true],['sp_pravna','Právna forma'],
+        ['sp_sidlo','Sídlo','text',true],['sp_ico','IČO'],
+        ['sp_sud','Okresný súd'],['sp_oddiel','Oddiel'],['sp_vlozka','Vložka číslo'],
+        ['sp_konatel','V mene koho koná'],
+      ]},
+      { title: 'Hlavná zmluva', fields: [
+        ['hz_nazov','Názov zmluvy','text',true],['hz_datum','Dátum zmluvy','date'],
+      ]},
+      ..._fSignature(),
+    ],
+    repl: [
+      ['sp_nazov','Názov:'],['sp_pravna','Právna forma:'],['sp_sidlo','Sídlo:'],
+      ['sp_ico','IČO:'],['sp_sud','súdu '],['sp_oddiel','Oddiel:'],
+      ['sp_vlozka','Vložka číslo:'],['sp_konatel','koná:'],
+    ]
+  },
+  'zmluva-o-spracuvani-osobnych-udajov-szco.docx': {
+    title: 'Zmluva o spracúvaní OÚ - SZČO',
+    sections: [
+      { title: 'Sprostredkovateľ', fields: [
+        ['sp_nazov','Názov spoločnosti','text',true],['sp_pravna','Právna forma'],
+        ['sp_sidlo','Sídlo','text',true],['sp_ico','IČO'],
+        ['sp_sud','Okresný súd'],['sp_oddiel','Oddiel'],['sp_vlozka','Vložka číslo'],
+        ['sp_konatel','V mene koho koná'],
+      ]},
+      { title: 'Hlavná zmluva', fields: [
+        ['hz_nazov','Názov zmluvy','text',true],['hz_datum','Dátum zmluvy','date'],
+      ]},
+      ..._fSignature(),
+    ],
+    repl: [
+      ['sp_nazov','Názov:'],['sp_pravna','Právna forma:'],['sp_sidlo','Sídlo:'],
+      ['sp_ico','IČO:'],['sp_sud','súdu '],['sp_oddiel','Oddiel:'],
+      ['sp_vlozka','Vložka číslo:'],['sp_konatel','koná:'],
+    ]
+  },
+
+  // ─── OSTATNÉ ───
+  'cestne-vyhlasenie-o-poskytnuti-ubytovania.docx': {
+    title: 'Čestné vyhlásenie o poskytnutí ubytovania',
+    sections: [
+      ..._fPersonBasic('pr_','Prenajímateľ'),
+      ..._fProperty(),
+      { title: 'Obdobie a hosť', fields: [
+        ['h_od','Ubytovanie od','date'],['h_do','Ubytovanie do','date'],
+        ['h_meno','Meno a priezvisko hosťa'],
+        ['h_adresa','Trvalý pobyt hosťa','text',true],
+        ['h_nar','Dátum narodenia hosťa','date'],
+        ['h_rc','Rodné číslo hosťa'],
+        ['h_pas','Číslo pasu'],
+      ]},
+      ..._fSignature(),
+    ],
+    repl: [] // yellow highlighted fields - handled via ordered dots
+  },
+  'informacna-povinnost-dotknuta-osoba_kamery.docx': {
+    title: 'Informačná povinnosť - kamery',
+    sections: [
+      { title: 'Nastavenie', fields: [['k_dni','Doba uchovávania záznamov (počet dní)','number']] },
+    ],
+    repl: []
+  },
+  'b.-smernica-o-bezpecnostnych-opatreniach-prevadzkovatela.docx': {
+    title: 'Smernica o bezpečnostných opatreniach',
+    sections: [
+      { title: 'Základné údaje', fields: [['s_datum','Dátum prijatia smernice','date']] },
+    ],
+    repl: []
+  },
+  'zoznam-osob.docx': {
+    title: 'Zoznam osôb oprávnených užívať byt',
+    sections: [
+      { title: 'Osoba 1', fields: [
+        ['o1_meno','Meno a priezvisko'],['o1_rod','Rodné priezvisko'],
+        ['o1_nar','Dátum narodenia','date'],['o1_rc','Rodné číslo'],
+        ['o1_adresa','Adresa trvalého pobytu','text',true],
+      ]},
+      { title: 'Osoba 2', fields: [
+        ['o2_meno','Meno a priezvisko'],['o2_rod','Rodné priezvisko'],
+        ['o2_nar','Dátum narodenia','date'],['o2_rc','Rodné číslo'],
+        ['o2_adresa','Adresa trvalého pobytu','text',true],
+      ]},
+      { title: 'Osoba 3', fields: [
+        ['o3_meno','Meno a priezvisko'],['o3_rod','Rodné priezvisko'],
+        ['o3_nar','Dátum narodenia','date'],['o3_rc','Rodné číslo'],
+        ['o3_adresa','Adresa trvalého pobytu','text',true],
+      ]},
+    ],
+    repl: []
+  },
+
+  // ─── STATICKÉ ───
+  'informovanie-dotknutych-osob-webova-stranka.docx': null,
+  'pouzitie-dokumentacie.docx': null,
+};
+
+let _currentDocFile = null;
+
+function openDocForm(filename) {
+  const formDef = DOC_FORMS[filename];
+  if (!formDef) { downloadDoc(filename); return; }
+  _currentDocFile = filename;
+  document.getElementById('docform-title').textContent = formDef.title;
+  const body = document.getElementById('docform-body');
+  let html = '';
+  for (const section of formDef.sections) {
+    html += '<div class="docform-section">';
+    html += '<div class="docform-section-title">' + section.title + '</div>';
+    html += '<div class="docform-grid">';
+    for (const f of section.fields) {
+      const [id, label, type, full] = f;
+      const cls = full ? ' full' : '';
+      html += '<div class="docform-field' + cls + '">';
+      html += '<label for="df_' + id + '">' + label + '</label>';
+      if (type && type.startsWith('select:')) {
+        const opts = type.substring(7).split('|');
+        html += '<select id="df_' + id + '"><option value="">-- vyberte --</option>';
+        for (const o of opts) html += '<option value="' + o + '">' + o + '</option>';
+        html += '</select>';
+      } else {
+        html += '<input type="' + (type || 'text') + '" id="df_' + id + '" />';
+      }
+      html += '</div>';
+    }
+    html += '</div></div>';
+  }
+  body.innerHTML = html;
+  document.getElementById('docFormOverlay').style.display = 'block';
+}
+
+function closeDocForm() {
+  document.getElementById('docFormOverlay').style.display = 'none';
+  _currentDocFile = null;
+}
+
+function _getDocFormValues() {
+  if (!_currentDocFile) return {};
+  const formDef = DOC_FORMS[_currentDocFile];
+  if (!formDef) return {};
+  const vals = {};
+  for (const section of formDef.sections) {
+    for (const f of section.fields) {
+      const el = document.getElementById('df_' + f[0]);
+      vals[f[0]] = el ? el.value : '';
+    }
+  }
+  return vals;
+}
+
+// ─── DOCX FILLER ENGINE ───
+async function generateFilledDocx() {
+  if (!_currentDocFile) return;
+  const formDef = DOC_FORMS[_currentDocFile];
+  if (!formDef) return;
+
+  const file = _currentDocFile;
+  // .doc files can't be processed - just download template
+  if (file.endsWith('.doc') && !file.endsWith('.docx')) {
+    alert('Tento formát (.doc) nepodporuje automatické vyplnenie. Stiahne sa šablóna.');
+    downloadDoc(file);
+    return;
+  }
+
+  const vals = _getDocFormValues();
+  const btn = document.querySelector('.docform-btn-pdf');
+  if (btn) { btn.disabled = true; btn.textContent = 'Generujem...'; }
+
+  try {
+    const resp = await fetch('/templates/' + file);
+    if (!resp.ok) throw new Error('Šablóna nenájdená');
+    const buf = await resp.arrayBuffer();
+    const zip = await JSZip.loadAsync(buf);
+
+    let xml = await zip.file('word/document.xml').async('string');
+
+    // 1) Apply contextual replacements (label-based)
+    if (formDef.repl && formDef.repl.length) {
+      for (const r of formDef.repl) {
+        const val = vals[r[0]];
+        if (!val) continue;
+        const safeVal = _escXml(val);
+
+        if (r[2] === 'exact') {
+          // Exact string replacement
+          xml = xml.split(r[1]).join(safeVal);
+        } else {
+          // Find label context, replace the next dot/underscore sequence after it
+          const labelEsc = r[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const regex = new RegExp('(' + labelEsc + '[^<]*?)([\\.]{3,}|[_]{5,})');
+          xml = xml.replace(regex, '$1' + safeVal);
+        }
+      }
+    }
+
+    // 2) For bullet-pattern documents (nova-sz), replace [ • ] in order
+    if (formDef.pattern === 'bullets' && formDef.bulletOrder) {
+      let bIdx = 0;
+      xml = xml.replace(/\[\s*[•·]\s*\]/g, (match) => {
+        if (bIdx < formDef.bulletOrder.length) {
+          const fieldId = formDef.bulletOrder[bIdx];
+          bIdx++;
+          if (fieldId && vals[fieldId]) return _escXml(vals[fieldId]);
+        }
+        return match;
+      });
+    }
+
+    // 3) For ordered dot replacement on simple docs (GDPR suhlas etc.)
+    // If doc has no repl rules but has sections, do ordered dot replacement
+    if ((!formDef.repl || formDef.repl.length === 0) && formDef.sections.length > 0) {
+      const allFields = formDef.sections.flatMap(s => s.fields.map(f => f[0]));
+      const filledFields = allFields.filter(id => vals[id]);
+      if (filledFields.length > 0) {
+        let fIdx = 0;
+        xml = xml.replace(/\.{4,}/g, (match) => {
+          if (fIdx < filledFields.length) {
+            const val = vals[filledFields[fIdx]];
+            if (val) { fIdx++; return _escXml(val); }
+          }
+          return match;
+        });
+      }
+    }
+
+    // Save modified XML back
+    zip.file('word/document.xml', xml);
+    const blob = await zip.generateAsync({
+      type: 'blob',
+      mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    });
+
+    // Download
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = file.replace(/\.docx$/, '_vyplnene.docx');
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+  } catch (err) {
+    alert('Chyba pri generovaní: ' + err.message);
+    console.error(err);
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> Vygenerovať DOCX'; }
+  }
+}
+
+let _naborPreviewTimer = null;
+
+function updateNaborPreview() {
+  if (_naborPreviewTimer) clearTimeout(_naborPreviewTimer);
+  _naborPreviewTimer = setTimeout(_doNaborPreview, 150);
+}
+
+function _doNaborPreview() {
+  const type = document.getElementById('nabor-type')?.value;
+  const el = document.getElementById('naborPreviewContent');
+  if (!el || !type) return;
+
+  const v = (id) => document.getElementById(id)?.value?.trim() || '';
+  const c = (id) => {
+    const wrap = document.getElementById(id);
+    if (!wrap) return '';
+    return [...wrap.querySelectorAll('.nabor-chip.active')].map(x => x.textContent.trim()).join(', ');
+  };
+  const e = (val) => val || '<span class="np-empty">—</span>';
+
+  let html = '';
+  const titleText = type === 'byt' ? 'PRACOVNÝ LIST - BYT' : 'PRACOVNÝ LIST - RODINNÝ DOM';
+  html += `<div class="np-title-bar">${titleText}</div>`;
+
+  if (type === 'byt') {
+    html += _npSection('Základné údaje');
+    html += _npRow('Adresa', e(v('nb-adresa')));
+    html += _npRow2('Vlastníctvo', e(c('nb-vlastnictvo')), 'Vlastník', e(v('nb-vlastnik')));
+    html += _npRow2('Podiel', v('nb-podiel'), 'Správca bytovky', v('nb-spravca-bytovky'));
+    html += _npRow('Ťarcha', c('nb-tarcha'));
+
+    html += _npSection('Bytový dom');
+    html += _npRow2('Vek BD', v('nb-vek-bd'), 'Výťah', c('nb-vytah'));
+    html += _npRow2('Materiál', c('nb-material-bd'), 'Vstup do BD', c('nb-vstup-bd'));
+    html += _npRow('Stav BD', c('nb-stav-bd'));
+    html += _npRow('Rekonštrukcia BD', v('nb-rekon-bd'));
+    html += _npRow('Parkovanie', c('nb-parkovanie-byt'));
+
+    html += _npSection('Byt');
+    html += _npRow2('Počet izieb', e(v('nb-izby')), 'Poschodie', e(v('nb-poschodie')));
+    html += _npRow('Obytná plocha', v('nb-obytna-plocha') ? v('nb-obytna-plocha') + ' m²' : '');
+    html += _npMulti('Dispozícia', v('nb-dispozicia'));
+    html += _npRow('Vykurovanie', c('nb-vykurovanie-byt'));
+    html += _npRow('Ohrev vody', v('nb-ohrev-byt'));
+    html += _npRow2('Okná', c('nb-okna-byt'), 'Komory/Sklá', v('nb-komory-byt'));
+    html += _npRow2('Dvere', c('nb-dvere-byt'), 'Stav bytu', c('nb-stav-bytu'));
+
+    html += _npSection('Príslušenstvo');
+    html += _npRow2('Pivnica', v('nb-pivnica-byt'), 'Terasa', v('nb-terasa-byt'));
+    html += _npRow2('Balkón', v('nb-balkon-byt'), 'Šatník', v('nb-satnik-byt'));
+    html += _npRow2('Špajza', v('nb-spajza-byt'), 'Park. miesto', v('nb-park-miesto'));
+
+    html += _npSection('Rekonštrukcia bytu');
+    html += _npRow2('Rekonštrukcia', c('nb-rekon-byt'), 'Rok', v('nb-rekon-rok-byt'));
+    html += _npMulti('Rozpis', v('nb-rekon-rozpis-byt'));
+
+    html += _npSection('Zariadenie');
+    html += _npRow('Zariadenie', c('nb-zariadenie-byt'));
+    html += _npMulti('Rozpis zariadenia', v('nb-zariadenie-rozpis-byt'));
+
+    html += _npSection('Mesačné náklady');
+    html += _npRow2('Celkom', v('nb-naklady-celkom') ? v('nb-naklady-celkom') + ' €' : '', 'Správca', v('nb-naklady-spravca') ? v('nb-naklady-spravca') + ' €' : '');
+    html += _npRow2('Elektrika', v('nb-naklady-elektrika-byt') ? v('nb-naklady-elektrika-byt') + ' €' : '', 'Plyn', v('nb-naklady-plyn-byt') ? v('nb-naklady-plyn-byt') + ' €' : '');
+    html += _npRow2('Zateplenie', v('nb-zateplenie-byt'), 'Stupačky', v('nb-stupacky'));
+    html += _npRow2('Energ. certifikát', v('nb-ecert-byt'), 'Podlahy', v('nb-podlahy'));
+    html += _npRow('Ostatné', v('nb-naklady-ostatne-byt'));
+
+    html += _npSection('Ostatné');
+    html += _npRow2('Internet', c('nb-internet-byt'), 'Poskytovateľ', v('nb-internet-provider-byt'));
+    html += _npRow('Vysťahovanie', v('nb-vystahovanie'));
+    html += _npMulti('Vady / poškodenia', v('nb-vady-byt'));
+    html += _npMulti('Poznámky', v('nb-poznamky-byt'));
+    html += _npRow('Podmienený prevod', v('nb-podmieneny-byt'));
+    html += _npRow('Kúpa novej - predstava', v('nb-nova-predstava-byt'));
+    html += _npRow('Financovanie', v('nb-financovanie-byt'));
+
+    html += _npSection('Ceny a záver');
+    html += _npRow2('Odporúč. cena', v('nb-cena-odporucana-byt'), 'Cena do inzercie', v('nb-cena-inzercia-byt'));
+    html += _npRow('Provízia pre RK', v('nb-provizia-byt'));
+    html += _npRow('Nadobúdací doklad', v('nb-nadobudaci-byt'));
+    html += _npRow2('Telefón vlastníka', v('nb-tel-vlastnik'), 'Email vlastníka', v('nb-email-vlastnik'));
+    html += _npRow2('Fotenie', v('nb-fotenie-byt'), 'Inzercia', v('nb-inzercia-byt'));
+    html += _npRow2('Maklér', v('nb-makler-byt'), 'Dátum', v('nb-datum-byt'));
+
+  } else {
+    html += _npSection('Základné údaje');
+    html += _npRow('Adresa', e(v('nd-adresa')));
+    html += _npRow2('Počet podlaží', v('nd-podlazia'), 'Počet izieb', v('nd-izby'));
+    html += _npRow('Typ RD', c('nd-typ-rd'));
+    html += _npRow('Stav RD', c('nd-stav-rd'));
+
+    html += _npSection('Rodinný dom');
+    html += _npRow2('Vek RD', v('nd-vek-rd'), 'Energ. certifikát', v('nd-ecert'));
+    html += _npRow2('Zastavaná plocha', v('nd-zastavana') ? v('nd-zastavana') + ' m²' : '', 'Úžitková plocha', v('nd-uzitkova') ? v('nd-uzitkova') + ' m²' : '');
+    html += _npRow('Pozemok celkom', v('nd-pozemok') ? v('nd-pozemok') + ' m²' : '');
+
+    html += _npSection('Inžinierske siete');
+    html += _npRow2('Elektrika', c('nd-elektrika'), 'Voda', c('nd-voda'));
+    html += _npRow2('Odpad', c('nd-odpad'), 'Žumpa (m³)', v('nd-zumpa-m3'));
+    html += _npRow('Plyn', c('nd-plyn'));
+
+    html += _npSection('Konštrukcia');
+    html += _npRow('Materiál', c('nd-material'));
+    html += _npRow2('Obvodové murivo', v('nd-murivo'), 'Deliace priečky', v('nd-priecky'));
+    html += _npRow2('Zateplenie', c('nd-zateplenie'), 'Hrúbka', v('nd-zateplenie-hrubka'));
+    html += _npRow('Fasáda', v('nd-fasada'));
+
+    html += _npSection('Strecha');
+    html += _npRow('Typ strechy', c('nd-strecha-typ'));
+    html += _npRow('Materiál strechy', c('nd-strecha-mat'));
+    html += _npRow('Izolácia', v('nd-strecha-izolacia'));
+
+    html += _npSection('Okná, dvere, zabezpečenie');
+    html += _npRow2('Okná', c('nd-okna'), 'Komory/Sklá', v('nd-komory'));
+    html += _npRow('Žalúzie', c('nd-zaluzie'));
+    html += _npRow2('Vstupné dvere', c('nd-dvere'), 'Zabezpečenie', c('nd-zabezpecenie'));
+
+    html += _npSection('Vykurovanie a vybavenie');
+    html += _npRow2('Krb', c('nd-krb'), 'Klimatizácia', c('nd-klima'));
+    html += _npRow('Vykurovanie', c('nd-vykurovanie'));
+    html += _npRow('Ohrev vody', v('nd-ohrev'));
+    html += _npMulti('Dispozícia RD', v('nd-dispozicia'));
+
+    html += _npSection('Príslušenstvo');
+    html += _npRow2('Pivnica', v('nd-pivnica'), 'Terasa', v('nd-terasa'));
+    html += _npRow2('Balkón', v('nd-balkon'), 'Povala', v('nd-povala'));
+
+    html += _npSection('Rekonštrukcia');
+    html += _npRow2('Rekonštrukcia', c('nd-rekon'), 'Rok', v('nd-rekon-rok'));
+    html += _npMulti('Rozpis', v('nd-rekon-rozpis'));
+
+    html += _npSection('Zariadenie');
+    html += _npRow('Zariadenie', c('nd-zariadenie'));
+    html += _npMulti('Rozpis zariadenia', v('nd-zariadenie-rozpis'));
+
+    html += _npSection('Exteriér');
+    html += _npRow('Parkovanie', c('nd-parkovanie'));
+    html += _npRow2('Garáž', v('nd-garaz'), 'Altánok', v('nd-altanok'));
+    html += _npRow2('Bazén', v('nd-bazen'), 'Studňa', v('nd-studna'));
+    html += _npRow('Iná stavba', v('nd-ina-stavba'));
+    html += _npMulti('Rozpis exteriéru', v('nd-ext-rozpis'));
+
+    html += _npSection('Mesačné náklady');
+    html += _npRow2('Elektrika', v('nd-naklady-elektrika') ? v('nd-naklady-elektrika') + ' €' : '', 'Voda', v('nd-naklady-voda') ? v('nd-naklady-voda') + ' €' : '');
+    html += _npRow2('Plyn', v('nd-naklady-plyn') ? v('nd-naklady-plyn') + ' €' : '', 'Žumpa', v('nd-naklady-zumpa') ? v('nd-naklady-zumpa') + ' €' : '');
+    html += _npRow2('Odpad', v('nd-naklady-odpad') ? v('nd-naklady-odpad') + ' €' : '', 'TV', v('nd-naklady-tv') ? v('nd-naklady-tv') + ' €' : '');
+    html += _npRow('Internet', v('nd-naklady-internet') ? v('nd-naklady-internet') + ' €' : '');
+    html += _npRow2('Poskytovateľ', v('nd-internet-provider'), 'Typ pripojenia', c('nd-internet-typ'));
+
+    html += _npSection('Ostatné');
+    html += _npMulti('Vady / poškodenia', v('nd-vady'));
+    html += _npMulti('Poznámky', v('nd-poznamky'));
+    html += _npRow('Podmienený prevod', v('nd-podmieneny'));
+
+    html += _npSection('Vlastníctvo');
+    html += _npRow('Vlastníctvo', c('nd-vlastnictvo'));
+    html += _npRow2('Vlastník 1', v('nd-vlastnik1'), 'Podiel 1', v('nd-podiel1'));
+    html += _npRow2('Vlastník 2', v('nd-vlastnik2'), 'Podiel 2', v('nd-podiel2'));
+    html += _npRow('Ťarcha', c('nd-tarcha'));
+    html += _npRow('Nadobúdací doklad', v('nd-nadobudaci'));
+    html += _npRow('Dokumenty', v('nd-dokumenty'));
+
+    html += _npSection('Ceny a záver');
+    html += _npRow2('Odporúč. cena', v('nd-cena-odporucana'), 'Cena do inzercie', v('nd-cena-inzercia'));
+    html += _npRow('Provízia pre RK', v('nd-provizia'));
+    html += _npRow2('Fotenie', v('nd-fotenie'), 'Inzercia', v('nd-inzercia'));
+    html += _npRow2('Maklér', v('nd-makler'), 'Dátum', v('nd-datum'));
+  }
+
+  html += `<div class="np-footer">Vygenerované v SecPro | ${new Date().toLocaleDateString('sk-SK')}</div>`;
+  el.innerHTML = html;
+}
+
+// ==================== PROTOCOL LIVE PREVIEW ====================
+
+let _protoPreviewTimer = null;
+
+function updateProtocolPreview() {
+  if (_protoPreviewTimer) clearTimeout(_protoPreviewTimer);
+  _protoPreviewTimer = setTimeout(_doProtocolPreview, 150);
+}
+
+function _doProtocolPreview() {
+  const el = document.getElementById('protocolPreviewContent');
+  if (!el) return;
+
+  const propId = document.getElementById('proto-prop-id')?.value;
+  const props = typeof getProperties === 'function' ? getProperties() : [];
+  const p = props.find(x => x.id === propId);
+
+  const viewIdx = document.getElementById('proto-viewing-select')?.value;
+  const v = (p && viewIdx !== '' && p.viewings) ? p.viewings[parseInt(viewIdx)] : null;
+
+  const brokerName = document.getElementById('proto-broker-name')?.value?.trim() || '';
+  const clientName = document.getElementById('proto-client-name')?.value?.trim() || '';
+  const notes = document.getElementById('proto-notes')?.value?.trim() || '';
+
+  const em = (val) => val || '<span class="np-empty">\u2014</span>';
+
+  let html = '';
+
+  // Header
+  html += `<div style="background:#0B2A3C;color:white;padding:0.8rem 1rem;border-radius:6px;margin-bottom:0.8rem;">
+    <div style="font-size:16px;font-weight:700;">Protokol o prehliadke</div>
+    <div style="font-size:10px;opacity:0.7;margin-top:2px;">nehnuteľnosti</div>
+    <div style="font-size:9px;opacity:0.5;text-align:right;margin-top:-14px;">SecPro | ${new Date().toLocaleDateString('sk-SK')}</div>
+  </div>`;
+  html += `<div style="height:3px;background:linear-gradient(90deg,#2EC4D4,#1A7A8A);border-radius:2px;margin-bottom:1rem;"></div>`;
+
+  // Property info
+  html += `<div style="background:#F0F9F7;border-radius:6px;padding:0.7rem 0.8rem;margin-bottom:0.8rem;">
+    <div style="font-weight:700;font-size:11px;color:#0B2A3C;margin-bottom:0.4rem;">Informácie o nehnuteľnosti</div>`;
+  if (p) {
+    html += _npRow('Názov', em(p.title));
+    html += _npRow('Adresa', em([p.address, p.city, p.district].filter(Boolean).join(', ')));
+    html += _npRow('Cena', p.price ? p.price.toLocaleString('sk-SK') + ' EUR' : em(''));
+    html += _npRow('Vlastník', em(p.ownerName || p.owner));
+  } else {
+    html += `<div class="np-empty" style="padding:0.3rem 0;">Nehnuteľnosť nebola nájdená</div>`;
+  }
+  html += `</div>`;
+
+  // Viewing info
+  if (v) {
+    const d = v.date ? new Date(v.date) : null;
+    const ds = d ? d.toLocaleDateString('sk-SK') + ' ' + d.toLocaleTimeString('sk-SK', {hour:'2-digit',minute:'2-digit'}) : '\u2014';
+    html += `<div style="background:#EFF6FF;border-radius:6px;padding:0.7rem 0.8rem;margin-bottom:0.8rem;">
+      <div style="font-weight:700;font-size:11px;color:#0B2A3C;margin-bottom:0.4rem;">Prehliadka</div>`;
+    html += _npRow('Dátum', ds);
+    html += _npRow('Záujemca', em(v.personName));
+    html += _npRow('Spôsob', v.type || '\u2014');
+    html += _npRow('Výsledok', v.result || '\u2014');
+    if (v.feedback) html += _npRow('Spätná väzba', v.feedback);
+    html += `</div>`;
+  } else {
+    html += `<div style="background:#EFF6FF;border-radius:6px;padding:0.7rem 0.8rem;margin-bottom:0.8rem;">
+      <div class="np-empty" style="font-size:10px;">Vyberte prehliadku z rozbaľovacieho zoznamu</div>
+    </div>`;
+  }
+
+  // Notes
+  if (notes) {
+    html += `<div style="margin-bottom:0.8rem;">
+      <div style="font-weight:700;font-size:11px;color:#0B2A3C;margin-bottom:0.3rem;">Poznámky</div>
+      <div class="np-multi">${notes.replace(/\n/g, '<br>')}</div>
+    </div>`;
+  }
+
+  // Signatures
+  html += `<div style="display:flex;gap:1rem;margin-top:0.8rem;">
+    <div style="flex:1;text-align:center;">
+      <div style="font-size:9px;color:#64748B;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.3rem;">Maklér</div>
+      <div style="font-weight:600;font-size:11px;min-height:16px;">${em(brokerName)}</div>
+      <div style="border:1px dashed #CBD5E1;border-radius:4px;height:50px;margin-top:0.3rem;display:flex;align-items:center;justify-content:center;">
+        <span style="font-size:9px;color:#CBD5E1;">podpis</span>
+      </div>
+    </div>
+    <div style="flex:1;text-align:center;">
+      <div style="font-size:9px;color:#64748B;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.3rem;">Záujemca</div>
+      <div style="font-weight:600;font-size:11px;min-height:16px;">${em(clientName)}</div>
+      <div style="border:1px dashed #CBD5E1;border-radius:4px;height:50px;margin-top:0.3rem;display:flex;align-items:center;justify-content:center;">
+        <span style="font-size:9px;color:#CBD5E1;">podpis</span>
+      </div>
+    </div>
+  </div>`;
+
+  html += `<div class="np-footer">Vygenerované v SecPro | ${new Date().toLocaleDateString('sk-SK')}</div>`;
+  el.innerHTML = html;
+}
+
+// Wire up live preview listeners on both modals
+(function() {
+  function wireListeners() {
+    const naborModal = document.getElementById('naborModal');
+    if (naborModal) {
+      naborModal.addEventListener('input', updateNaborPreview);
+      naborModal.addEventListener('change', updateNaborPreview);
+    }
+    const protoModal = document.getElementById('protocolModal');
+    if (protoModal) {
+      protoModal.addEventListener('input', updateProtocolPreview);
+      protoModal.addEventListener('change', updateProtocolPreview);
+    }
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', wireListeners);
+  } else {
+    wireListeners();
+  }
+})();
+
 </script>
 </body>
 </html>

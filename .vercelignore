@@ -1,0 +1,10 @@
+node_modules
+.git
+.claude
+docs
+*.xlsx
+*.xlsm
+read_excel.js
+read_formulas.js
+read_multi.js
+read_names.js

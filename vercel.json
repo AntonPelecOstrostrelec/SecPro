@@ -20,6 +20,9 @@
       "maxDuration": 60,
       "memory": 512
     },
+    "api/orsr.js": {
+      "maxDuration": 60
+    },
     "api/*.js": {
       "maxDuration": 30,
       "includeFiles": "lib/**"

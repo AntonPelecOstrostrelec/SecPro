@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "secpro-server",
-      "runtimeExecutable": "/usr/local/bin/node",
-      "runtimeArgs": ["server.js"],
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["node_modules/serve/build/main.js", "public", "-l", "3000", "-s"],
       "port": 3000,
       "autoPort": true
     }
