@@ -12543,16 +12543,9 @@ async function handleRegister(e) {
       return;
     }
 
-    // Store userRecord for login verification
-    if (data.userRecord) {
-      const records = JSON.parse(localStorage.getItem('secpro_user_records') || '{}');
-      records[email] = data.userRecord;
-      localStorage.setItem('secpro_user_records', JSON.stringify(records));
-    }
-
     document.getElementById('registerForm').reset();
-    showLoginSuccess('Účet vytvorený! Teraz sa môžete prihlásiť.');
-    setTimeout(() => switchLoginTab('login'), 1500);
+    showLoginSuccess(data.message || 'Ak účet neexistoval, bol vytvorený. Prihláste sa.');
+    setTimeout(() => switchLoginTab('login'), 2000);
   } catch (err) {
     showLoginError('Chyba pripojenia k serveru.');
   } finally {

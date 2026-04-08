@@ -1,5 +1,6 @@
 const crypto = require('crypto');
-const { kvGet, kvSet, kvDel, handleCors, getKV } = require('../lib/kv');
+const bcrypt = require('bcryptjs');
+const { kvGet, kvSet, kvDel, handleCors, getKV, checkRateLimit, clearRateLimit } = require('../lib/kv');
 
 module.exports = async (req, res) => {
   if (handleCors(req, res, 'POST, OPTIONS')) return;
@@ -8,8 +9,27 @@ module.exports = async (req, res) => {
   if (!ok) return res.status(500).json({ error: 'Server nie je nakonfigurovaný (KV)' });
 
   const { action } = req.body || {};
+  const RATE_LIMIT_MSG = 'Príliš veľa pokusov. Skúste znova neskôr.';
 
   try {
+    // ── Rate limiting for login, register, send-reset-code ──
+    if (['login', 'register', 'send-reset-code'].includes(action)) {
+      const email = (req.body.email || '').trim().toLowerCase();
+      if (email) {
+        const limits = {
+          'login':           { max: 5,  window: 300 },
+          'register':        { max: 3,  window: 600 },
+          'send-reset-code': { max: 3,  window: 600 },
+        };
+        const { max, window } = limits[action];
+        const rlKey = `rl:${action}:${email}`;
+        const allowed = await checkRateLimit(KV_URL, KV_TOKEN, rlKey, max, window);
+        if (!allowed) {
+          return res.status(429).json({ error: RATE_LIMIT_MSG });
+        }
+      }
+    }
+
     switch (action) {
       case 'register':          return await handleRegister(req, res, KV_URL, KV_TOKEN);
       case 'login':             return await handleLogin(req, res, KV_URL, KV_TOKEN);
@@ -38,13 +58,27 @@ async function handleRegister(req, res, KV_URL, KV_TOKEN) {
   const emailLower = email.trim().toLowerCase();
   const userKey = `user:${emailLower}`;
 
+  // Generic response to prevent email enumeration
+  const genericResponse = () =>
+    new Promise(resolve => {
+      const delay = 100 + Math.floor(Math.random() * 100);
+      setTimeout(() => {
+        resolve(
+          res.status(200).json({
+            ok: true,
+            message: 'Ak účet neexistoval, bol vytvorený. Prihláste sa.',
+          })
+        );
+      }, delay);
+    });
+
   try {
     const existing = await kvGet(KV_URL, KV_TOKEN, userKey);
     if (existing) {
-      return res.status(409).json({ error: 'Účet s týmto e-mailom už existuje.' });
+      return genericResponse();
     }
 
-    const passwordHash = crypto.createHash('sha256').update(password).digest('hex');
+    const passwordHash = await bcrypt.hash(password, 12);
     await kvSet(KV_URL, KV_TOKEN, userKey, {
       name: name.trim(),
       email: emailLower,
@@ -52,7 +86,7 @@ async function handleRegister(req, res, KV_URL, KV_TOKEN) {
       createdAt: new Date().toISOString(),
     });
 
-    return res.status(201).json({ success: true, message: 'Účet vytvorený.' });
+    return genericResponse();
   } catch (err) {
     console.error('auth register error:', err.message);
     return res.status(500).json({ error: 'Chyba servera pri registrácii.' });
@@ -75,10 +109,19 @@ async function handleLogin(req, res, KV_URL, KV_TOKEN) {
       return res.status(401).json({ error: 'Nesprávny e-mail alebo heslo.' });
     }
 
-    const passwordHash = crypto.createHash('sha256').update(password).digest('hex');
-    if (user.passwordHash !== passwordHash) {
-      return res.status(401).json({ error: 'Nesprávny e-mail alebo heslo.' });
+    const bcryptMatch = await bcrypt.compare(password, user.passwordHash);
+    if (!bcryptMatch) {
+      const sha256 = crypto.createHash('sha256').update(password).digest('hex');
+      if (sha256 !== user.passwordHash) {
+        return res.status(401).json({ error: 'Nesprávny e-mail alebo heslo.' });
+      }
+      // SHA-256 matched — migrate to bcrypt
+      user.passwordHash = await bcrypt.hash(password, 12);
+      await kvSet(KV_URL, KV_TOKEN, userKey, user);
     }
+
+    // Clear rate limit on successful login
+    await clearRateLimit(KV_URL, KV_TOKEN, `rl:login:${emailLower}`);
 
     const token = crypto.randomBytes(32).toString('hex');
     const expiresIn = remember ? 30 * 24 * 60 * 60 : 24 * 60 * 60;
@@ -148,7 +191,7 @@ async function handleSeed(req, res, KV_URL, KV_TOKEN) {
   for (const u of users) {
     const emailLower = u.email.trim().toLowerCase();
     const userKey = `user:${emailLower}`;
-    const passwordHash = crypto.createHash('sha256').update(u.password).digest('hex');
+    const passwordHash = await bcrypt.hash(u.password, 12);
 
     try {
       await kvSet(KV_URL, KV_TOKEN, userKey, {
@@ -181,7 +224,7 @@ async function handleResetPw(req, res, KV_URL, KV_TOKEN) {
 
   try {
     await kvDel(KV_URL, KV_TOKEN, userKey);
-    const passwordHash = crypto.createHash('sha256').update(newPassword).digest('hex');
+    const passwordHash = await bcrypt.hash(newPassword, 12);
     await kvSet(KV_URL, KV_TOKEN, userKey, {
       name: emailLower.split('@')[0],
       email: emailLower,
@@ -290,7 +333,7 @@ async function handleVerifyResetCode(req, res, KV_URL, KV_TOKEN) {
       const emailLower = payload.email.toLowerCase();
       const userKey = `user:${emailLower}`;
       const user = await kvGet(KV_URL, KV_TOKEN, userKey);
-      const passwordHash = crypto.createHash('sha256').update(newPassword).digest('hex');
+      const passwordHash = await bcrypt.hash(newPassword, 12);
 
       if (user) {
         user.passwordHash = passwordHash;

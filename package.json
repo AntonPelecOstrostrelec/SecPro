@@ -11,6 +11,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "bcryptjs": "^2.4.3",
     "docxtemplater": "^3.68.3",
     "dotenv": "^17.3.1",
     "jspdf": "^4.2.0",
