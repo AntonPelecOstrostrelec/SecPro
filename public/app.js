@@ -4498,7 +4498,7 @@ function generateViewingDocument(propId) {
   doc.save('prehliadky_' + (p.title || 'nehnutelnost').replace(/\s+/g, '_').slice(0, 30) + '.pdf');
 }
 
-function saveProperty() {
+async function saveProperty() {
   const title = document.getElementById('prop-title').value.trim();
   const city = document.getElementById('prop-city').value.trim();
   const phone = document.getElementById('prop-phone').value.trim();
@@ -4555,7 +4555,7 @@ function saveProperty() {
     saveProperties(props);
   } catch (e) {
     if (e.name === 'QuotaExceededError' && prop.photos.length > 0) {
-      if (confirm('Fotografie sú príliš veľké pre úložisko prehliadača. Uložiť nehnuteľnosť bez fotiek?')) {
+      if (await secConfirm({ message: 'Fotografie sú príliš veľké pre úložisko prehliadača.\n\nUložiť nehnuteľnosť bez fotiek?', type: 'warning', ok: 'Uložiť bez fotiek' })) {
         prop.photos = [];
         if (existingIdx >= 0) props[existingIdx] = prop;
         else props[0] = prop;
@@ -4576,14 +4576,14 @@ function saveProperty() {
   }
 }
 
-function deleteProperty(id) {
-  if (!confirm('Naozaj chcete odstrániť túto nehnuteľnosť?')) return;
+async function deleteProperty(id) {
+  if (!await secConfirm({ message: 'Naozaj chcete odstrániť túto nehnuteľnosť?', type: 'danger', ok: 'Odstrániť' })) return;
   const props = getProperties().filter(x => x.id !== id);
   saveProperties(props);
   renderProperties();
 }
 
-function changePropertyStatus(id, newStatus) {
+async function changePropertyStatus(id, newStatus) {
   const props = getProperties();
   const p = props.find(x => x.id === id);
   if (!p) return;
@@ -4596,7 +4596,7 @@ function changePropertyStatus(id, newStatus) {
     const ownerContact = contacts.find(c => c.name && c.name.toLowerCase() === p.ownerName.toLowerCase());
     const amlApproved = ownerContact && amlRecs.some(a => a.contactId === ownerContact.id && a.status === 'approved');
     if (!amlApproved) {
-      if (!confirm('AML preverenie klienta "' + p.ownerName + '" nie je schválené.\n\nPodľa zákona 297/2008 Z.z. je potrebné preveriť klienta pred uzavretím obchodu.\n\nChcete napriek tomu pokračovať?')) return;
+      if (!await secConfirm({ title: 'AML upozornenie', message: 'AML preverenie klienta "' + p.ownerName + '" nie je schválené.\n\nPodľa zákona 297/2008 Z.z. je potrebné preveriť klienta pred uzavretím obchodu.\n\nChcete napriek tomu pokračovať?', type: 'warning', ok: 'Pokračovať' })) return;
     }
   }
 
@@ -5628,8 +5628,8 @@ function saveContact() {
   renderContacts();
 }
 
-function deleteContact(id) {
-  if (!confirm('Naozaj chcete odstrániť tento kontakt?')) return;
+async function deleteContact(id) {
+  if (!await secConfirm({ message: 'Naozaj chcete odstrániť tento kontakt?', type: 'danger', ok: 'Odstrániť' })) return;
   const contacts = getContacts().filter(c => c.id !== id);
   saveContacts(contacts);
   renderContacts();
@@ -5836,6 +5836,74 @@ function showToast(message, type = 'error') {
     el.style.opacity = '0'; el.style.transform = 'translateX(20px)';
     setTimeout(() => el.remove(), 300);
   }, 4000);
+}
+
+// ===== CUSTOM CONFIRM DIALOG =====
+// Replaces native confirm() with SecPro branded modal.
+// Usage: const ok = await secConfirm('Message');
+//        const ok = await secConfirm({ title: 'Title', message: 'Msg', type: 'danger', ok: 'Vymazať' });
+function secConfirm(opts) {
+  if (typeof opts === 'string') opts = { message: opts };
+  const type = opts.type || 'info'; // info, danger, warning
+  const title = opts.title || (type === 'danger' ? 'Potvrdenie' : type === 'warning' ? 'Upozornenie' : 'Potvrdenie');
+  const message = opts.message || '';
+  const okText = opts.ok || (type === 'danger' ? 'Odstrániť' : 'Potvrdiť');
+  const cancelText = opts.cancel || 'Zrušiť';
+
+  // SVG icons per type
+  const icons = {
+    info: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>',
+    danger: '<svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>',
+    warning: '<svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+  };
+
+  return new Promise(function(resolve) {
+    // Build overlay
+    var overlay = document.createElement('div');
+    overlay.className = 'sec-confirm-overlay';
+    overlay.innerHTML =
+      '<div class="sec-confirm-box">' +
+        '<div class="sec-confirm-header sec-type-' + type + '">' +
+          '<div class="sec-confirm-icon">' + (icons[type] || icons.info) + '</div>' +
+          '<div class="sec-confirm-title">' + title + '</div>' +
+        '</div>' +
+        '<div class="sec-confirm-body">' +
+          '<div class="sec-confirm-message">' + message.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div>' +
+        '</div>' +
+        '<div class="sec-confirm-footer">' +
+          '<button class="sec-confirm-btn sec-confirm-cancel">' + cancelText + '</button>' +
+          '<button class="sec-confirm-btn sec-confirm-ok sec-btn-' + type + '">' + okText + '</button>' +
+        '</div>' +
+      '</div>';
+
+    document.body.appendChild(overlay);
+
+    // Animate in
+    requestAnimationFrame(function() { overlay.classList.add('sec-confirm-visible'); });
+
+    // Focus OK button
+    var okBtn = overlay.querySelector('.sec-confirm-ok');
+    var cancelBtn = overlay.querySelector('.sec-confirm-cancel');
+    setTimeout(function() { okBtn.focus(); }, 100);
+
+    function close(result) {
+      overlay.classList.remove('sec-confirm-visible');
+      setTimeout(function() { overlay.remove(); }, 300);
+      resolve(result);
+    }
+
+    okBtn.addEventListener('click', function() { close(true); });
+    cancelBtn.addEventListener('click', function() { close(false); });
+    overlay.addEventListener('click', function(e) {
+      if (e.target === overlay) close(false);
+    });
+    // Escape key
+    function onKey(e) {
+      if (e.key === 'Escape') { document.removeEventListener('keydown', onKey); close(false); }
+      if (e.key === 'Enter') { document.removeEventListener('keydown', onKey); close(true); }
+    }
+    document.addEventListener('keydown', onKey);
+  });
 }
 
 // ===== SECURE FETCH WRAPPER (401 detection) =====
@@ -6871,8 +6939,9 @@ function amlDR(label, value) {
 }
 function closeAmlDetail() { document.getElementById('aml-detail-modal').style.display = 'none'; amlDetailId = null; }
 function editAmlFromDetail() { const id = amlDetailId; if (id) { closeAmlDetail(); openAmlForm(id); } }
-function deleteAmlFromDetail() {
-  if (!amlDetailId || !confirm('Naozaj vymazať toto AML preverenie?')) return;
+async function deleteAmlFromDetail() {
+  if (!amlDetailId) return;
+  if (!await secConfirm({ message: 'Naozaj vymazať toto AML preverenie?', type: 'danger', ok: 'Vymazať' })) return;
   const records = getAmlRecords().filter(x => x.id !== amlDetailId);
   saveAmlRecords(records);
   closeAmlDetail();
@@ -7241,8 +7310,8 @@ function updateLeadNotes(id, notes) {
   saveSavedLeads(leads);
 }
 
-function deleteSavedLead(id) {
-  if (!confirm('Naozaj chcete odstrániť tento lead?')) return;
+async function deleteSavedLead(id) {
+  if (!await secConfirm({ message: 'Naozaj chcete odstrániť tento lead?', type: 'danger', ok: 'Odstrániť' })) return;
   const leads = getSavedLeads().filter(l => l.id !== id);
   saveSavedLeads(leads);
   renderSavedLeads();
