@@ -388,143 +388,156 @@
     .lead-cards-grid {
       display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 1.1rem;
     }
-    .lead-card {
-      background: white; border-radius: 16px; overflow: hidden;
+    /* ===== LEAD CARD v2 — Agent-optimized ===== */
+    .lc2 {
+      background: white; border-radius: 14px; overflow: hidden;
       border: 1px solid rgba(0,0,0,0.06);
-      box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03);
-      transition: transform 0.25s ease, box-shadow 0.25s ease;
-      display: flex; flex-direction: column; position: relative;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.03), 0 2px 8px rgba(0,0,0,0.03);
+      transition: all 0.2s ease; position: relative;
     }
-    .lead-card:hover { transform: translateY(-3px); box-shadow: 0 8px 30px rgba(0,0,0,0.1); }
-    .lead-card.lc-hidden { opacity: 0.35; filter: grayscale(0.6); }
-    .lead-card.lc-hidden:hover { opacity: 0.75; filter: grayscale(0); }
+    .lc2:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.09); border-color: rgba(26,122,138,0.15); }
+    .lc2.lc-hidden { opacity: 0.3; filter: grayscale(0.7); }
+    .lc2.lc-hidden:hover { opacity: 0.7; filter: grayscale(0); }
+    .lc2.lc2-saved { border-left: 3px solid #10B981; }
 
-    /* Hero strip */
-    .lc-hero {
-      position: relative;
-      padding: 0.85rem 1rem 0.65rem;
-      background: linear-gradient(135deg, #0B2A3C 0%, #0D4F5F 60%, #1A7A8A 100%);
-      color: white;
+    /* Top bar: badges row */
+    .lc2-topbar {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 0.5rem 0.75rem 0; gap: 0.4rem;
     }
-    .lc-hero-top {
-      display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;
-    }
-    .lc-source {
-      font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px;
-      background: rgba(255,255,255,0.13); padding: 3px 10px; border-radius: 20px;
-      backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.1);
+    .lc2-badges { display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; flex: 1; min-width: 0; }
+    .lc2-source {
+      font-size: 0.58rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px;
+      padding: 2px 7px; border-radius: 4px; color: #64748B; background: #F1F5F9;
     }
     .lc-dismiss {
-      width: 26px; height: 26px; border-radius: 8px; border: none;
-      background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.6);
+      width: 22px; height: 22px; border-radius: 6px; border: none;
+      background: transparent; color: #CBD5E1; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.72rem; transition: all 0.15s; flex-shrink: 0;
+    }
+    .lc-dismiss:hover { background: #FEF2F2; color: #EF4444; }
+
+    /* Market intelligence badges */
+    .lc-market {
+      font-size: 0.58rem; font-weight: 700; padding: 2px 7px; border-radius: 4px;
+      letter-spacing: 0.02em;
+    }
+    .lc-market-hot { background: #DCFCE7; color: #16A34A; }
+    .lc-market-good { background: #F0FDF4; color: #22C55E; }
+    .lc-market-over { background: #FEF2F2; color: #DC2626; }
+
+    /* Status active badge */
+    .lc-status-active {
+      font-size: 0.58rem; font-weight: 700; padding: 2px 7px; border-radius: 4px;
+      border: 1px solid currentColor;
+    }
+
+    /* Main content: title + meta | price */
+    .lc2-main {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      padding: 0.45rem 0.75rem 0.35rem; gap: 0.75rem;
+    }
+    .lc2-info { flex: 1; min-width: 0; }
+    .lc2-title {
+      font-size: 0.82rem; font-weight: 600; color: var(--text); line-height: 1.3;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .lc2-meta {
+      display: flex; align-items: center; gap: 0.5rem; margin-top: 0.2rem;
+      font-size: 0.72rem; color: var(--text-light);
+    }
+    .lc2-loc { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
+    .lc2-size { font-weight: 600; color: #475569; white-space: nowrap; }
+
+    .lc2-price-block { text-align: right; flex-shrink: 0; }
+    .lc2-price {
+      font-size: 1rem; font-weight: 800; color: #0B2A3C;
+      font-family: 'JetBrains Mono', monospace; letter-spacing: -0.03em; white-space: nowrap;
+    }
+    .lc-ppm {
+      display: block; font-size: 0.62rem; color: var(--text-light);
+      font-family: 'JetBrains Mono', monospace; margin-top: 1px;
+    }
+
+    /* Action bar — THE key workflow row */
+    .lc2-actions {
+      display: flex; align-items: center; gap: 0.35rem;
+      padding: 0.4rem 0.75rem 0.55rem; border-top: 1px solid #F1F5F9;
+    }
+    .lc2-call {
+      display: inline-flex; align-items: center; gap: 0.3rem;
+      font-size: 0.76rem; font-weight: 700; color: white; text-decoration: none;
+      padding: 5px 12px; border-radius: 8px;
+      background: linear-gradient(135deg, #059669, #10B981);
+      box-shadow: 0 2px 6px rgba(16,185,129,0.25); transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .lc2-call:hover { box-shadow: 0 4px 12px rgba(16,185,129,0.35); filter: brightness(1.06); }
+    .lc2-call svg { width: 13px; height: 13px; flex-shrink: 0; }
+    .lc2-no-phone {
+      font-size: 0.68rem; color: #CBD5E1; padding: 5px 8px; font-style: italic;
+    }
+    .lc2-open {
+      display: inline-flex; align-items: center; gap: 0.25rem;
+      font-size: 0.7rem; font-weight: 600; color: #64748B; text-decoration: none;
+      padding: 5px 10px; border-radius: 8px; background: #F8FAFC;
+      border: 1px solid #E2E8F0; transition: all 0.15s;
+    }
+    .lc2-open:hover { background: #F1F5F9; color: #334155; }
+    .lc2-open svg { width: 12px; height: 12px; }
+    .lc2-status-select {
+      font-size: 0.68rem; padding: 4px 6px; border-radius: 6px;
+      border: 1px solid #E2E8F0; background: #FAFBFC; color: #64748B;
+      font-family: 'Inter', sans-serif; cursor: pointer; margin-left: auto;
+    }
+    .lc2-status-select:focus { outline: none; border-color: #1A7A8A; }
+    .lc2-save {
+      width: 28px; height: 28px; border-radius: 8px; border: 1.5px solid #1A7A8A;
+      background: white; color: #1A7A8A; font-size: 1rem; font-weight: 700;
       cursor: pointer; display: flex; align-items: center; justify-content: center;
-      font-size: 0.85rem; transition: all 0.15s; backdrop-filter: blur(4px);
+      transition: all 0.15s; flex-shrink: 0;
     }
-    .lc-dismiss:hover { background: rgba(239,68,68,0.25); color: #FCA5A5; }
-    .lc-title {
-      font-size: 0.88rem; font-weight: 600; line-height: 1.35;
-      display: -webkit-box; -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical; overflow: hidden;
-    }
-
-    /* Body */
-    .lc-body {
-      padding: 0.85rem 1rem; flex: 1; display: flex; flex-direction: column; gap: 0.65rem;
+    .lc2-save:hover { background: #F0FAFA; box-shadow: 0 2px 8px rgba(26,122,138,0.2); }
+    .lc2-saved-tag {
+      width: 28px; height: 28px; border-radius: 8px; background: #ECFDF5;
+      color: #10B981; font-size: 0.8rem; font-weight: 700; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
     }
 
-    /* Price & location row */
-    .lc-info-row {
-      display: flex; align-items: baseline; gap: 0.75rem; flex-wrap: wrap;
+    /* Expandable note + history area */
+    .lc2-expand {
+      padding: 0 0.75rem 0.55rem;
     }
-    .lc-price {
-      font-size: 1.1rem; font-weight: 800; color: #1A7A8A;
-      font-family: 'JetBrains Mono', 'Inter', monospace; letter-spacing: -0.02em;
+    .lc2-note {
+      width: 100%; font-size: 0.72rem; border: 1px solid #EEF1F5; border-radius: 8px;
+      padding: 5px 10px; font-family: 'Inter', sans-serif; background: #FAFBFC;
+      transition: all 0.2s; color: var(--text);
     }
-    .lc-location {
-      font-size: 0.76rem; color: var(--text-light); display: flex; align-items: center; gap: 0.3rem;
-    }
-    .lc-location svg { width: 13px; height: 13px; opacity: 0.45; flex-shrink: 0; }
-    .lc-size {
-      font-size: 0.72rem; font-weight: 600; padding: 2px 8px; border-radius: 6px;
-      background: #F0F2F5; color: #4A5568;
-    }
-    .lc-phone {
-      margin-top: -0.2rem;
-    }
-    .lc-phone a {
-      display: inline-flex; align-items: center; gap: 0.35rem;
-      font-size: 0.8rem; font-weight: 600; color: #1A7A8A; text-decoration: none;
-      padding: 4px 10px; border-radius: 8px; background: rgba(26,122,138,0.06);
-      transition: background 0.15s;
-    }
-    .lc-phone a:hover { background: rgba(26,122,138,0.12); }
-    .lc-phone a svg { width: 13px; height: 13px; }
-
-    /* Status pills row */
-    .lc-statuses {
-      display: flex; gap: 0.3rem; flex-wrap: wrap;
-    }
-    .lead-status-pill {
-      padding: 5px 12px; border-radius: 8px; font-size: 0.7rem; font-weight: 600;
-      border: 1.5px solid transparent; cursor: pointer; transition: all 0.2s;
-      background: #F4F6F8; color: #64748B; position: relative;
-    }
-    .lead-status-pill:hover { background: #EEF1F5; transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-    .lead-status-pill.active {
-      border-color: currentColor; font-weight: 700;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    .lc2-note:focus { outline: none; border-color: #1A7A8A; background: white; box-shadow: 0 0 0 2px rgba(26,122,138,0.08); }
+    .lc2-note.lc2-note-ok { border-color: #10B981; background: #F0FDF8; }
+    .lc2-expand-row {
+      display: flex; gap: 0.6rem; margin-top: 0.3rem;
     }
 
-    /* Note input */
-    .lc-note-input {
-      width: 100%; font-size: 0.78rem; border: 1.5px solid #E9ECF1; border-radius: 10px;
-      padding: 7px 12px; font-family: 'Inter', sans-serif; background: #FAFBFC;
-      transition: all 0.3s; min-height: 34px;
-    }
-    .lc-note-input:focus { outline: none; border-color: #1A7A8A; background: white; box-shadow: 0 0 0 3px rgba(26,122,138,0.08); }
-    .lc-note-input.lc-note-saved { border-color: #10B981; background: #F0FDF8; }
-
-    /* History */
+    /* Keep history/dup styles */
     .lc-history-toggle {
-      font-size: 0.7rem; color: var(--text-light); cursor: pointer;
-      display: inline-flex; align-items: center; gap: 4px; padding: 2px 0;
+      font-size: 0.65rem; color: var(--text-light); cursor: pointer;
+      display: inline-flex; align-items: center; gap: 3px; padding: 1px 0;
       transition: color 0.15s;
     }
     .lc-history-toggle:hover { color: #1A7A8A; }
     .lead-history-log {
-      margin-top: 0.3rem; padding: 0.5rem 0.65rem; background: #F8FAFB; border-radius: 10px;
-      border: 1px solid #EEF1F5; max-height: 150px; overflow-y: auto;
+      margin-top: 0.3rem; padding: 0.4rem 0.55rem; background: #F8FAFB; border-radius: 8px;
+      border: 1px solid #EEF1F5; max-height: 120px; overflow-y: auto;
     }
     .lead-history-entry {
-      font-size: 0.7rem; color: var(--text-light); padding: 4px 0;
+      font-size: 0.65rem; color: var(--text-light); padding: 3px 0;
       border-bottom: 1px solid #F1F5F9; line-height: 1.4;
     }
     .lead-history-entry:last-child { border-bottom: none; }
-    .lead-history-entry .lh-time { color: #94A3B8; margin-right: 6px; font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; }
+    .lead-history-entry .lh-time { color: #94A3B8; margin-right: 4px; font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; }
     .lead-history-entry .lh-action { color: var(--text); font-weight: 500; }
-
-    /* Actions row */
-    .lc-actions {
-      display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center;
-      padding-top: 0.55rem; border-top: 1px solid #F0F2F5; margin-top: auto;
-    }
-    .lc-act-btn {
-      font-size: 0.75rem; font-weight: 600; padding: 8px 18px; border-radius: 10px;
-      border: none; cursor: pointer; transition: all 0.2s; font-family: 'Inter', sans-serif;
-      text-decoration: none; display: inline-flex; align-items: center; gap: 0.35rem;
-      flex: 1; justify-content: center;
-    }
-    .lc-act-open {
-      background: linear-gradient(135deg, #0B2A3C 0%, #0D4F5F 60%, #1A7A8A 100%);
-      color: white; box-shadow: 0 2px 8px rgba(11,42,60,0.2);
-    }
-    .lc-act-open:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(11,42,60,0.3); }
-    .lc-act-save {
-      background: white; color: #1A7A8A;
-      border: 1.5px solid #1A7A8A;
-    }
-    .lc-act-save:hover { background: #F0FAFA; transform: translateY(-1px); box-shadow: 0 3px 10px rgba(26,122,138,0.15); }
-    .lc-act-saved { background: #ECFDF5; color: #10B981; border: 1.5px solid #A7F3D0; cursor: default; }
 
     /* Filter bar */
     .leads-filter-bar {

@@ -2772,9 +2772,13 @@ function renderLeadCards(leads) {
   const statusFilter = document.getElementById('leads-status-filter')?.value || '';
   const allMeta = getLeadStatuses();
   const savedLeads = getSavedLeads();
-
-  // Detect duplicates once for all leads
   const dupMap = detectDuplicates(leads);
+
+  // ── Compute market stats for price intelligence ──
+  const validPrices = leads.filter(l => l.price > 0 && l.size > 0);
+  const ppmValues = validPrices.map(l => l.price / l.size);
+  const avgPPM = ppmValues.length > 0 ? ppmValues.reduce((a, b) => a + b, 0) / ppmValues.length : 0;
+  const medianPPM = ppmValues.length > 0 ? ppmValues.sort((a, b) => a - b)[Math.floor(ppmValues.length / 2)] : 0;
 
   let visible = 0;
   let html = '';
@@ -2785,94 +2789,119 @@ function renderLeadCards(leads) {
     const leadStatus = meta ? meta.status : null;
     const leadNotes = meta ? (meta.notes || '') : '';
 
-    // Filter: hidden
     if (isHidden && !showHidden) continue;
-    // Filter: status
     if (statusFilter === 'none' && leadStatus) continue;
     if (statusFilter && statusFilter !== 'none' && leadStatus !== statusFilter) continue;
 
     visible++;
     const hash = _leadUrlHash(lead.url);
     const alreadySaved = savedLeads.some(s => s.url === lead.url);
-
     const escUrl = esc(lead.url.replace(/'/g, "\\'"));
 
-    // Price change badge for search cards
+    // Price change
     const matchedSaved = savedLeads.find(s => s.url === lead.url || (s.phone && lead.phone && s.phone === lead.phone));
     const priceChangeBadge = (matchedSaved && matchedSaved.priceHistory && matchedSaved.priceHistory.length > 1)
-      ? formatPriceChangeBadge(matchedSaved.priceHistory)
-      : '';
+      ? formatPriceChangeBadge(matchedSaved.priceHistory) : '';
 
-    // Status pills
-    const pills = SEARCH_LEAD_STATUSES.map(s => {
-      const active = leadStatus === s.key;
-      return '<span class="lead-status-pill' + (active ? ' active' : '') + '" '
-        + 'style="' + (active ? 'background:' + s.bg + ';color:' + s.color + ';border-color:' + s.color + ';' : '') + '" '
-        + 'onclick="setSearchLeadStatus(\'' + escUrl + '\', \'' + s.key + '\')">'
-        + s.label + '</span>';
+    // ── Price per m² + market position ──
+    const ppm = (lead.price > 0 && lead.size > 0) ? Math.round(lead.price / lead.size) : 0;
+    var ppmHtml = '';
+    var marketBadge = '';
+    if (ppm > 0) {
+      ppmHtml = '<span class="lc-ppm">' + ppm.toLocaleString('sk-SK') + ' \u20AC/m\u00B2</span>';
+      if (medianPPM > 0) {
+        var diff = ((ppm - medianPPM) / medianPPM) * 100;
+        if (diff < -12) marketBadge = '<span class="lc-market lc-market-hot" title="V\u00FDrazne pod medi\u00E1nom trhu">Pod cenou</span>';
+        else if (diff < -5) marketBadge = '<span class="lc-market lc-market-good" title="Mierne pod medi\u00E1nom trhu">Dobr\u00E1 cena</span>';
+        else if (diff > 15) marketBadge = '<span class="lc-market lc-market-over" title="V\u00FDrazne nad medi\u00E1nom trhu">Nadcenen\u00E9</span>';
+      }
+    }
+
+    // ── Status pills (compact) ──
+    var statusHtml = '';
+    if (leadStatus) {
+      var st = SEARCH_LEAD_STATUSES.find(function(s) { return s.key === leadStatus; });
+      if (st) statusHtml = '<span class="lc-status-active" style="background:' + st.bg + ';color:' + st.color + ';border-color:' + st.color + ';">' + st.label + '</span>';
+    }
+
+    // ── Quick status dropdown ──
+    var statusOpts = SEARCH_LEAD_STATUSES.map(function(s) {
+      return '<option value="' + s.key + '"' + (leadStatus === s.key ? ' selected' : '') + '>' + s.label + '</option>';
     }).join('');
 
-    // Phone
-    const phoneHtml = lead.phone
-      ? '<div class="lc-phone"><a href="tel:' + lead.phone + '"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>' + esc(lead.phone) + '</a></div>'
-      : '';
+    // ── Phone button ──
+    var phoneBtn = lead.phone
+      ? '<a href="tel:' + lead.phone + '" class="lc2-call" title="Zavola\u0165">'
+        + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>'
+        + esc(lead.phone) + '</a>'
+      : '<span class="lc2-no-phone">Bez telef\u00F3nu</span>';
 
-    // Location
-    const locHtml = lead.location
-      ? '<span class="lc-location"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>' + esc(lead.location) + '</span>'
-      : '';
+    // ── Duplicate badge ──
+    var dupBadge = dupMap.has(lead.url) ? '<span class="lc-dup-badge" onclick="toggleDupPanel(\'' + hash + '\')">Podobn\u00E9 ' + dupMap.get(lead.url).length + 'x</span>' : '';
 
-    html += '<div class="lead-card' + (isHidden ? ' lc-hidden' : '') + '" id="lcard-' + hash + '">'
-      // Hero strip
-      + '<div class="lc-hero">'
-        + '<div class="lc-hero-top">'
-          + '<span class="lc-source">' + esc(lead.source) + '</span>'
-          + (dupMap.has(lead.url) ? '<span class="lc-dup-badge" onclick="toggleDupPanel(\'' + hash + '\')">| podobn\u00E9 ' + dupMap.get(lead.url).length + 'x</span>' : '')
-          + '<button class="lc-dismiss" onclick="toggleSearchLeadHidden(\'' + escUrl + '\')" title="' + (isHidden ? 'Odkryť' : 'Skryť') + '">'
-          + (isHidden ? '&#x21A9;' : '&#x2715;') + '</button>'
-        + '</div>'
-        + '<div class="lc-title" title="' + esc(lead.title) + '">' + esc(lead.title || 'Bez názvu') + '</div>'
-      + '</div>'
-      // Body
-      + '<div class="lc-body">'
-        + '<div class="lc-info-row">'
-          + '<span class="lc-price">' + esc(lead.priceText || 'Dohodou') + '</span>'
+    // ── Card HTML v2 ──
+    html += '<div class="lc2' + (isHidden ? ' lc-hidden' : '') + (alreadySaved ? ' lc2-saved' : '') + '" id="lcard-' + hash + '">'
+      // ── Top bar: source + badges + dismiss ──
+      + '<div class="lc2-topbar">'
+        + '<div class="lc2-badges">'
+          + '<span class="lc2-source">' + esc(lead.source) + '</span>'
+          + marketBadge
+          + dupBadge
+          + statusHtml
           + priceChangeBadge
-          + locHtml
-          + (lead.size ? '<span class="lc-size">' + lead.size + ' m&sup2;</span>' : '')
         + '</div>'
-        + phoneHtml
-        + '<div class="lc-statuses">' + pills + '</div>'
-        + '<div class="lc-note-wrap">'
-          + '<input type="text" class="lc-note-input" id="lead-note-' + hash + '" value="' + esc(leadNotes).replace(/"/g, '&quot;') + '" placeholder="Poznámka..." '
-          + 'onkeydown="if(event.key===\'Enter\')saveSearchLeadNote(\'' + escUrl + '\')" />'
-          + '<button class="lc-note-save" onclick="saveSearchLeadNote(\'' + escUrl + '\')">Uložiť</button>'
+        + '<button class="lc-dismiss" onclick="toggleSearchLeadHidden(\'' + escUrl + '\')" title="' + (isHidden ? 'Odkry\u0165' : 'Skry\u0165') + '">'
+        + (isHidden ? '\u21A9' : '\u2715') + '</button>'
+      + '</div>'
+      // ── Main content ──
+      + '<div class="lc2-main">'
+        // Left: info
+        + '<div class="lc2-info">'
+          + '<div class="lc2-title" title="' + esc(lead.title) + '">' + esc(lead.title || 'Bez n\u00E1zvu') + '</div>'
+          + '<div class="lc2-meta">'
+            + (lead.location ? '<span class="lc2-loc">\uD83D\uDCCD ' + esc(lead.location) + '</span>' : '')
+            + (lead.size ? '<span class="lc2-size">' + lead.size + ' m\u00B2</span>' : '')
+          + '</div>'
         + '</div>'
-        + '<span class="lc-history-toggle" onclick="toggleLeadHistory(\'' + escUrl + '\')">'
-          + '&#9662; zobraziť históriu</span>'
+        // Right: price block
+        + '<div class="lc2-price-block">'
+          + '<div class="lc2-price">' + esc(lead.priceText || 'Dohodou') + '</div>'
+          + ppmHtml
+        + '</div>'
+      + '</div>'
+      // ── Action bar ──
+      + '<div class="lc2-actions">'
+        + phoneBtn
+        + '<a href="' + esc(lead.url) + '" target="_blank" rel="noopener" class="lc2-open" title="Otvori\u0165 inzer\u00E1t">'
+          + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>'
+          + 'Inzer\u00E1t</a>'
+        + '<select class="lc2-status-select" onchange="setSearchLeadStatus(\'' + escUrl + '\', this.value)">'
+          + '<option value="">Status...</option>' + statusOpts + '</select>'
+        + (alreadySaved
+          ? '<span class="lc2-saved-tag">\u2713</span>'
+          : '<button class="lc2-save" onclick="saveLead(leadsData.find(l=>l.url===\'' + escUrl + '\'));this.outerHTML=\'<span class=lc2-saved-tag>\u2713</span>\';updateNavLeadCount();" title="Ulo\u017Ei\u0165 do leadov">+</button>')
+      + '</div>'
+      // ── Expandable: note + history + duplicates ──
+      + '<div class="lc2-expand">'
+        + '<input type="text" class="lc2-note" id="lead-note-' + hash + '" value="' + esc(leadNotes).replace(/"/g, '&quot;') + '" placeholder="Pozn\u00E1mka..." '
+          + 'onkeydown="if(event.key===\'Enter\'){saveSearchLeadNote(\'' + escUrl + '\');this.classList.add(\'lc2-note-ok\');setTimeout(()=>this.classList.remove(\'lc2-note-ok\'),1200);}" '
+          + 'onblur="saveSearchLeadNote(\'' + escUrl + '\')" />'
+        + '<div class="lc2-expand-row">'
+          + '<span class="lc-history-toggle" onclick="toggleLeadHistory(\'' + escUrl + '\')">\u25BE hist\u00F3ria</span>'
+        + '</div>'
         + '<div class="lead-history-log" id="lead-hist-' + hash + '" style="display:none;"></div>'
-        + '<div class="lc-actions">'
-          + '<a href="' + esc(lead.url) + '" target="_blank" rel="noopener" class="lc-act-btn lc-act-open">Otvoriť inzerát</a>'
-          + (alreadySaved
-            ? '<span class="lc-act-btn lc-act-saved">&#10003; Uložený</span>'
-            : '<button class="lc-act-btn lc-act-save" onclick="saveLead(leadsData.find(l=>l.url===\'' + escUrl + '\'));this.outerHTML=\'<span class=lc-act-btn\\ lc-act-saved>&#10003; Uložený</span>\';updateNavLeadCount();">+ Uložiť do leadov</button>')
-        + '</div>'
-        // Duplicate panel (hidden by default)
         + (dupMap.has(lead.url) ? (function() {
-          const dups = dupMap.get(lead.url);
-          const isSavedLead = function(u) { return savedLeads.some(function(s) { return s.url === u; }); };
+          var dups = dupMap.get(lead.url);
+          var isSL = function(u) { return savedLeads.some(function(s) { return s.url === u; }); };
           return '<div class="lc-dup-panel" id="dup-panel-' + hash + '" style="display:none;">'
-            + '<div style="font-size:0.7rem;font-weight:700;color:#0891B2;margin-bottom:0.4rem;">Podobn\u00E9 inzer\u00E1ty (' + dups.length + ')</div>'
             + dups.map(function(d) {
               return '<div class="lc-dup-item">'
                 + '<span class="lc-dup-source">' + esc(d.source || '') + '</span>'
-                + (isSavedLead(d.url) ? '<span class="lc-dup-saved-tag">Ulo\u017Een\u00FD</span>' : '')
-                + '<a href="' + esc(d.url) + '" target="_blank" rel="noopener" class="lc-dup-title">' + esc(d.title || 'Bez n\u00E1zvu') + '</a>'
-                + '<span class="lc-dup-price">' + esc(d.priceText || d.price || '') + '</span>'
-                + (d.phone ? '<span class="lc-dup-phone">' + esc(d.phone) + '</span>' : '')
+                + (isSL(d.url) ? '<span class="lc-dup-saved-tag">Ulo\u017Een\u00FD</span>' : '')
+                + '<a href="' + esc(d.url) + '" target="_blank" rel="noopener" class="lc-dup-title">' + esc(d.title || '') + '</a>'
+                + '<span class="lc-dup-price">' + esc(d.priceText || '') + '</span>'
               + '</div>';
-            }).join('')
-          + '</div>';
+            }).join('') + '</div>';
         })() : '')
       + '</div>'
     + '</div>';
@@ -2880,11 +2909,11 @@ function renderLeadCards(leads) {
 
   grid.innerHTML = html;
 
-  const countEl = document.getElementById('leads-visible-count');
+  var countEl = document.getElementById('leads-visible-count');
   if (countEl) {
-    const total = leads.length;
-    const hiddenCount = leads.filter(l => { const m = allMeta[l.url]; return m && m.hidden; }).length;
-    countEl.textContent = visible + ' z ' + total + ' zobrazených' + (hiddenCount > 0 ? ' (' + hiddenCount + ' skrytých)' : '');
+    var total = leads.length;
+    var hiddenCount = leads.filter(function(l) { var m = allMeta[l.url]; return m && m.hidden; }).length;
+    countEl.textContent = visible + ' z ' + total + ' zobrazen\u00FDch' + (hiddenCount > 0 ? ' (' + hiddenCount + ' skryt\u00FDch)' : '');
   }
 }
 
