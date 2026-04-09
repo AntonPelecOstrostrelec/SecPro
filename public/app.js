@@ -2539,6 +2539,7 @@ async function searchLeads() {
 
     // Render results
     if (leadsData.length > 0) {
+      checkPriceUpdates(leadsData);
       renderLeadCards(leadsData);
       document.getElementById('leads-results-wrap').style.display = 'block';
       document.getElementById('leads-filter-bar').style.display = 'flex';
@@ -2664,6 +2665,105 @@ function reRenderLeadCards() {
   if (typeof leadsData !== 'undefined' && leadsData.length > 0) renderLeadCards(leadsData);
 }
 
+// ── Duplicate Detection ──
+// Groups leads that likely represent the same property across portals.
+// Matches by: (1) same phone number, (2) very similar title + same location.
+// Returns Map: leadUrl → [array of duplicate lead objects (excluding self)]
+function detectDuplicates(leads) {
+  const duplicateMap = new Map(); // url → Set of duplicate urls
+  const savedLeads = getSavedLeads();
+  const allLeads = [...leads];
+
+  // Include saved leads in the pool for cross-referencing
+  savedLeads.forEach(sl => {
+    if (!allLeads.some(l => l.url === sl.url)) {
+      allLeads.push(sl);
+    }
+  });
+
+  // (1) Phone-based grouping
+  const phoneMap = new Map(); // phone → [leads]
+  allLeads.forEach(lead => {
+    if (!lead.phone) return;
+    const phone = lead.phone.replace(/\s+/g, '').replace(/[^0-9+]/g, '');
+    if (phone.length < 5) return;
+    if (!phoneMap.has(phone)) phoneMap.set(phone, []);
+    phoneMap.get(phone).push(lead);
+  });
+
+  phoneMap.forEach(group => {
+    if (group.length < 2) return;
+    group.forEach(lead => {
+      if (!duplicateMap.has(lead.url)) duplicateMap.set(lead.url, new Set());
+      group.forEach(other => {
+        if (other.url !== lead.url) duplicateMap.get(lead.url).add(other.url);
+      });
+    });
+  });
+
+  // (2) Title + location similarity
+  function normalizeText(str) {
+    return (str || '').toLowerCase().replace(/[^a-záäčďéíľĺňóôŕšťúýž0-9\s]/gi, '').replace(/\s+/g, ' ').trim();
+  }
+  function getWords(str) {
+    return normalizeText(str).split(' ').filter(w => w.length > 2);
+  }
+  function wordOverlap(a, b) {
+    if (a.length === 0 || b.length === 0) return 0;
+    const setA = new Set(a);
+    const setB = new Set(b);
+    let matches = 0;
+    setA.forEach(w => { if (setB.has(w)) matches++; });
+    const total = Math.min(setA.size, setB.size);
+    return total > 0 ? matches / total : 0;
+  }
+
+  for (let i = 0; i < allLeads.length; i++) {
+    for (let j = i + 1; j < allLeads.length; j++) {
+      const a = allLeads[i];
+      const b = allLeads[j];
+      // Already linked by phone — skip
+      if (duplicateMap.has(a.url) && duplicateMap.get(a.url).has(b.url)) continue;
+      // Must have same location (normalized)
+      const locA = normalizeText(a.location);
+      const locB = normalizeText(b.location);
+      if (!locA || !locB || locA !== locB) continue;
+      // Title word overlap > 80%
+      const wordsA = getWords(a.title);
+      const wordsB = getWords(b.title);
+      if (wordOverlap(wordsA, wordsB) < 0.8) continue;
+      // Match found
+      if (!duplicateMap.has(a.url)) duplicateMap.set(a.url, new Set());
+      if (!duplicateMap.has(b.url)) duplicateMap.set(b.url, new Set());
+      duplicateMap.get(a.url).add(b.url);
+      duplicateMap.get(b.url).add(a.url);
+    }
+  }
+
+  // Convert Sets to lead objects for easy rendering
+  const leadByUrl = new Map();
+  allLeads.forEach(l => leadByUrl.set(l.url, l));
+
+  const result = new Map();
+  duplicateMap.forEach((dupUrls, url) => {
+    const dupLeads = [];
+    dupUrls.forEach(u => {
+      const l = leadByUrl.get(u);
+      if (l) dupLeads.push(l);
+    });
+    if (dupLeads.length > 0) result.set(url, dupLeads);
+  });
+
+  return result;
+}
+
+// Toggle duplicate panel visibility
+function toggleDupPanel(hash) {
+  const panel = document.getElementById('dup-panel-' + hash);
+  if (!panel) return;
+  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+}
+
 function renderLeadCards(leads) {
   const grid = document.getElementById('leads-cards-grid');
   if (!grid) return;
@@ -2672,6 +2772,9 @@ function renderLeadCards(leads) {
   const statusFilter = document.getElementById('leads-status-filter')?.value || '';
   const allMeta = getLeadStatuses();
   const savedLeads = getSavedLeads();
+
+  // Detect duplicates once for all leads
+  const dupMap = detectDuplicates(leads);
 
   let visible = 0;
   let html = '';
@@ -2693,6 +2796,12 @@ function renderLeadCards(leads) {
     const alreadySaved = savedLeads.some(s => s.url === lead.url);
 
     const escUrl = esc(lead.url.replace(/'/g, "\\'"));
+
+    // Price change badge for search cards
+    const matchedSaved = savedLeads.find(s => s.url === lead.url || (s.phone && lead.phone && s.phone === lead.phone));
+    const priceChangeBadge = (matchedSaved && matchedSaved.priceHistory && matchedSaved.priceHistory.length > 1)
+      ? formatPriceChangeBadge(matchedSaved.priceHistory)
+      : '';
 
     // Status pills
     const pills = SEARCH_LEAD_STATUSES.map(s => {
@@ -2718,6 +2827,7 @@ function renderLeadCards(leads) {
       + '<div class="lc-hero">'
         + '<div class="lc-hero-top">'
           + '<span class="lc-source">' + esc(lead.source) + '</span>'
+          + (dupMap.has(lead.url) ? '<span class="lc-dup-badge" onclick="toggleDupPanel(\'' + hash + '\')">| podobn\u00E9 ' + dupMap.get(lead.url).length + 'x</span>' : '')
           + '<button class="lc-dismiss" onclick="toggleSearchLeadHidden(\'' + escUrl + '\')" title="' + (isHidden ? 'Odkryť' : 'Skryť') + '">'
           + (isHidden ? '&#x21A9;' : '&#x2715;') + '</button>'
         + '</div>'
@@ -2727,6 +2837,7 @@ function renderLeadCards(leads) {
       + '<div class="lc-body">'
         + '<div class="lc-info-row">'
           + '<span class="lc-price">' + esc(lead.priceText || 'Dohodou') + '</span>'
+          + priceChangeBadge
           + locHtml
           + (lead.size ? '<span class="lc-size">' + lead.size + ' m&sup2;</span>' : '')
         + '</div>'
@@ -2746,6 +2857,23 @@ function renderLeadCards(leads) {
             ? '<span class="lc-act-btn lc-act-saved">&#10003; Uložený</span>'
             : '<button class="lc-act-btn lc-act-save" onclick="saveLead(leadsData.find(l=>l.url===\'' + escUrl + '\'));this.outerHTML=\'<span class=lc-act-btn\\ lc-act-saved>&#10003; Uložený</span>\';updateNavLeadCount();">+ Uložiť do leadov</button>')
         + '</div>'
+        // Duplicate panel (hidden by default)
+        + (dupMap.has(lead.url) ? (function() {
+          const dups = dupMap.get(lead.url);
+          const isSavedLead = function(u) { return savedLeads.some(function(s) { return s.url === u; }); };
+          return '<div class="lc-dup-panel" id="dup-panel-' + hash + '" style="display:none;">'
+            + '<div style="font-size:0.7rem;font-weight:700;color:#0891B2;margin-bottom:0.4rem;">Podobn\u00E9 inzer\u00E1ty (' + dups.length + ')</div>'
+            + dups.map(function(d) {
+              return '<div class="lc-dup-item">'
+                + '<span class="lc-dup-source">' + esc(d.source || '') + '</span>'
+                + (isSavedLead(d.url) ? '<span class="lc-dup-saved-tag">Ulo\u017Een\u00FD</span>' : '')
+                + '<a href="' + esc(d.url) + '" target="_blank" rel="noopener" class="lc-dup-title">' + esc(d.title || 'Bez n\u00E1zvu') + '</a>'
+                + '<span class="lc-dup-price">' + esc(d.priceText || d.price || '') + '</span>'
+                + (d.phone ? '<span class="lc-dup-phone">' + esc(d.phone) + '</span>' : '')
+              + '</div>';
+            }).join('')
+          + '</div>';
+        })() : '')
       + '</div>'
     + '</div>';
   }
@@ -7013,9 +7141,56 @@ function saveLead(lead) {
     updatedAt: new Date().toISOString(),
     contactedAt: null,
     tags: [],
+    priceHistory: [{ price: lead.price || 0, priceText: lead.priceText || '', date: new Date().toISOString(), source: lead.source || '' }],
   });
   saveSavedLeads(leads);
   updateNavLeadCount();
+}
+
+function formatPriceChangeBadge(priceHistory) {
+  if (!priceHistory || priceHistory.length < 2) return '';
+  const latest = priceHistory[priceHistory.length - 1];
+  const prev = priceHistory[priceHistory.length - 2];
+  const oldPrice = Number(prev.price) || 0;
+  const newPrice = Number(latest.price) || 0;
+  if (oldPrice === 0 || newPrice === oldPrice) return '';
+  const delta = newPrice - oldPrice;
+  const pct = ((delta / oldPrice) * 100).toFixed(1);
+  const isUp = delta > 0;
+  const arrow = isUp ? '\u2191' : '\u2193';
+  const sign = isUp ? '+' : '';
+  const cls = isUp ? 'lc-price-up' : 'lc-price-down';
+  return '<span class="lc-price-change ' + cls + '">' + arrow + ' ' + sign + delta.toLocaleString('sk-SK') + ' \u20AC (' + sign + pct + '%)</span>';
+}
+
+function checkPriceUpdates(searchResults) {
+  if (!searchResults || !searchResults.length) return;
+  const leads = getSavedLeads();
+  if (!leads.length) return;
+  let changed = false;
+  for (const result of searchResults) {
+    const resultPrice = Number(result.price) || 0;
+    if (!resultPrice) continue;
+    const match = leads.find(function(l) {
+      if (l.url && result.url && l.url === result.url) return true;
+      if (l.phone && result.phone && l.phone === result.phone) return true;
+      return false;
+    });
+    if (!match) continue;
+    const savedPrice = Number(match.price) || 0;
+    if (savedPrice === resultPrice) continue;
+    // Price has changed
+    if (!match.priceHistory) match.priceHistory = [{ price: savedPrice, priceText: match.priceText || '', date: match.savedAt || new Date().toISOString(), source: match.source || '' }];
+    match.priceHistory.push({ price: resultPrice, priceText: result.priceText || '', date: new Date().toISOString(), source: result.source || '' });
+    var oldPriceText = match.priceText || (savedPrice.toLocaleString('sk-SK') + ' \u20AC');
+    var newPriceText = result.priceText || (resultPrice.toLocaleString('sk-SK') + ' \u20AC');
+    match.price = resultPrice;
+    match.priceText = result.priceText || match.priceText;
+    match.updatedAt = new Date().toISOString();
+    changed = true;
+    showToast('Zmena ceny: ' + (match.title || 'Lead') + ' - ' + oldPriceText + ' \u2192 ' + newPriceText);
+  }
+  if (changed) saveSavedLeads(leads);
 }
 
 function computeLeadScore(lead) {
@@ -7154,6 +7329,16 @@ function renderSavedLeads() {
     return (b.score || 0) - (a.score || 0);
   });
 
+  // Build phone-based duplicate map for saved leads
+  const savedDupPhoneMap = new Map();
+  leads.forEach(l => {
+    if (!l.phone) return;
+    const ph = l.phone.replace(/\s+/g, '').replace(/[^0-9+]/g, '');
+    if (ph.length < 5) return;
+    if (!savedDupPhoneMap.has(ph)) savedDupPhoneMap.set(ph, []);
+    savedDupPhoneMap.get(ph).push(l);
+  });
+
   grid.innerHTML = sorted.map(lead => {
     const st = LEAD_STATUS_MAP[lead.status] || LEAD_PIPELINE[0];
     const scoreColor = lead.score >= 80 ? '#10B981' : lead.score >= 60 ? '#F59E0B' : lead.score >= 40 ? '#F97316' : '#EF4444';
@@ -7161,27 +7346,66 @@ function renderSavedLeads() {
     const dateStr = new Date(lead.savedAt).toLocaleDateString('sk-SK', { day: 'numeric', month: 'short' });
     const isDone = lead.status === 'ziskany' || lead.status === 'strateny';
 
+    // Check if this saved lead has duplicates (same phone, different lead)
+    let savedDupCount = 0;
+    if (lead.phone) {
+      const ph = lead.phone.replace(/\s+/g, '').replace(/[^0-9+]/g, '');
+      const group = savedDupPhoneMap.get(ph);
+      if (group && group.length > 1) savedDupCount = group.length - 1;
+    }
+
     const statusOptions = LEAD_PIPELINE
       .filter(s => s.key !== lead.status)
       .map(s => '<option value="' + s.key + '">' + s.label + '</option>')
       .join('');
 
+    // Price change badge for saved leads
+    var savedPriceChangeBadge = formatPriceChangeBadge(lead.priceHistory || []);
+
+    // Price history expandable section
+    var priceHistoryHtml = '';
+    if (lead.priceHistory && lead.priceHistory.length > 1) {
+      var histItems = lead.priceHistory.slice().reverse().map(function(entry, idx, arr) {
+        var d = new Date(entry.date).toLocaleDateString('sk-SK', { day: 'numeric', month: 'short', year: 'numeric' });
+        var pStr = entry.price ? Number(entry.price).toLocaleString('sk-SK') + ' \u20AC' : entry.priceText || '\u2014';
+        var deltaHtml = '';
+        if (idx < arr.length - 1) {
+          var prevEntry = arr[idx + 1];
+          var diff = Number(entry.price) - Number(prevEntry.price);
+          if (diff !== 0) {
+            var pct = ((diff / Number(prevEntry.price)) * 100).toFixed(1);
+            var isUp = diff > 0;
+            deltaHtml = '<span class="ph-delta ' + (isUp ? 'up' : 'down') + '">' + (isUp ? '\u2191 +' : '\u2193 ') + diff.toLocaleString('sk-SK') + ' \u20AC (' + (isUp ? '+' : '') + pct + '%)</span>';
+          }
+        }
+        return '<div class="lc-price-hist-item">' +
+          '<span class="ph-date">' + d + '</span>' +
+          '<span class="ph-price">' + pStr + '</span>' +
+          deltaHtml +
+        '</div>';
+      }).join('');
+      priceHistoryHtml = '<span class="lc-price-history-toggle" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'block\':\'none\';this.textContent=this.nextElementSibling.style.display===\'none\'?\'\u25BE Cenov\u00E1 hist\u00F3ria\':\'\u25B4 Skry\u0165 hist\u00F3riu\';">\u25BE Cenov\u00E1 hist\u00F3ria</span>' +
+        '<div class="lc-price-history" style="display:none;">' + histItems + '</div>';
+    }
+
     return '<div class="card" style="padding:1rem;' + (isDone ? 'opacity:0.6;' : '') + '">' +
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.75rem;">' +
         '<div style="flex:1;min-width:0;">' +
           '<div style="font-size:0.92rem;font-weight:600;color:var(--dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + esc(lead.title) + '">' + esc(lead.title || 'Bez n\u00E1zvu') + '</div>' +
-          '<div style="font-size:0.78rem;color:var(--text-light);margin-top:0.2rem;">' + esc(lead.location || '') + (lead.source ? ' \u00B7 ' + esc(lead.source) : '') + '</div>' +
+          '<div style="font-size:0.78rem;color:var(--text-light);margin-top:0.2rem;">' + esc(lead.location || '') + (lead.source ? ' \u00B7 ' + esc(lead.source) : '') + (savedDupCount > 0 ? ' <span class="lc-dup-badge" style="cursor:default;" title="' + savedDupCount + ' \u010Falš\u00EDch leadov s rovnak\u00FDm telef\u00F3nom">Dup ' + savedDupCount + 'x</span>' : '') + '</div>' +
         '</div>' +
         '<div style="display:flex;align-items:center;gap:0.5rem;margin-left:0.5rem;flex-shrink:0;">' +
           '<div style="width:32px;height:32px;border-radius:50%;background:' + scoreColor + '15;color:' + scoreColor + ';display:flex;align-items:center;justify-content:center;font-size:0.72rem;font-weight:700;" title="Lead score: ' + lead.score + '">' + lead.score + '</div>' +
           '<span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:0.68rem;font-weight:600;background:' + st.color + '15;color:' + st.color + ';">' + st.label + '</span>' +
         '</div>' +
       '</div>' +
-      '<div style="display:flex;gap:1rem;margin-bottom:0.75rem;font-size:0.82rem;">' +
+      '<div style="display:flex;gap:1rem;margin-bottom:0.5rem;font-size:0.82rem;flex-wrap:wrap;align-items:center;">' +
         '<span style="font-weight:600;color:var(--dark);">' + priceStr + '</span>' +
+        savedPriceChangeBadge +
         (lead.size ? '<span style="color:var(--text-light);">' + lead.size + ' m\u00B2</span>' : '') +
         '<span style="color:var(--text-light);">' + dateStr + '</span>' +
       '</div>' +
+      priceHistoryHtml +
       (lead.phone ? '<div style="margin-bottom:0.5rem;font-size:0.82rem;"><a href="tel:' + lead.phone + '" style="color:#1A7A8A;font-weight:600;text-decoration:none;"><i data-lucide="phone" style="width:12px;height:12px;display:inline;vertical-align:middle;margin-right:4px;"></i>' + esc(lead.phone) + '</a></div>' : '') +
       '<textarea style="width:100%;font-size:0.78rem;border:1px solid #E5E7EB;border-radius:8px;padding:0.5rem;resize:vertical;min-height:36px;font-family:Inter,sans-serif;margin-bottom:0.5rem;" placeholder="Pozn\u00E1mky..." oninput="updateLeadNotes(\'' + lead.id + '\', this.value)">' + esc(lead.notes || '') + '</textarea>' +
       '<div style="display:flex;gap:0.4rem;flex-wrap:wrap;align-items:center;">' +
