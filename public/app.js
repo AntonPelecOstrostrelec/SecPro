@@ -3103,11 +3103,206 @@ const PROP_CONDITION_MAP = {
   'rozostavanost': 'Rozostavanosť',
 };
 
+// ===================== PROPERTY FORM WIZARD =====================
+const PROP_WIZ_TOTAL_STEPS = 4;
+const PROP_DRAFT_KEY = 'prop-form-draft';
+let prop_wiz_step = 1;
+let prop_wiz_draft_timer = null;
+let prop_wiz_is_edit = false;
+
+const PROP_FORM_FIELD_IDS = [
+  'prop-title','prop-type','prop-status','prop-address','prop-city','prop-district',
+  'prop-price','prop-size','prop-rooms','prop-floor','prop-year','prop-condition',
+  'prop-owner','prop-phone','prop-email','prop-url','prop-description','prop-notes',
+  'prop-ai-headline'
+];
+
+function _propFormReadValues() {
+  const v = {};
+  PROP_FORM_FIELD_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) v[id] = el.value;
+  });
+  // Also collect photo data URLs from preview
+  const photoEls = document.querySelectorAll('#prop-photo-preview img');
+  v.photos = Array.from(photoEls).map(img => img.src).slice(0, 10);
+  return v;
+}
+
+function _propFormApplyValues(v) {
+  if (!v) return;
+  PROP_FORM_FIELD_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && v[id] !== undefined) el.value = v[id];
+  });
+  if (Array.isArray(v.photos) && v.photos.length > 0) {
+    const preview = document.getElementById('prop-photo-preview');
+    preview.innerHTML = '';
+    v.photos.forEach(src => {
+      const div = document.createElement('div');
+      div.style.cssText = 'position:relative;width:80px;height:80px;border-radius:8px;overflow:hidden;border:2px solid #e0e0e0;';
+      div.innerHTML = `<img src="${src}" style="width:100%;height:100%;object-fit:cover;" />
+        <button onclick="this.parentElement.remove()" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.6);color:#fff;border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:12px;line-height:20px;text-align:center;">&times;</button>`;
+      preview.appendChild(div);
+    });
+  }
+}
+
+function _propFormResetValues() {
+  PROP_FORM_FIELD_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (id === 'prop-type') el.value = 'byt';
+    else if (id === 'prop-status') el.value = 'novy';
+    else el.value = '';
+  });
+  document.getElementById('prop-photo-preview').innerHTML = '';
+  const fileInp = document.getElementById('prop-photos');
+  if (fileInp) fileInp.value = '';
+}
+
+function _propDraftHas() {
+  try {
+    const raw = localStorage.getItem(PROP_DRAFT_KEY);
+    if (!raw) return false;
+    const d = JSON.parse(raw);
+    // Consider draft empty if no title and no phone
+    return !!(d && d.values && (d.values['prop-title'] || d.values['prop-phone']));
+  } catch { return false; }
+}
+
+function _propDraftLoad() {
+  try { return JSON.parse(localStorage.getItem(PROP_DRAFT_KEY) || 'null'); } catch { return null; }
+}
+
+function _propDraftSave() {
+  if (prop_wiz_is_edit) return; // never auto-save into draft when editing existing record
+  const values = _propFormReadValues();
+  // Skip empty drafts
+  if (!values['prop-title'] && !values['prop-phone'] && !values['prop-price']) return;
+  const draft = { values, step: prop_wiz_step, savedAt: new Date().toISOString() };
+  try {
+    localStorage.setItem(PROP_DRAFT_KEY, JSON.stringify(draft));
+    _propDraftIndicator('saved');
+  } catch (e) {
+    // QuotaExceededError can happen with photos. Strip photos from the draft and retry.
+    try {
+      draft.values.photos = [];
+      localStorage.setItem(PROP_DRAFT_KEY, JSON.stringify(draft));
+      _propDraftIndicator('saved');
+    } catch {}
+  }
+}
+
+function _propDraftClear() {
+  try { localStorage.removeItem(PROP_DRAFT_KEY); } catch {}
+}
+
+function _propDraftScheduleSave() {
+  if (prop_wiz_is_edit) return;
+  _propDraftIndicator('saving');
+  if (prop_wiz_draft_timer) clearTimeout(prop_wiz_draft_timer);
+  prop_wiz_draft_timer = setTimeout(_propDraftSave, 800);
+}
+
+function _propDraftIndicator(state) {
+  const wrap = document.getElementById('wiz-draft-status');
+  const txt  = document.getElementById('wiz-draft-status-text');
+  if (!wrap || !txt) return;
+  wrap.style.display = '';
+  wrap.classList.remove('saving','saved');
+  if (state === 'saving') { wrap.classList.add('saving'); txt.textContent = 'Ukladám koncept…'; }
+  else if (state === 'saved')  { wrap.classList.add('saved');  txt.textContent = '✓ Koncept uložený'; }
+}
+
+function _propWizAttachAutoSave() {
+  PROP_FORM_FIELD_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el || el.dataset.wizBound) return;
+    el.dataset.wizBound = '1';
+    const ev = (el.tagName === 'SELECT') ? 'change' : 'input';
+    el.addEventListener(ev, _propDraftScheduleSave);
+  });
+}
+
+function _propWizValidateStep(step) {
+  if (step === 1) {
+    const title = document.getElementById('prop-title').value.trim();
+    const price = document.getElementById('prop-price').value;
+    const phone = document.getElementById('prop-phone').value.trim();
+    const city  = document.getElementById('prop-city').value.trim();
+    const missing = [];
+    if (!title) missing.push('Titulok');
+    if (!price) missing.push('Cena');
+    if (!phone) missing.push('Telefón');
+    if (!city)  missing.push('Mesto');
+    if (missing.length) {
+      alert('Vyplňte povinné polia: ' + missing.join(', '));
+      return false;
+    }
+  }
+  return true;
+}
+
+function goToWizStep(step) {
+  if (step < 1) step = 1;
+  if (step > PROP_WIZ_TOTAL_STEPS) step = PROP_WIZ_TOTAL_STEPS;
+
+  // Going forward requires valid current step
+  if (step > prop_wiz_step) {
+    for (let s = prop_wiz_step; s < step; s++) {
+      if (!_propWizValidateStep(s)) return;
+    }
+  }
+
+  prop_wiz_step = step;
+  // Update panels
+  document.querySelectorAll('#prop-modal .wiz-panel').forEach(el => {
+    el.classList.toggle('active', Number(el.dataset.step) === step);
+  });
+  // Update stepper
+  document.querySelectorAll('#prop-modal .wiz-step').forEach(el => {
+    const s = Number(el.dataset.step);
+    el.classList.toggle('active', s === step);
+    el.classList.toggle('completed', s < step);
+    el.classList.toggle('disabled', s > step && !prop_wiz_is_edit);
+  });
+  // Update buttons
+  document.getElementById('wiz-btn-back').style.display = step > 1 ? '' : 'none';
+  const isLast = step === PROP_WIZ_TOTAL_STEPS;
+  document.getElementById('wiz-btn-next').style.display = isLast ? 'none' : '';
+  document.getElementById('wiz-btn-save-final').style.display = isLast ? '' : 'none';
+  // Save draft button visible on all steps
+  document.getElementById('wiz-btn-save-draft').style.display = prop_wiz_is_edit ? 'none' : '';
+  // Scroll modal to top
+  const modal = document.getElementById('prop-modal');
+  if (modal) modal.scrollTop = 0;
+  _propDraftScheduleSave();
+}
+
+function restorePropertyDraft() {
+  const draft = _propDraftLoad();
+  if (!draft || !draft.values) return;
+  _propFormApplyValues(draft.values);
+  document.getElementById('prop-draft-banner').style.display = 'none';
+  goToWizStep(draft.step || 1);
+}
+
+function discardPropertyDraft() {
+  _propDraftClear();
+  _propFormResetValues();
+  document.getElementById('prop-draft-banner').style.display = 'none';
+  goToWizStep(1);
+}
+
 function openPropertyForm(editId) {
   const modal = document.getElementById('prop-modal');
   const titleEl = document.getElementById('prop-modal-title');
   document.getElementById('prop-edit-id').value = '';
-  document.getElementById('prop-photo-preview').innerHTML = '';
+  _propFormResetValues();
+
+  prop_wiz_is_edit = !!editId;
+  prop_wiz_step = 1;
 
   if (editId) {
     titleEl.textContent = 'Upraviť nehnuteľnosť';
@@ -3145,35 +3340,49 @@ function openPropertyForm(editId) {
         p.photos.forEach((src, i) => {
           preview.innerHTML += `<div style="position:relative;width:80px;height:80px;border-radius:8px;overflow:hidden;border:2px solid #e0e0e0;">
             <img src="${src}" style="width:100%;height:100%;object-fit:cover;" />
-            <button onclick="this.parentElement.remove()" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.6);color:#fff;border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:12px;line-height:20px;text-align:center;">&times;</button>
-          </div>`;
+            <button onclick="this.parentElement.remove()" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.6);color:#fff;border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:12px;line-height:20px;text-align:center;">&times;</button>`;
         });
       }
     }
+    // In edit mode: show extras (interested & viewings) and unlock all steps
+    document.getElementById('prop-extras-section').style.display = '';
+    document.getElementById('prop-draft-banner').style.display = 'none';
   } else {
     titleEl.textContent = 'Pridať nehnuteľnosť';
-    // Reset form
-    ['prop-title','prop-address','prop-city','prop-district','prop-price','prop-size','prop-rooms','prop-floor','prop-year','prop-owner','prop-phone','prop-email','prop-url','prop-description','prop-notes'].forEach(id => {
-      document.getElementById(id).value = '';
-    });
-    document.getElementById('prop-type').value = 'byt';
-    document.getElementById('prop-status').value = 'novy';
-    document.getElementById('prop-condition').value = '';
-    document.getElementById('prop-photos').value = '';
     tempInterested = [];
     tempViewings = [];
     renderInterestedList();
     renderViewingList();
     updateSubTabCounts();
+    document.getElementById('prop-extras-section').style.display = 'none';
+    // Show draft restore banner if a draft exists
+    const draft = _propDraftLoad();
+    const banner = document.getElementById('prop-draft-banner');
+    if (draft && draft.values && (draft.values['prop-title'] || draft.values['prop-phone'])) {
+      const info = document.getElementById('prop-draft-banner-info');
+      const ts = draft.savedAt ? new Date(draft.savedAt).toLocaleString('sk-SK') : '';
+      const lbl = draft.values['prop-title'] || '(bez názvu)';
+      info.textContent = `${lbl} • uložené ${ts}`;
+      banner.style.display = '';
+    } else {
+      banner.style.display = 'none';
+    }
   }
   // Hide inline forms
-  document.getElementById('interested-add-form').classList.remove('visible');
-  document.getElementById('viewing-add-form').classList.remove('visible');
+  const iaf = document.getElementById('interested-add-form'); if (iaf) iaf.classList.remove('visible');
+  const vaf = document.getElementById('viewing-add-form');    if (vaf) vaf.classList.remove('visible');
+
+  // Reset draft status indicator
+  const ds = document.getElementById('wiz-draft-status'); if (ds) ds.style.display = 'none';
+
   modal.style.display = 'block';
+  goToWizStep(1);
+  _propWizAttachAutoSave();
 }
 
 function closePropertyForm() {
   document.getElementById('prop-modal').style.display = 'none';
+  if (prop_wiz_draft_timer) { clearTimeout(prop_wiz_draft_timer); prop_wiz_draft_timer = null; }
 }
 
 function compressImage(file, maxWidth, quality) {
@@ -4596,6 +4805,8 @@ async function saveProperty() {
       throw e;
     }
   }
+  // Clear wizard draft on successful save
+  _propDraftClear();
   closePropertyForm();
   renderProperties();
   // If already published on LEONES, re-sync updated data (without replacing photos)

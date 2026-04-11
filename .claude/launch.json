@@ -3,10 +3,10 @@
   "configurations": [
     {
       "name": "secpro-dev",
-      "runtimeExecutable": "/usr/local/bin/node",
+      "runtimeExecutable": "node",
       "runtimeArgs": ["server.js"],
       "port": 3000,
-      "cwd": "/Users/matej/Desktop/Projects/SecPro"
+      "cwd": "C:\\Users\\hp\\Pictures\\FIN ANALYZA"
     }
   ]
 }

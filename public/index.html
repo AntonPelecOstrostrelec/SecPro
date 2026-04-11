@@ -3141,153 +3141,197 @@
         <div style="padding:1.5rem;">
           <input type="hidden" id="prop-edit-id" />
 
-          <!-- Základné údaje -->
-          <div style="font-weight:600;color:var(--primary);margin-bottom:0.75rem;font-size:0.9rem;">📋 Základné údaje</div>
-          <div class="form-grid" style="grid-template-columns:1fr 1fr;">
-            <div class="form-group" style="grid-column:1/-1;">
-              <label>Názov / Titulok inzerátu *</label>
-              <input type="text" id="prop-title" placeholder="napr. 3-izbový byt v centre Bratislavy" />
+          <!-- Draft restore banner (shown only if a draft exists when opening) -->
+          <div id="prop-draft-banner" class="wiz-draft-banner" style="display:none;">
+            <div style="font-size:1.5rem;">📝</div>
+            <div class="wiz-draft-banner-text">
+              <div class="wiz-draft-banner-title">Máte rozrobený záznam</div>
+              <div id="prop-draft-banner-info" style="font-size:0.78rem;opacity:0.85;"></div>
             </div>
-            <div class="form-group">
-              <label>Typ nehnuteľnosti *</label>
-              <select id="prop-type">
-                <option value="byt">Byt</option>
-                <option value="dom">Dom</option>
-                <option value="pozemok">Pozemok</option>
-                <option value="komercia">Komerčný priestor</option>
-                <option value="iny">Iný</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Status</label>
-              <select id="prop-status">
-                <option value="novy">📋 Nový lead</option>
-                <option value="kontakt">📞 Prvý kontakt</option>
-                <option value="stretnutie">🤝 Stretnutie</option>
-                <option value="nafotenie">📸 Nafotenie</option>
-                <option value="inzercia">📢 Inzercia</option>
-                <option value="obhliadky">🏠 Obhliadky</option>
-                <option value="rezervacia">📝 Rezervácia</option>
-                <option value="predana">✅ Predaná</option>
-                <option value="stiahnuta">❌ Stiahnutá</option>
-              </select>
+            <div class="wiz-draft-banner-actions">
+              <button type="button" class="wiz-btn wiz-btn-discard" onclick="discardPropertyDraft()">Začať odznova</button>
+              <button type="button" class="wiz-btn wiz-btn-next" onclick="restorePropertyDraft()">Pokračovať</button>
             </div>
           </div>
 
-          <!-- Lokalita -->
-          <div style="font-weight:600;color:var(--primary);margin:1.25rem 0 0.75rem;font-size:0.9rem;">📍 Lokalita</div>
-          <div class="form-grid" style="grid-template-columns:1fr 1fr;">
-            <div class="form-group" style="grid-column:1/-1;">
-              <label>Adresa</label>
-              <input type="text" id="prop-address" placeholder="Ulica a číslo" />
+          <!-- Stepper -->
+          <div class="wiz-stepper" id="prop-wiz-stepper">
+            <div class="wiz-step active" data-step="1" onclick="goToWizStep(1)">
+              <div class="wiz-step-circle"><span class="wiz-step-num">1</span></div>
+              <div class="wiz-step-label">Základ</div>
             </div>
-            <div class="form-group">
-              <label>Mesto / Obec *</label>
-              <input type="text" id="prop-city" placeholder="napr. Bratislava" />
+            <div class="wiz-step disabled" data-step="2" onclick="goToWizStep(2)">
+              <div class="wiz-step-circle"><span class="wiz-step-num">2</span></div>
+              <div class="wiz-step-label">Detail</div>
             </div>
-            <div class="form-group">
-              <label>Okres / Kraj</label>
-              <input type="text" id="prop-district" placeholder="napr. Bratislava III" />
+            <div class="wiz-step disabled" data-step="3" onclick="goToWizStep(3)">
+              <div class="wiz-step-circle"><span class="wiz-step-num">3</span></div>
+              <div class="wiz-step-label">Fotky</div>
             </div>
-          </div>
-
-          <!-- Parametre -->
-          <div style="font-weight:600;color:var(--primary);margin:1.25rem 0 0.75rem;font-size:0.9rem;">📐 Parametre</div>
-          <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr;">
-            <div class="form-group">
-              <label>Cena (€) *</label>
-              <input type="number" id="prop-price" placeholder="125 000" />
-            </div>
-            <div class="form-group">
-              <label>Výmera (m²)</label>
-              <input type="number" id="prop-size" placeholder="68" />
-            </div>
-            <div class="form-group">
-              <label>Počet izieb</label>
-              <input type="number" id="prop-rooms" placeholder="3" />
-            </div>
-            <div class="form-group">
-              <label>Poschodie</label>
-              <input type="text" id="prop-floor" placeholder="napr. 3/8" />
-            </div>
-            <div class="form-group">
-              <label>Rok výstavby</label>
-              <input type="number" id="prop-year" placeholder="2005" />
-            </div>
-            <div class="form-group">
-              <label>Stav</label>
-              <select id="prop-condition">
-                <option value="">-- vybrať --</option>
-                <option value="novostavba">Novostavba</option>
-                <option value="kompletna-rekonstrukcia">Kompletná rekonštrukcia</option>
-                <option value="ciastocna-rekonstrukcia">Čiastočná rekonštrukcia</option>
-                <option value="povodny-stav">Pôvodný stav</option>
-                <option value="rozostavanost">Rozostavanosť</option>
-              </select>
+            <div class="wiz-step disabled" data-step="4" onclick="goToWizStep(4)">
+              <div class="wiz-step-circle"><span class="wiz-step-num">4</span></div>
+              <div class="wiz-step-label">Popis &amp; AI</div>
             </div>
           </div>
 
-          <!-- Kontakt -->
-          <div style="font-weight:600;color:var(--primary);margin:1.25rem 0 0.75rem;font-size:0.9rem;">📞 Kontakt na vlastníka</div>
-          <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr;">
-            <div class="form-group">
-              <label>Meno vlastníka</label>
-              <input type="text" id="prop-owner" placeholder="Ján Novák" />
-            </div>
-            <div class="form-group">
-              <label>Telefón *</label>
-              <input type="tel" id="prop-phone" placeholder="+421 9XX XXX XXX" />
-            </div>
-            <div class="form-group">
-              <label>Email</label>
-              <input type="email" id="prop-email" placeholder="jan@email.sk" />
+          <!-- ============== STEP 1: ZÁKLAD (rýchly záznam) ============== -->
+          <div class="wiz-panel active" data-step="1">
+            <div class="wiz-section-title">📋 Rýchly záznam — povinné minimum</div>
+            <div class="wiz-required-hint">Vyplňte len 4 polia a môžete uložiť ako koncept. Detaily doplníte neskôr.</div>
+            <div class="form-grid" style="grid-template-columns:1fr 1fr;">
+              <div class="form-group" style="grid-column:1/-1;">
+                <label>Názov / Titulok inzerátu *</label>
+                <input type="text" id="prop-title" placeholder="napr. 3-izbový byt v centre Bratislavy" />
+              </div>
+              <div class="form-group">
+                <label>Typ nehnuteľnosti *</label>
+                <select id="prop-type">
+                  <option value="byt">Byt</option>
+                  <option value="dom">Dom</option>
+                  <option value="pozemok">Pozemok</option>
+                  <option value="komercia">Komerčný priestor</option>
+                  <option value="iny">Iný</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Cena (€) *</label>
+                <input type="number" id="prop-price" placeholder="125 000" />
+              </div>
+              <div class="form-group">
+                <label>Telefón vlastníka *</label>
+                <input type="tel" id="prop-phone" placeholder="+421 9XX XXX XXX" />
+              </div>
+              <div class="form-group">
+                <label>Mesto / Obec *</label>
+                <input type="text" id="prop-city" placeholder="napr. Bratislava" />
+              </div>
             </div>
           </div>
 
-          <!-- Fotografie -->
-          <div style="font-weight:600;color:var(--primary);margin:1.25rem 0 0.75rem;font-size:0.9rem;">📷 Fotografie</div>
-          <div class="form-group">
-            <label>Nahrať fotografie (max 10)</label>
-            <input type="file" id="prop-photos" accept="image/*" multiple onchange="previewPropertyPhotos()" style="padding:0.5rem;" />
-            <div id="prop-photo-preview" style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-top:0.5rem;"></div>
+          <!-- ============== STEP 2: DETAIL ============== -->
+          <div class="wiz-panel" data-step="2">
+            <div class="wiz-section-title">📍 Lokalita</div>
+            <div class="form-grid" style="grid-template-columns:1fr 1fr;">
+              <div class="form-group" style="grid-column:1/-1;">
+                <label>Adresa</label>
+                <input type="text" id="prop-address" placeholder="Ulica a číslo" />
+              </div>
+              <div class="form-group">
+                <label>Okres / Kraj</label>
+                <input type="text" id="prop-district" placeholder="napr. Bratislava III" />
+              </div>
+              <div class="form-group">
+                <label>Status</label>
+                <select id="prop-status">
+                  <option value="novy">📋 Nový lead</option>
+                  <option value="kontakt">📞 Prvý kontakt</option>
+                  <option value="stretnutie">🤝 Stretnutie</option>
+                  <option value="nafotenie">📸 Nafotenie</option>
+                  <option value="inzercia">📢 Inzercia</option>
+                  <option value="obhliadky">🏠 Obhliadky</option>
+                  <option value="rezervacia">📝 Rezervácia</option>
+                  <option value="predana">✅ Predaná</option>
+                  <option value="stiahnuta">❌ Stiahnutá</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="wiz-section-title">📐 Parametre</div>
+            <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr;">
+              <div class="form-group">
+                <label>Výmera (m²)</label>
+                <input type="number" id="prop-size" placeholder="68" />
+              </div>
+              <div class="form-group">
+                <label>Počet izieb</label>
+                <input type="number" id="prop-rooms" placeholder="3" />
+              </div>
+              <div class="form-group">
+                <label>Poschodie</label>
+                <input type="text" id="prop-floor" placeholder="napr. 3/8" />
+              </div>
+              <div class="form-group">
+                <label>Rok výstavby</label>
+                <input type="number" id="prop-year" placeholder="2005" />
+              </div>
+              <div class="form-group" style="grid-column:span 2;">
+                <label>Stav</label>
+                <select id="prop-condition">
+                  <option value="">-- vybrať --</option>
+                  <option value="novostavba">Novostavba</option>
+                  <option value="kompletna-rekonstrukcia">Kompletná rekonštrukcia</option>
+                  <option value="ciastocna-rekonstrukcia">Čiastočná rekonštrukcia</option>
+                  <option value="povodny-stav">Pôvodný stav</option>
+                  <option value="rozostavanost">Rozostavanosť</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="wiz-section-title">📞 Kontakt na vlastníka</div>
+            <div class="form-grid" style="grid-template-columns:1fr 1fr;">
+              <div class="form-group">
+                <label>Meno vlastníka</label>
+                <input type="text" id="prop-owner" placeholder="Ján Novák" />
+              </div>
+              <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="prop-email" placeholder="jan@email.sk" />
+              </div>
+            </div>
           </div>
 
-          <!-- Odkaz a Popis -->
-          <div style="font-weight:600;color:var(--primary);margin:1.25rem 0 0.75rem;font-size:0.9rem;">🔗 Odkaz a popis</div>
-          <div class="form-group">
-            <label>URL odkaz na inzerát</label>
-            <input type="url" id="prop-url" placeholder="https://..." />
-          </div>
-          <div class="form-group">
-            <label>Popis nehnuteľnosti</label>
-            <div style="display:flex;gap:0.5rem;margin-bottom:0.5rem;flex-wrap:wrap;">
-              <button type="button" class="btn" style="font-size:0.78rem;padding:5px 12px;background:linear-gradient(135deg,#7C3AED,#5B21B6);color:#fff;border:none;" onclick="aiGenerateDescription()">
-                <span id="ai-gen-text">✨ Generovať s AI</span>
-                <span id="ai-gen-spinner" style="display:none;">⏳ Generujem...</span>
-              </button>
-              <button type="button" class="btn" style="font-size:0.78rem;padding:5px 12px;background:#E5F5F1;color:#0B2A3C;" onclick="templateDescription()">
-                📝 Použiť šablónu
-              </button>
-              <button type="button" class="btn" style="font-size:0.78rem;padding:5px 12px;background:#FFF7ED;color:#D97706;" onclick="openSampleAds()">
-                📚 Vzorové inzeráty
-              </button>
+          <!-- ============== STEP 3: FOTKY ============== -->
+          <div class="wiz-panel" data-step="3">
+            <div class="wiz-section-title">📷 Fotografie</div>
+            <div class="form-group">
+              <label>Nahrať fotografie (max 10)</label>
+              <input type="file" id="prop-photos" accept="image/*" multiple onchange="previewPropertyPhotos()" style="padding:0.5rem;" />
+              <div id="prop-photo-preview" style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-top:0.5rem;"></div>
+              <p style="font-size:0.74rem;color:var(--text-light);margin-top:0.5rem;">💡 Tip: Prvá fotka v poradí sa stane titulnou. Pokročilý foto editor (drag &amp; drop poradie, crop) pribudne čoskoro.</p>
             </div>
-            <textarea id="prop-description" rows="5" placeholder="Detailný popis nehnuteľnosti... (použite AI generovanie alebo šablónu)"></textarea>
-            <div id="ai-gen-error" style="display:none;font-size:0.78rem;color:#DC2626;margin-top:0.3rem;"></div>
-          </div>
-          <div class="form-group">
-            <label>Titulok inzerátu (AI)</label>
-            <div style="display:flex;gap:0.5rem;align-items:center;">
-              <input type="text" id="prop-ai-headline" placeholder="AI vygeneruje chytľavý titulok..." style="flex:1;" />
-              <button type="button" class="btn" style="font-size:0.78rem;padding:5px 12px;background:linear-gradient(135deg,#7C3AED,#5B21B6);color:#fff;border:none;" onclick="aiGenerateHeadline()">✨ Titulok</button>
+
+            <div class="wiz-section-title">🔗 URL odkaz na inzerát</div>
+            <div class="form-group">
+              <label>URL (voliteľné)</label>
+              <input type="url" id="prop-url" placeholder="https://..." />
             </div>
-          </div>
-          <div class="form-group">
-            <label>Interné poznámky</label>
-            <textarea id="prop-notes" rows="2" placeholder="Vlastné poznámky (len pre vás)..."></textarea>
           </div>
 
-          <!-- Záujemcovia & Prehliadky -->
+          <!-- ============== STEP 4: POPIS & AI ============== -->
+          <div class="wiz-panel" data-step="4">
+            <div class="wiz-section-title">📝 Popis a titulok inzerátu</div>
+            <div class="form-group">
+              <label>Popis nehnuteľnosti</label>
+              <div style="display:flex;gap:0.5rem;margin-bottom:0.5rem;flex-wrap:wrap;">
+                <button type="button" class="btn" style="font-size:0.78rem;padding:5px 12px;background:linear-gradient(135deg,#7C3AED,#5B21B6);color:#fff;border:none;" onclick="aiGenerateDescription()">
+                  <span id="ai-gen-text">✨ Generovať s AI</span>
+                  <span id="ai-gen-spinner" style="display:none;">⏳ Generujem...</span>
+                </button>
+                <button type="button" class="btn" style="font-size:0.78rem;padding:5px 12px;background:#E5F5F1;color:#0B2A3C;" onclick="templateDescription()">
+                  📝 Použiť šablónu
+                </button>
+                <button type="button" class="btn" style="font-size:0.78rem;padding:5px 12px;background:#FFF7ED;color:#D97706;" onclick="openSampleAds()">
+                  📚 Vzorové inzeráty
+                </button>
+              </div>
+              <textarea id="prop-description" rows="6" placeholder="Detailný popis nehnuteľnosti... (použite AI generovanie alebo šablónu)"></textarea>
+              <div id="ai-gen-error" style="display:none;font-size:0.78rem;color:#DC2626;margin-top:0.3rem;"></div>
+            </div>
+            <div class="form-group">
+              <label>Titulok inzerátu (AI)</label>
+              <div style="display:flex;gap:0.5rem;align-items:center;">
+                <input type="text" id="prop-ai-headline" placeholder="AI vygeneruje chytľavý titulok..." style="flex:1;" />
+                <button type="button" class="btn" style="font-size:0.78rem;padding:5px 12px;background:linear-gradient(135deg,#7C3AED,#5B21B6);color:#fff;border:none;" onclick="aiGenerateHeadline()">✨ Titulok</button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Interné poznámky</label>
+              <textarea id="prop-notes" rows="2" placeholder="Vlastné poznámky (len pre vás)..."></textarea>
+            </div>
+          </div>
+
+          <!-- Záujemcovia & Prehliadky — len v edit móde -->
+          <div id="prop-extras-section" style="display:none;">
           <div class="prop-section-title" style="margin-bottom:0;">
             <span>👥 Záujemcovia a prehliadky</span>
           </div>
@@ -3383,11 +3427,20 @@
               <button type="button" class="btn-add-sm" style="margin-top:0.5rem;width:100%;text-align:center;padding:0.5rem;border-radius:8px;border:1.5px dashed rgba(26,122,138,0.3);background:#F7FAFA;" onclick="toggleInlineForm('viewing-add-form')">+ Pridať prehliadku</button>
             </div>
           </div>
+          </div><!-- /prop-extras-section -->
 
-          <!-- Buttons -->
-          <div style="display:flex;gap:0.75rem;margin-top:1.5rem;justify-content:flex-end;">
-            <button class="btn" style="background:#f0f0f0;color:#333;" onclick="closePropertyForm()">Zrušiť</button>
-            <button class="btn btn-primary" onclick="saveProperty()">Uložiť nehnuteľnosť</button>
+          <!-- Wizard footer -->
+          <div class="wiz-footer">
+            <button type="button" class="wiz-btn wiz-btn-back" id="wiz-btn-back" onclick="goToWizStep(prop_wiz_step - 1)" style="display:none;">← Späť</button>
+            <div class="wiz-footer-spacer"></div>
+            <div class="wiz-draft-status" id="wiz-draft-status" style="display:none;">
+              <span class="wiz-dot"></span>
+              <span id="wiz-draft-status-text">Uložené</span>
+            </div>
+            <button type="button" class="wiz-btn wiz-btn-back" onclick="closePropertyForm()">Zrušiť</button>
+            <button type="button" class="wiz-btn wiz-btn-save" id="wiz-btn-save-draft" onclick="saveProperty(true)">💾 Uložiť koncept</button>
+            <button type="button" class="wiz-btn wiz-btn-next" id="wiz-btn-next" onclick="goToWizStep(prop_wiz_step + 1)">Ďalej →</button>
+            <button type="button" class="wiz-btn wiz-btn-save" id="wiz-btn-save-final" onclick="saveProperty(false)" style="display:none;">✓ Uložiť nehnuteľnosť</button>
           </div>
         </div>
       </div>
