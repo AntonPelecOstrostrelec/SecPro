@@ -3144,13 +3144,8 @@ function _propFormApplyValues(v) {
   if (Array.isArray(v.photos) && v.photos.length > 0) {
     const preview = document.getElementById('prop-photo-preview');
     preview.innerHTML = '';
-    v.photos.forEach(src => {
-      const div = document.createElement('div');
-      div.style.cssText = 'position:relative;width:80px;height:80px;border-radius:8px;overflow:hidden;border:2px solid #e0e0e0;';
-      div.innerHTML = `<img src="${src}" style="width:100%;height:100%;object-fit:cover;" />
-        <button onclick="this.parentElement.remove()" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.6);color:#fff;border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:12px;line-height:20px;text-align:center;">&times;</button>`;
-      preview.appendChild(div);
-    });
+    v.photos.forEach(src => preview.appendChild(_pmCreateCard(src)));
+    if (typeof _pmRefreshUI === 'function') _pmRefreshUI();
   }
 }
 
@@ -3562,11 +3557,9 @@ function openPropertyForm(editId) {
       // Show existing photos
       if (p.photos && p.photos.length > 0) {
         const preview = document.getElementById('prop-photo-preview');
-        p.photos.forEach((src, i) => {
-          preview.innerHTML += `<div style="position:relative;width:80px;height:80px;border-radius:8px;overflow:hidden;border:2px solid #e0e0e0;">
-            <img src="${src}" style="width:100%;height:100%;object-fit:cover;" />
-            <button onclick="this.parentElement.remove()" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.6);color:#fff;border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:12px;line-height:20px;text-align:center;">&times;</button>`;
-        });
+        preview.innerHTML = '';
+        p.photos.forEach(src => preview.appendChild(_pmCreateCard(src)));
+        _pmRefreshUI();
       }
     }
     // In edit mode: show extras (interested & viewings) and unlock all steps
@@ -3603,6 +3596,12 @@ function openPropertyForm(editId) {
   modal.style.display = 'block';
   goToWizStep(1);
   _propWizAttachAutoSave();
+
+  // Photo manager: init UI, sortable, dropzone & paste bindings
+  if (typeof _pmRefreshUI === 'function') _pmRefreshUI();
+  if (typeof _pmInitSortable === 'function') _pmInitSortable();
+  if (typeof pmSetupDropzone === 'function') pmSetupDropzone();
+  if (typeof pmSetupPaste === 'function') pmSetupPaste();
 }
 
 function closePropertyForm() {
@@ -3630,18 +3629,186 @@ function compressImage(file, maxWidth, quality) {
   });
 }
 
+// ===================== PHOTO MANAGER =====================
+const PM_MAX_PHOTOS = 10;
+let pm_sortable = null;
+
+function _pmCreateCard(dataUrl) {
+  const card = document.createElement('div');
+  card.className = 'pm-card';
+  card.innerHTML = `
+    <div class="pm-order">1</div>
+    <div class="pm-cover-badge">TITULNÁ</div>
+    <img src="${dataUrl}" alt="foto" draggable="false" />
+    <div class="pm-actions">
+      <button type="button" class="pm-action-btn" title="Otočiť vľavo 90°" onclick="pmRotatePhoto(this, -90)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 2v6h6"/><path d="M21 12A9 9 0 006 5.3L3 8"/></svg>
+      </button>
+      <button type="button" class="pm-action-btn" title="Otočiť vpravo 90°" onclick="pmRotatePhoto(this, 90)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0015-6.7L21 8"/></svg>
+      </button>
+      <button type="button" class="pm-action-btn" title="Nastaviť ako titulnú" onclick="pmMakeCover(this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      </button>
+      <button type="button" class="pm-action-btn danger" title="Odstrániť" onclick="pmRemovePhoto(this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+      </button>
+    </div>`;
+  return card;
+}
+
+function _pmRefreshUI() {
+  const grid = document.getElementById('prop-photo-preview');
+  if (!grid) return;
+  const cards = Array.from(grid.querySelectorAll('.pm-card'));
+  cards.forEach((card, i) => {
+    card.classList.toggle('cover', i === 0);
+    const orderEl = card.querySelector('.pm-order');
+    if (orderEl) orderEl.textContent = String(i + 1);
+  });
+  const countEl = document.getElementById('pm-count');
+  if (countEl) {
+    countEl.textContent = `${cards.length} / ${PM_MAX_PHOTOS} fotiek`;
+    countEl.classList.toggle('limit', cards.length >= PM_MAX_PHOTOS);
+  }
+  const emptyEl = document.getElementById('pm-empty');
+  if (emptyEl) emptyEl.style.display = cards.length === 0 ? '' : 'none';
+  // Trigger autosave (photos changed)
+  _propDraftScheduleSave();
+}
+
+function _pmInitSortable() {
+  const grid = document.getElementById('prop-photo-preview');
+  if (!grid || typeof Sortable === 'undefined') return;
+  if (pm_sortable) { try { pm_sortable.destroy(); } catch {} pm_sortable = null; }
+  pm_sortable = Sortable.create(grid, {
+    animation: 180,
+    ghostClass: 'sortable-ghost',
+    chosenClass: 'sortable-chosen',
+    dragClass: 'sortable-drag',
+    forceFallback: false,
+    onEnd: _pmRefreshUI,
+  });
+}
+
+function _pmCurrentCount() {
+  return document.querySelectorAll('#prop-photo-preview .pm-card').length;
+}
+
+async function _pmAddFile(file) {
+  if (!file || !file.type || !file.type.startsWith('image/')) return;
+  if (_pmCurrentCount() >= PM_MAX_PHOTOS) {
+    alert(`Maximálne ${PM_MAX_PHOTOS} fotiek.`);
+    return;
+  }
+  try {
+    const compressed = await compressImage(file, 1600, 0.78);
+    const card = _pmCreateCard(compressed);
+    document.getElementById('prop-photo-preview').appendChild(card);
+    _pmRefreshUI();
+  } catch (e) {
+    console.error('Failed to process photo', e);
+  }
+}
+
+async function _pmAddFiles(files) {
+  const list = Array.from(files || []);
+  for (const f of list) {
+    if (_pmCurrentCount() >= PM_MAX_PHOTOS) break;
+    await _pmAddFile(f);
+  }
+}
+
+function pmHandleFileInput(ev) {
+  const input = ev.target;
+  _pmAddFiles(input.files);
+  // Reset the input so selecting the same file again still triggers change
+  input.value = '';
+}
+
+function pmRemovePhoto(btn) {
+  const card = btn.closest('.pm-card');
+  if (!card) return;
+  card.remove();
+  _pmRefreshUI();
+}
+
+function pmMakeCover(btn) {
+  const card = btn.closest('.pm-card');
+  if (!card) return;
+  const grid = card.parentElement;
+  grid.insertBefore(card, grid.firstChild);
+  _pmRefreshUI();
+}
+
+function pmRotatePhoto(btn, deg) {
+  const card = btn.closest('.pm-card');
+  if (!card) return;
+  const img = card.querySelector('img');
+  if (!img) return;
+  const src = img.src;
+  const tmp = new Image();
+  tmp.onload = function() {
+    const canvas = document.createElement('canvas');
+    const rad = (deg * Math.PI) / 180;
+    const sin = Math.abs(Math.sin(rad));
+    const cos = Math.abs(Math.cos(rad));
+    canvas.width  = Math.round(tmp.height * sin + tmp.width * cos);
+    canvas.height = Math.round(tmp.height * cos + tmp.width * sin);
+    const ctx = canvas.getContext('2d');
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+    ctx.rotate(rad);
+    ctx.drawImage(tmp, -tmp.width / 2, -tmp.height / 2);
+    img.src = canvas.toDataURL('image/jpeg', 0.82);
+    _propDraftScheduleSave();
+  };
+  tmp.src = src;
+}
+
+function pmSetupDropzone() {
+  const dz = document.getElementById('pm-dropzone');
+  if (!dz || dz.dataset.pmBound) return;
+  dz.dataset.pmBound = '1';
+  ['dragenter','dragover'].forEach(ev => {
+    dz.addEventListener(ev, e => {
+      e.preventDefault(); e.stopPropagation();
+      dz.classList.add('dragover');
+    });
+  });
+  ['dragleave','dragend','drop'].forEach(ev => {
+    dz.addEventListener(ev, e => {
+      e.preventDefault(); e.stopPropagation();
+      dz.classList.remove('dragover');
+    });
+  });
+  dz.addEventListener('drop', e => {
+    if (e.dataTransfer && e.dataTransfer.files) _pmAddFiles(e.dataTransfer.files);
+  });
+}
+
+function pmSetupPaste() {
+  if (window.__pmPasteBound) return;
+  window.__pmPasteBound = true;
+  document.addEventListener('paste', e => {
+    const modal = document.getElementById('prop-modal');
+    if (!modal || modal.style.display === 'none') return;
+    if (prop_wiz_step !== 3) return;
+    const items = e.clipboardData?.items || [];
+    const files = [];
+    for (const item of items) {
+      if (item.kind === 'file' && item.type.startsWith('image/')) {
+        const f = item.getAsFile();
+        if (f) files.push(f);
+      }
+    }
+    if (files.length) { e.preventDefault(); _pmAddFiles(files); }
+  });
+}
+
+// Legacy hook name (kept to avoid breaking any external callers)
 function previewPropertyPhotos() {
   const input = document.getElementById('prop-photos');
-  const preview = document.getElementById('prop-photo-preview');
-  const files = Array.from(input.files).slice(0, 10);
-  files.forEach(async (file) => {
-    const compressed = await compressImage(file, 800, 0.7);
-    const div = document.createElement('div');
-    div.style.cssText = 'position:relative;width:80px;height:80px;border-radius:8px;overflow:hidden;border:2px solid #e0e0e0;';
-    div.innerHTML = `<img src="${compressed}" style="width:100%;height:100%;object-fit:cover;" />
-      <button onclick="this.parentElement.remove()" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.6);color:#fff;border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:12px;line-height:20px;text-align:center;">&times;</button>`;
-    preview.appendChild(div);
-  });
+  if (input) _pmAddFiles(input.files);
 }
 
 // ===== INTERESTED PARTIES & VIEWINGS =====

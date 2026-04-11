@@ -12,6 +12,7 @@
   <script src="jspdf.umd.min.js"></script>
   <script src="jspdf.plugin.autotable.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -3287,11 +3288,29 @@
           <!-- ============== STEP 3: FOTKY ============== -->
           <div class="wiz-panel" data-step="3">
             <div class="wiz-section-title">📷 Fotografie</div>
-            <div class="form-group">
-              <label>Nahrať fotografie (max 10)</label>
-              <input type="file" id="prop-photos" accept="image/*" multiple onchange="previewPropertyPhotos()" style="padding:0.5rem;" />
-              <div id="prop-photo-preview" style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-top:0.5rem;"></div>
-              <p style="font-size:0.74rem;color:var(--text-light);margin-top:0.5rem;">💡 Tip: Prvá fotka v poradí sa stane titulnou. Pokročilý foto editor (drag &amp; drop poradie, crop) pribudne čoskoro.</p>
+            <div class="pm-wrap">
+              <!-- Drop zone (click, drag&drop, paste) -->
+              <label class="pm-dropzone" id="pm-dropzone" for="prop-photos">
+                <div class="pm-dropzone-icon">📸</div>
+                <div class="pm-dropzone-text">Kliknite, pretiahnite alebo vložte (Ctrl+V) fotky</div>
+                <div class="pm-dropzone-sub">JPG / PNG / WebP &middot; max 10 fotiek &middot; automatická kompresia</div>
+                <input type="file" id="prop-photos" accept="image/*" multiple onchange="pmHandleFileInput(event)" />
+              </label>
+
+              <!-- Counter + hint -->
+              <div class="pm-header">
+                <div class="pm-count" id="pm-count">0 / 10 fotiek</div>
+                <div class="pm-hint">💡 Prvá fotka (zlatý rámček) je titulná. Pretiahnite myšou pre zmenu poradia.</div>
+              </div>
+
+              <!-- Photo grid (sortable) -->
+              <div class="pm-grid" id="prop-photo-preview"></div>
+
+              <!-- Empty state (shown only when no photos) -->
+              <div class="pm-empty" id="pm-empty">
+                <div class="pm-empty-icon">🖼️</div>
+                <div>Zatiaľ žiadne fotky</div>
+              </div>
             </div>
 
             <div class="wiz-section-title">🔗 URL odkaz na inzerát</div>
