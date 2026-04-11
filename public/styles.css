@@ -2142,6 +2142,33 @@
       font-weight: 700;
       font-size: 0.8rem;
       border: 1.5px solid rgba(255,255,255,0.25);
+      overflow: hidden;
+      background-size: cover;
+      background-position: center;
+    }
+    .header-user-trigger:hover {
+      background: rgba(255,255,255,0.08);
+    }
+    .prof-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.4rem 0.7rem;
+      border: 1.5px solid var(--border);
+      border-radius: 999px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      background: #FAFBFC;
+      transition: all 0.15s;
+      user-select: none;
+    }
+    .prof-chip input { margin: 0; cursor: pointer; accent-color: var(--primary); }
+    .prof-chip:hover { border-color: var(--primary-light); background: #fff; }
+    .prof-chip:has(input:checked) {
+      background: var(--primary-bg);
+      border-color: var(--primary);
+      color: var(--primary);
+      font-weight: 600;
     }
     .btn-logout {
       padding: 0.35rem 0.75rem;

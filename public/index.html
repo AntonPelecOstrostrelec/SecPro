@@ -117,8 +117,10 @@
     <span class="header-subtitle">Centrum pre moderných maklérov</span>
   </div>
   <div class="header-user" id="headerUser">
-    <span class="header-user-name" id="headerUserName"></span>
-    <div class="header-user-avatar" id="headerUserAvatar"></div>
+    <div class="header-user-trigger" onclick="openProfileModal()" title="Upraviť profil" style="display:flex;align-items:center;gap:0.75rem;cursor:pointer;padding:0.25rem 0.5rem;border-radius:8px;transition:background 0.15s;">
+      <span class="header-user-name" id="headerUserName"></span>
+      <div class="header-user-avatar" id="headerUserAvatar"></div>
+    </div>
     <button class="btn-logout" onclick="handleLogout()">Odhlásiť</button>
   </div>
 </div>
@@ -3291,6 +3293,148 @@
           <div style="display:flex;gap:0.75rem;margin-top:1.5rem;justify-content:flex-end;">
             <button class="btn" style="background:#f0f0f0;color:#333;" onclick="closeContactForm()">Zrušiť</button>
             <button class="btn btn-primary" onclick="saveContact()">Uložiť kontakt</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- USER PROFILE MODAL -->
+    <div id="profile-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.5);overflow-y:auto;padding:2rem;">
+      <div style="max-width:720px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+        <div style="background:linear-gradient(135deg,#0B2A3C,#1A7A8A);color:#fff;padding:1.25rem 1.5rem;display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <h3 style="margin:0;font-size:1.15rem;">Môj profil</h3>
+            <div style="font-size:0.78rem;opacity:0.85;margin-top:0.15rem;">Informácie zobrazované klientom a na exportoch</div>
+          </div>
+          <button onclick="closeProfileModal()" style="background:none;border:none;color:#fff;cursor:pointer;font-size:1.5rem;line-height:1;">&times;</button>
+        </div>
+        <div style="padding:1.5rem;max-height:calc(100vh - 10rem);overflow-y:auto;">
+          <!-- Avatar + meno header -->
+          <div style="display:flex;align-items:center;gap:1rem;padding:1rem;background:#F8FAFC;border:1.5px solid var(--border);border-radius:12px;margin-bottom:1.5rem;">
+            <div style="position:relative;">
+              <div id="profile-avatar-preview" style="width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,#0B2A3C,#1A7A8A);color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.8rem;font-weight:700;overflow:hidden;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.1);">?</div>
+              <label for="profile-avatar-input" style="position:absolute;bottom:-2px;right:-2px;width:28px;height:28px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:0.85rem;border:2px solid #fff;" title="Nahrať foto">📷</label>
+              <input type="file" id="profile-avatar-input" accept="image/*" style="display:none;" onchange="handleProfileAvatarUpload(event)" />
+            </div>
+            <div style="flex:1;">
+              <div style="font-weight:600;font-size:1.05rem;color:var(--dark);" id="profile-header-name">—</div>
+              <div style="font-size:0.85rem;color:var(--text-light);" id="profile-header-title">Realitný maklér</div>
+              <button type="button" id="profile-avatar-remove" onclick="removeProfileAvatar()" style="display:none;margin-top:0.35rem;background:none;border:none;color:var(--danger);cursor:pointer;font-size:0.75rem;padding:0;">Odstrániť fotku</button>
+            </div>
+          </div>
+
+          <!-- Osobné údaje -->
+          <div style="font-size:0.7rem;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;">Osobné údaje</div>
+          <div class="form-grid" style="grid-template-columns:1fr 1fr;margin-bottom:1.25rem;">
+            <div class="form-group">
+              <label>Celé meno *</label>
+              <input type="text" id="profile-name" placeholder="Ján Novák" />
+            </div>
+            <div class="form-group">
+              <label>Titul / Pozícia</label>
+              <input type="text" id="profile-title" placeholder="Realitný maklér" />
+            </div>
+            <div class="form-group" style="grid-column:1/-1;">
+              <label>O mne</label>
+              <textarea id="profile-bio" rows="3" placeholder="Krátke predstavenie pre klientov..." style="width:100%;padding:0.65rem 0.85rem;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:0.95rem;font-family:'Inter',sans-serif;resize:vertical;outline:none;background:#FAFBFC;"></textarea>
+            </div>
+          </div>
+
+          <!-- Kontakt -->
+          <div style="font-size:0.7rem;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;">Kontakt</div>
+          <div class="form-grid" style="grid-template-columns:1fr 1fr;margin-bottom:1.25rem;">
+            <div class="form-group">
+              <label>Mobil</label>
+              <input type="tel" id="profile-phone" placeholder="+421 9XX XXX XXX" />
+            </div>
+            <div class="form-group">
+              <label>Telefón (kancelária)</label>
+              <input type="tel" id="profile-phone-office" placeholder="+421 2 XXX XXX XX" />
+            </div>
+            <div class="form-group">
+              <label>E-mail</label>
+              <input type="email" id="profile-email" placeholder="jan@secpro.sk" />
+            </div>
+            <div class="form-group">
+              <label>Web</label>
+              <input type="url" id="profile-website" placeholder="https://..." />
+            </div>
+          </div>
+
+          <!-- Firma -->
+          <div style="font-size:0.7rem;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;">Firma / Realitná kancelária</div>
+          <div class="form-grid" style="grid-template-columns:1fr 1fr;margin-bottom:1.25rem;">
+            <div class="form-group" style="grid-column:1/-1;">
+              <label>Názov RK</label>
+              <input type="text" id="profile-company" placeholder="SecPro Reality s.r.o." />
+            </div>
+            <div class="form-group">
+              <label>IČO</label>
+              <input type="text" id="profile-ico" placeholder="12345678" />
+            </div>
+            <div class="form-group">
+              <label>DIČ</label>
+              <input type="text" id="profile-dic" placeholder="2023456789" />
+            </div>
+            <div class="form-group" style="grid-column:1/-1;">
+              <label>Adresa kancelárie</label>
+              <input type="text" id="profile-address" placeholder="Ulica, Mesto, PSČ" />
+            </div>
+          </div>
+
+          <!-- Profesijné -->
+          <div style="font-size:0.7rem;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;">Profesijné informácie</div>
+          <div class="form-grid" style="grid-template-columns:1fr 1fr;margin-bottom:1.25rem;">
+            <div class="form-group">
+              <label>Číslo licencie / registrácie</label>
+              <input type="text" id="profile-license" placeholder="RK-2024-..." />
+            </div>
+            <div class="form-group">
+              <label>Roky praxe</label>
+              <input type="number" id="profile-experience" min="0" placeholder="5" />
+            </div>
+            <div class="form-group" style="grid-column:1/-1;">
+              <label>Špecializácia</label>
+              <div id="profile-specializations" style="display:flex;flex-wrap:wrap;gap:0.5rem;">
+                <label class="prof-chip"><input type="checkbox" value="byty" /> <span>Byty</span></label>
+                <label class="prof-chip"><input type="checkbox" value="domy" /> <span>Domy</span></label>
+                <label class="prof-chip"><input type="checkbox" value="pozemky" /> <span>Pozemky</span></label>
+                <label class="prof-chip"><input type="checkbox" value="komercne" /> <span>Komerčné</span></label>
+                <label class="prof-chip"><input type="checkbox" value="novostavby" /> <span>Novostavby</span></label>
+                <label class="prof-chip"><input type="checkbox" value="prenajom" /> <span>Prenájmy</span></label>
+                <label class="prof-chip"><input type="checkbox" value="luxus" /> <span>Luxusné</span></label>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Jazyky</label>
+              <input type="text" id="profile-languages" placeholder="SK, EN, DE" />
+            </div>
+            <div class="form-group">
+              <label>Región pôsobenia</label>
+              <input type="text" id="profile-region" placeholder="Bratislava, Trnava" />
+            </div>
+          </div>
+
+          <!-- Sociálne siete -->
+          <div style="font-size:0.7rem;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;">Sociálne siete</div>
+          <div class="form-grid" style="grid-template-columns:1fr 1fr;margin-bottom:0.5rem;">
+            <div class="form-group">
+              <label>LinkedIn</label>
+              <input type="url" id="profile-linkedin" placeholder="https://linkedin.com/in/..." />
+            </div>
+            <div class="form-group">
+              <label>Facebook</label>
+              <input type="url" id="profile-facebook" placeholder="https://facebook.com/..." />
+            </div>
+            <div class="form-group">
+              <label>Instagram</label>
+              <input type="url" id="profile-instagram" placeholder="https://instagram.com/..." />
+            </div>
+          </div>
+
+          <div style="display:flex;gap:0.75rem;margin-top:1.5rem;justify-content:flex-end;border-top:1px solid var(--border);padding-top:1.25rem;">
+            <button class="btn" style="background:#f0f0f0;color:#333;" onclick="closeProfileModal()">Zrušiť</button>
+            <button class="btn btn-primary" onclick="saveProfile()">Uložiť profil</button>
           </div>
         </div>
       </div>

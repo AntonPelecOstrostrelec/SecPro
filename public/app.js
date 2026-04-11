@@ -6824,6 +6824,7 @@ const _LS_MAP = {
   properties: 'secpro_properties',
   contacts: 'secpro_contacts',
   clients: 'secpro_clients',
+  profile: 'secpro_profile',
   saved_leads: 'secpro_saved_leads',
   aml: 'secpro_aml',
   history: 'finio-history',
@@ -7292,9 +7293,160 @@ function enterApp(user, skipDataLoad) {
   const initials = user.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
   document.getElementById('headerUserAvatar').textContent = initials;
   if (!skipDataLoad && !_dataSynced) {
-    migrateLocalData().then(() => loadAllData()).then(() => _reRenderAll());
+    migrateLocalData().then(() => loadAllData()).then(() => { _reRenderAll(); applyProfileToHeader(); });
+  } else {
+    applyProfileToHeader();
   }
 }
+
+// ==================== USER PROFILE ====================
+function getProfile() { return _getCached('profile', {}) || {}; }
+function saveProfileData(p) { _setCached('profile', p); }
+
+function applyProfileToHeader() {
+  const p = getProfile();
+  const nameEl = document.getElementById('headerUserName');
+  const avEl = document.getElementById('headerUserAvatar');
+  if (!nameEl || !avEl) return;
+  const displayName = (p.name && p.name.trim()) || (nameEl.textContent || '').trim() || 'Používateľ';
+  nameEl.textContent = displayName;
+  if (p.avatar) {
+    avEl.textContent = '';
+    avEl.style.backgroundImage = `url('${p.avatar}')`;
+  } else {
+    avEl.style.backgroundImage = '';
+    const initials = displayName.split(' ').map(w => w[0]).filter(Boolean).join('').toUpperCase().slice(0, 2);
+    avEl.textContent = initials || '?';
+  }
+}
+
+let _profileAvatarTemp = null;
+
+function openProfileModal() {
+  const p = getProfile();
+  const storedUser = (typeof getStoredUser === 'function') ? (getStoredUser() || {}) : {};
+  _profileAvatarTemp = p.avatar || null;
+  document.getElementById('profile-name').value = p.name || storedUser.name || '';
+  document.getElementById('profile-title').value = p.title || 'Realitný maklér';
+  document.getElementById('profile-bio').value = p.bio || '';
+  document.getElementById('profile-phone').value = p.phone || '';
+  document.getElementById('profile-phone-office').value = p.phoneOffice || '';
+  document.getElementById('profile-email').value = p.email || storedUser.email || '';
+  document.getElementById('profile-website').value = p.website || '';
+  document.getElementById('profile-company').value = p.company || '';
+  document.getElementById('profile-ico').value = p.ico || '';
+  document.getElementById('profile-dic').value = p.dic || '';
+  document.getElementById('profile-address').value = p.address || '';
+  document.getElementById('profile-license').value = p.license || '';
+  document.getElementById('profile-experience').value = p.experience || '';
+  document.getElementById('profile-languages').value = p.languages || '';
+  document.getElementById('profile-region').value = p.region || '';
+  document.getElementById('profile-linkedin').value = p.linkedin || '';
+  document.getElementById('profile-facebook').value = p.facebook || '';
+  document.getElementById('profile-instagram').value = p.instagram || '';
+  const specs = Array.isArray(p.specializations) ? p.specializations : [];
+  document.querySelectorAll('#profile-specializations input[type="checkbox"]').forEach(cb => {
+    cb.checked = specs.includes(cb.value);
+  });
+  _refreshProfileAvatarPreview();
+  document.getElementById('profile-modal').style.display = 'block';
+  document.body.style.overflow = 'hidden';
+}
+
+function closeProfileModal() {
+  document.getElementById('profile-modal').style.display = 'none';
+  document.body.style.overflow = '';
+  _profileAvatarTemp = null;
+}
+
+function _refreshProfileAvatarPreview() {
+  const prev = document.getElementById('profile-avatar-preview');
+  const removeBtn = document.getElementById('profile-avatar-remove');
+  const nameInput = document.getElementById('profile-name');
+  const titleInput = document.getElementById('profile-title');
+  const headerName = document.getElementById('profile-header-name');
+  const headerTitle = document.getElementById('profile-header-title');
+  const name = (nameInput && nameInput.value.trim()) || 'Nový používateľ';
+  headerName.textContent = name;
+  headerTitle.textContent = (titleInput && titleInput.value.trim()) || 'Realitný maklér';
+  if (_profileAvatarTemp) {
+    prev.style.backgroundImage = `url('${_profileAvatarTemp}')`;
+    prev.style.backgroundSize = 'cover';
+    prev.style.backgroundPosition = 'center';
+    prev.textContent = '';
+    if (removeBtn) removeBtn.style.display = 'inline';
+  } else {
+    prev.style.backgroundImage = '';
+    const initials = name.split(' ').map(w => w[0]).filter(Boolean).join('').toUpperCase().slice(0, 2);
+    prev.textContent = initials || '?';
+    if (removeBtn) removeBtn.style.display = 'none';
+  }
+}
+
+async function handleProfileAvatarUpload(ev) {
+  const file = ev.target.files && ev.target.files[0];
+  if (!file) return;
+  try {
+    const dataUrl = (typeof compressImage === 'function')
+      ? await compressImage(file, 400, 400, 0.85)
+      : await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); });
+    _profileAvatarTemp = dataUrl;
+    _refreshProfileAvatarPreview();
+  } catch (e) {
+    console.error('Avatar upload failed', e);
+    if (typeof showToast === 'function') showToast('Nepodarilo sa načítať fotku', 'error');
+  }
+  ev.target.value = '';
+}
+
+function removeProfileAvatar() {
+  _profileAvatarTemp = null;
+  _refreshProfileAvatarPreview();
+}
+
+function saveProfile() {
+  const name = document.getElementById('profile-name').value.trim();
+  if (!name) {
+    if (typeof showToast === 'function') showToast('Zadajte celé meno', 'error');
+    else alert('Zadajte celé meno');
+    return;
+  }
+  const specs = Array.from(document.querySelectorAll('#profile-specializations input[type="checkbox"]:checked')).map(cb => cb.value);
+  const profile = {
+    name,
+    title: document.getElementById('profile-title').value.trim(),
+    bio: document.getElementById('profile-bio').value.trim(),
+    phone: document.getElementById('profile-phone').value.trim(),
+    phoneOffice: document.getElementById('profile-phone-office').value.trim(),
+    email: document.getElementById('profile-email').value.trim(),
+    website: document.getElementById('profile-website').value.trim(),
+    company: document.getElementById('profile-company').value.trim(),
+    ico: document.getElementById('profile-ico').value.trim(),
+    dic: document.getElementById('profile-dic').value.trim(),
+    address: document.getElementById('profile-address').value.trim(),
+    license: document.getElementById('profile-license').value.trim(),
+    experience: document.getElementById('profile-experience').value.trim(),
+    languages: document.getElementById('profile-languages').value.trim(),
+    region: document.getElementById('profile-region').value.trim(),
+    linkedin: document.getElementById('profile-linkedin').value.trim(),
+    facebook: document.getElementById('profile-facebook').value.trim(),
+    instagram: document.getElementById('profile-instagram').value.trim(),
+    specializations: specs,
+    avatar: _profileAvatarTemp || null,
+    updatedAt: new Date().toISOString(),
+  };
+  saveProfileData(profile);
+  applyProfileToHeader();
+  closeProfileModal();
+  if (typeof showToast === 'function') showToast('Profil uložený', 'success');
+}
+
+// Live-update header preview as user types
+document.addEventListener('input', (e) => {
+  if (e.target && (e.target.id === 'profile-name' || e.target.id === 'profile-title')) {
+    _refreshProfileAvatarPreview();
+  }
+});
 
 // ==================== AML ====================
 const AML_KEY = 'secpro_aml';
