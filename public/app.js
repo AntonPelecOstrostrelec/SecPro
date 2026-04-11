@@ -3104,8 +3104,14 @@ const PROP_CONDITION_MAP = {
 };
 
 // ===================== PROPERTY FORM WIZARD =====================
-const PROP_WIZ_TOTAL_STEPS = 4;
+const PROP_WIZ_TOTAL_STEPS = 5;
 const PROP_DRAFT_KEY = 'prop-form-draft';
+let prop_preview_portal = 'topreality';
+const PROP_PORTAL_LIMITS = {
+  topreality:     { name: 'Topreality',         titleMax: 80,  descMax: 3000, descMin: 300 },
+  nehnutelnosti:  { name: 'Nehnuteľnosti.sk',   titleMax: 100, descMax: 4000, descMin: 300 },
+  bazos:          { name: 'Bazoš',              titleMax: 50,  descMax: 3000, descMin: 200 },
+};
 let prop_wiz_step = 1;
 let prop_wiz_draft_timer = null;
 let prop_wiz_is_edit = false;
@@ -3244,6 +3250,223 @@ function _propWizValidateStep(step) {
   return true;
 }
 
+// ===================== LISTING PREVIEW =====================
+function setPreviewPortal(portal) {
+  if (!PROP_PORTAL_LIMITS[portal]) return;
+  prop_preview_portal = portal;
+  document.querySelectorAll('.lp-portal-chip').forEach(el => {
+    el.classList.toggle('active', el.dataset.portal === portal);
+  });
+  const card = document.getElementById('lp-card');
+  if (card) card.setAttribute('data-portal', portal);
+  renderListingPreview();
+}
+
+function _lpEscape(s) {
+  return String(s || '').replace(/[&<>"']/g, m => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[m]));
+}
+
+function _lpFormatPrice(val) {
+  const n = parseFloat(val);
+  if (!n || isNaN(n)) return null;
+  return new Intl.NumberFormat('sk-SK', { maximumFractionDigits: 0 }).format(n) + ' €';
+}
+
+function _lpTypeLabel(type) {
+  return ({
+    byt: 'Byt', dom: 'Dom', pozemok: 'Pozemok', komercia: 'Komerčný priestor', iny: 'Iný'
+  })[type] || 'Nehnuteľnosť';
+}
+
+function _lpConditionLabel(cond) {
+  return ({
+    novostavba: 'Novostavba',
+    'kompletna-rekonstrukcia': 'Kompletná rekonštrukcia',
+    'ciastocna-rekonstrukcia': 'Čiastočná rekonštrukcia',
+    'povodny-stav': 'Pôvodný stav',
+    'rozostavanost': 'Rozostavanosť',
+  })[cond] || null;
+}
+
+function renderListingPreview() {
+  const values = _propFormReadValues();
+  const portal = PROP_PORTAL_LIMITS[prop_preview_portal];
+
+  const title = (values['prop-ai-headline'] || values['prop-title'] || '').trim();
+  const price = values['prop-price'];
+  const city = values['prop-city'] || '';
+  const district = values['prop-district'] || '';
+  const address = values['prop-address'] || '';
+  const size = values['prop-size'];
+  const rooms = values['prop-rooms'];
+  const floor = values['prop-floor'];
+  const year = values['prop-year'];
+  const type = values['prop-type'];
+  const cond = values['prop-condition'];
+  const desc = (values['prop-description'] || '').trim();
+  const photos = values.photos || [];
+
+  // ---- Cover photo ----
+  const cover = document.getElementById('lp-cover');
+  if (photos.length > 0) {
+    cover.innerHTML = `<img src="${_lpEscape(photos[0])}" alt="cover" />
+      <div class="lp-card-badge">${_lpEscape(_lpTypeLabel(type))}</div>
+      <div class="lp-card-photo-counter">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        ${photos.length}
+      </div>`;
+  } else {
+    cover.innerHTML = `<span>📷 Žiadna fotka</span>`;
+  }
+
+  // ---- Thumb strip ----
+  const thumbs = document.getElementById('lp-thumbs');
+  if (photos.length > 1) {
+    thumbs.style.display = '';
+    thumbs.innerHTML = photos.slice(0, 8).map((p, i) =>
+      `<img src="${_lpEscape(p)}" alt="thumb${i}" class="${i === 0 ? 'active' : ''}" />`
+    ).join('') + (photos.length > 8 ? `<div style="display:flex;align-items:center;padding:0 0.6rem;font-size:0.72rem;color:var(--text-light);white-space:nowrap;">+${photos.length - 8}</div>` : '');
+  } else {
+    thumbs.style.display = 'none';
+  }
+
+  // ---- Price ----
+  const priceEl = document.getElementById('lp-price');
+  const priceSub = document.getElementById('lp-price-sub');
+  const priceFmt = _lpFormatPrice(price);
+  priceEl.textContent = priceFmt || '— €';
+  if (priceFmt && size) {
+    const perM2 = Math.round(parseFloat(price) / parseFloat(size));
+    priceSub.textContent = `(${new Intl.NumberFormat('sk-SK').format(perM2)} €/m²)`;
+  } else {
+    priceSub.textContent = '';
+  }
+
+  // ---- Title ----
+  const titleEl = document.getElementById('lp-title');
+  if (title) {
+    titleEl.classList.remove('lp-placeholder');
+    titleEl.textContent = title;
+  } else {
+    titleEl.classList.add('lp-placeholder');
+    titleEl.textContent = 'Zadajte titulok inzerátu…';
+  }
+
+  // ---- Location ----
+  const locParts = [address, city, district].filter(Boolean);
+  document.getElementById('lp-location-text').textContent = locParts.length ? locParts.join(', ') : '—';
+
+  // ---- Params ----
+  const params = [];
+  if (size)   params.push(`<div class="lp-param">📐 ${_lpEscape(size)} m²</div>`);
+  if (rooms)  params.push(`<div class="lp-param">🛏 ${_lpEscape(rooms)} ${rooms == 1 ? 'izba' : (rooms < 5 ? 'izby' : 'izieb')}</div>`);
+  if (floor)  params.push(`<div class="lp-param">🏢 ${_lpEscape(floor)} p.</div>`);
+  if (year)   params.push(`<div class="lp-param">📅 ${_lpEscape(year)}</div>`);
+  const condLabel = _lpConditionLabel(cond);
+  if (condLabel) params.push(`<div class="lp-param">🔨 ${_lpEscape(condLabel)}</div>`);
+  document.getElementById('lp-params').innerHTML = params.join('');
+
+  // ---- Description ----
+  const descEl = document.getElementById('lp-description');
+  if (desc) {
+    descEl.classList.remove('lp-placeholder');
+    descEl.textContent = desc;
+  } else {
+    descEl.classList.add('lp-placeholder');
+    descEl.textContent = 'Zadajte popis nehnuteľnosti alebo použite AI generovanie…';
+  }
+
+  // ---- Validation checks ----
+  _lpRenderChecks({ title, price, city, size, rooms, desc, photos, portal });
+}
+
+function _lpRenderChecks({ title, price, city, size, rooms, desc, photos, portal }) {
+  const checks = [];
+  const addCheck = (state, text, detail) => checks.push({ state, text, detail });
+
+  // Title length
+  const titleLen = title.length;
+  if (!title) {
+    addCheck('err', 'Titulok chýba', null);
+  } else if (titleLen > portal.titleMax) {
+    addCheck('err', `Titulok je dlhší než limit portálu ${portal.name}`, `${titleLen}/${portal.titleMax}`);
+  } else if (titleLen < 20) {
+    addCheck('warn', 'Titulok je príliš krátky (menej ako 20 znakov)', `${titleLen}/${portal.titleMax}`);
+  } else {
+    addCheck('ok', 'Titulok má dobrú dĺžku', `${titleLen}/${portal.titleMax}`);
+  }
+
+  // Description length
+  const descLen = desc.length;
+  if (!desc) {
+    addCheck('err', 'Popis chýba', null);
+  } else if (descLen > portal.descMax) {
+    addCheck('err', `Popis prekračuje limit ${portal.name}`, `${descLen}/${portal.descMax}`);
+  } else if (descLen < portal.descMin) {
+    addCheck('warn', `Popis je krátky (odporúčame aspoň ${portal.descMin} znakov)`, `${descLen}/${portal.descMax}`);
+  } else {
+    addCheck('ok', 'Popis má dobrú dĺžku', `${descLen}/${portal.descMax}`);
+  }
+
+  // Photos
+  if (photos.length === 0) {
+    addCheck('err', 'Žiadne fotky — inzerát bez fotiek má nízku mieru zobrazení', null);
+  } else if (photos.length < 5) {
+    addCheck('warn', `Málo fotiek (${photos.length}) — ideálne je 6–10`, null);
+  } else {
+    addCheck('ok', `${photos.length} fotografií pripravených`, null);
+  }
+
+  // Price
+  if (!price) {
+    addCheck('err', 'Cena nie je vyplnená', null);
+  } else {
+    addCheck('ok', 'Cena vyplnená', null);
+  }
+
+  // City
+  if (!city) addCheck('err', 'Mesto / obec chýba', null);
+  else       addCheck('ok', 'Lokalita vyplnená', null);
+
+  // Size
+  if (!size) addCheck('warn', 'Výmera nie je vyplnená', null);
+  else       addCheck('ok', 'Výmera vyplnená', null);
+
+  // Rooms (only for byt/dom)
+  const type = document.getElementById('prop-type')?.value;
+  if (type === 'byt' || type === 'dom') {
+    if (!rooms) addCheck('warn', 'Počet izieb nie je vyplnený', null);
+    else        addCheck('ok', 'Počet izieb vyplnený', null);
+  }
+
+  // ---- Render checks ----
+  const list = document.getElementById('lp-check-list');
+  list.innerHTML = checks.map(c => {
+    const icon = c.state === 'ok' ? '✓' : (c.state === 'warn' ? '!' : '✕');
+    const detail = c.detail ? ` <span style="color:var(--text-light);font-size:0.7rem;">(${_lpEscape(c.detail)})</span>` : '';
+    return `<div class="lp-check-item lp-check-${c.state}">
+      <div class="lp-check-icon">${icon}</div>
+      <div class="lp-check-text">${_lpEscape(c.text)}${detail}</div>
+    </div>`;
+  }).join('');
+
+  // ---- Score ----
+  const okCount   = checks.filter(c => c.state === 'ok').length;
+  const warnCount = checks.filter(c => c.state === 'warn').length;
+  const errCount  = checks.filter(c => c.state === 'err').length;
+  const total     = checks.length;
+  // weighted: ok=1, warn=0.5, err=0
+  const score = Math.round(((okCount + warnCount * 0.5) / total) * 100);
+  document.getElementById('lp-score').textContent = score + '%';
+  document.getElementById('lp-score-bar').style.width = score + '%';
+  const scoreSub = document.getElementById('lp-score-sub');
+  if (errCount > 0) scoreSub.textContent = `${errCount} ${errCount === 1 ? 'chyba' : (errCount < 5 ? 'chyby' : 'chýb')} na opravu`;
+  else if (warnCount > 0) scoreSub.textContent = `${warnCount} ${warnCount === 1 ? 'odporúčanie' : 'odporúčaní'}`;
+  else scoreSub.textContent = '✓ Inzerát je pripravený';
+}
+
 function goToWizStep(step) {
   if (step < 1) step = 1;
   if (step > PROP_WIZ_TOTAL_STEPS) step = PROP_WIZ_TOTAL_STEPS;
@@ -3274,6 +3497,8 @@ function goToWizStep(step) {
   document.getElementById('wiz-btn-save-final').style.display = isLast ? '' : 'none';
   // Save draft button visible on all steps
   document.getElementById('wiz-btn-save-draft').style.display = prop_wiz_is_edit ? 'none' : '';
+  // Render listing preview when entering step 5
+  if (step === 5) renderListingPreview();
   // Scroll modal to top
   const modal = document.getElementById('prop-modal');
   if (modal) modal.scrollTop = 0;

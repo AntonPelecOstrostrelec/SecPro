@@ -3172,6 +3172,10 @@
               <div class="wiz-step-circle"><span class="wiz-step-num">4</span></div>
               <div class="wiz-step-label">Popis &amp; AI</div>
             </div>
+            <div class="wiz-step disabled" data-step="5" onclick="goToWizStep(5)">
+              <div class="wiz-step-circle"><span class="wiz-step-num">5</span></div>
+              <div class="wiz-step-label">Náhľad</div>
+            </div>
           </div>
 
           <!-- ============== STEP 1: ZÁKLAD (rýchly záznam) ============== -->
@@ -3327,6 +3331,55 @@
             <div class="form-group">
               <label>Interné poznámky</label>
               <textarea id="prop-notes" rows="2" placeholder="Vlastné poznámky (len pre vás)..."></textarea>
+            </div>
+          </div>
+
+          <!-- ============== STEP 5: NÁHĽAD INZERÁTU ============== -->
+          <div class="wiz-panel" data-step="5">
+            <div class="wiz-section-title">👁️ Náhľad inzerátu</div>
+            <p style="font-size:0.78rem;color:var(--text-light);margin-bottom:0.75rem;">
+              Pozrite si ako bude váš inzerát vyzerať pred publikovaním. Vpravo sú kontroly kvality pre vybraný portál.
+            </p>
+
+            <!-- Portal selector -->
+            <div class="lp-portal-bar">
+              <span class="lp-portal-bar-label">Štýl portálu:</span>
+              <div class="lp-portal-chips">
+                <div class="lp-portal-chip active" data-portal="topreality" onclick="setPreviewPortal('topreality')">Topreality</div>
+                <div class="lp-portal-chip" data-portal="nehnutelnosti" onclick="setPreviewPortal('nehnutelnosti')">Nehnuteľnosti.sk</div>
+                <div class="lp-portal-chip" data-portal="bazos" onclick="setPreviewPortal('bazos')">Bazoš</div>
+              </div>
+            </div>
+
+            <div class="lp-grid">
+              <!-- Preview card -->
+              <div class="lp-card" id="lp-card" data-portal="topreality">
+                <div class="lp-card-cover" id="lp-cover">
+                  <span>📷 Žiadna fotka</span>
+                </div>
+                <div class="lp-thumbs" id="lp-thumbs" style="display:none;"></div>
+                <div class="lp-card-body">
+                  <div class="lp-card-price" id="lp-price">— €</div>
+                  <div class="lp-card-price-sub" id="lp-price-sub"></div>
+                  <div class="lp-card-title lp-placeholder" id="lp-title">Zadajte titulok inzerátu…</div>
+                  <div class="lp-card-location" id="lp-location">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                    <span id="lp-location-text">—</span>
+                  </div>
+                  <div class="lp-card-params" id="lp-params"></div>
+                  <div class="lp-card-description lp-placeholder" id="lp-description">Zadajte popis nehnuteľnosti alebo použite AI generovanie…</div>
+                </div>
+              </div>
+
+              <!-- Validation sidebar -->
+              <div class="lp-checks">
+                <div class="lp-checks-title">Skóre inzerátu</div>
+                <div class="lp-checks-score" id="lp-score">—</div>
+                <div class="lp-checks-score-sub" id="lp-score-sub">Pripravenosť na publikovanie</div>
+                <div class="lp-checks-bar"><div class="lp-checks-bar-fill" id="lp-score-bar" style="width:0%;"></div></div>
+                <div class="lp-checks-title">Kontroly</div>
+                <div id="lp-check-list"></div>
+              </div>
             </div>
           </div>
 
