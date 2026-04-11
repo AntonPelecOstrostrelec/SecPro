@@ -4442,3 +4442,103 @@
   .cli-grid { grid-template-columns: 1fr; }
   .cli-card-actions { opacity: 1; }
 }
+
+/* ===== Linked clients in property detail ===== */
+.pdc-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.pdc-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 0.85rem;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--border);
+  border-radius: 10px;
+  transition: all 0.15s;
+}
+.pdc-item:hover { box-shadow: 0 4px 12px rgba(15,23,42,0.06); }
+.pdc-item-seller { border-left-color: #0D9488; }
+.pdc-item-buyer  { border-left-color: #2563EB; }
+.pdc-item-main { flex: 1; min-width: 0; }
+.pdc-item-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 2px;
+}
+.pdc-type { font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
+.pdc-name { font-weight: 700; color: var(--dark); font-size: 0.9rem; }
+.pdc-item-sub {
+  display: flex;
+  gap: 0.85rem;
+  font-size: 0.78rem;
+  color: var(--text-light);
+  flex-wrap: wrap;
+}
+.pdc-item-sub a { color: var(--primary); text-decoration: none; }
+.pdc-item-sub a:hover { text-decoration: underline; }
+.pdc-unlink {
+  background: transparent;
+  border: none;
+  color: var(--text-light);
+  cursor: pointer;
+  font-size: 1.35rem;
+  line-height: 1;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.pdc-unlink:hover { background: #FEE2E2; color: var(--danger); }
+
+/* ===== Client picker modal ===== */
+.cp-list {
+  max-height: 420px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.cp-item {
+  padding: 0.65rem 0.85rem;
+  background: #FAFBFC;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.cp-item:hover {
+  background: var(--primary-bg);
+  border-color: var(--primary-lighter);
+  transform: translateX(2px);
+}
+.cp-item-main { display: flex; flex-direction: column; gap: 0.3rem; }
+.cp-item-row1 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.cp-item-name { font-weight: 700; color: var(--dark); font-size: 0.9rem; }
+.cp-item-row2 {
+  display: flex;
+  gap: 0.85rem;
+  font-size: 0.75rem;
+  color: var(--text-light);
+  flex-wrap: wrap;
+}
+.cp-warn {
+  color: #D97706;
+  background: #FEF3C7;
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-weight: 600;
+}

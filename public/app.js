@@ -5619,6 +5619,14 @@ function openPropDetail(id) {
         </div>
       ` : ''}
 
+      <div class="prop-detail-section" id="prop-detail-clients-section">
+        <div class="prop-detail-section-title" style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;">
+          <span>\ud83d\udc65 Klienti</span>
+          <button class="btn btn-primary" style="font-size:0.75rem;padding:5px 12px;" onclick="openClientPicker('${p.id}')">+ Priradi\u0165 klienta</button>
+        </div>
+        <div id="prop-detail-clients-list" style="margin-top:0.5rem;">${_renderLinkedClientsHtml(p.id)}</div>
+      </div>
+
       ${p.notes ? `
         <div class="prop-detail-section">
           <div class="prop-detail-section-title">Intern\u00e9 pozn\u00e1mky</div>
@@ -6454,6 +6462,128 @@ function renderClients() {
 }
 
 document.addEventListener('DOMContentLoaded', () => { try { renderClients(); } catch {} });
+
+// ===================== CLIENT ↔ PROPERTY LINKING =====================
+
+function _renderLinkedClientsHtml(propId) {
+  const linked = getClients().filter(c => c.propertyId === propId);
+  if (linked.length === 0) {
+    return '<div style="padding:0.9rem;background:#F8FAFC;border:1px dashed var(--border);border-radius:8px;color:var(--text-light);font-size:0.82rem;text-align:center;">Zatiaľ žiadni priradení klienti</div>';
+  }
+  return `<div class="pdc-list">` + linked.map(c => {
+    const type = CLIENT_TYPE_LABELS[c.type] || CLIENT_TYPE_LABELS.seller;
+    const stage = CLIENT_STAGE_LABELS[c.stage || 'new'];
+    return `
+      <div class="pdc-item pdc-item-${c.type || 'seller'}">
+        <div class="pdc-item-main">
+          <div class="pdc-item-head">
+            <span class="pdc-type" style="color:${type.color};">${type.icon} ${esc(type.label)}</span>
+            <span class="pdc-name">${esc(c.name)}</span>
+          </div>
+          <div class="pdc-item-sub">
+            ${c.phone ? `<a href="tel:${esc(c.phone)}" onclick="event.stopPropagation()">📞 ${esc(c.phone)}</a>` : ''}
+            ${c.email ? `<a href="mailto:${esc(c.email)}" onclick="event.stopPropagation()">✉️ ${esc(c.email)}</a>` : ''}
+          </div>
+        </div>
+        <span class="cli-stage-pill" style="background:${stage.bg};color:${stage.color};">${stage.icon} ${esc(stage.label)}</span>
+        <button class="pdc-unlink" onclick="unlinkClientFromProperty('${c.id}', '${propId}', event)" title="Odpojiť od nehnuteľnosti">×</button>
+      </div>`;
+  }).join('') + `</div>`;
+}
+
+function _refreshLinkedClientsInDetail(propId) {
+  const el = document.getElementById('prop-detail-clients-list');
+  if (el) el.innerHTML = _renderLinkedClientsHtml(propId);
+}
+
+function unlinkClientFromProperty(clientId, propId, ev) {
+  if (ev) ev.stopPropagation();
+  const clients = getClients();
+  const idx = clients.findIndex(c => c.id === clientId);
+  if (idx === -1) return;
+  clients[idx].propertyId = '';
+  clients[idx].updatedAt = new Date().toISOString();
+  saveClients(clients);
+  _refreshLinkedClientsInDetail(propId);
+}
+
+let _clientPickerPropId = null;
+
+function openClientPicker(propId) {
+  _clientPickerPropId = propId;
+  const modal = document.getElementById('client-picker-modal');
+  if (!modal) return;
+  document.getElementById('client-picker-search').value = '';
+  renderClientPickerList();
+  modal.style.display = 'block';
+}
+
+function closeClientPicker() {
+  const modal = document.getElementById('client-picker-modal');
+  if (modal) modal.style.display = 'none';
+  _clientPickerPropId = null;
+}
+
+function renderClientPickerList() {
+  const listEl = document.getElementById('client-picker-list');
+  if (!listEl) return;
+  const search = (document.getElementById('client-picker-search')?.value || '').toLowerCase();
+  const all = getClients();
+  // Exclude those already linked to this property
+  const candidates = all.filter(c => c.propertyId !== _clientPickerPropId);
+  const filtered = candidates.filter(c => {
+    if (!search) return true;
+    const hay = [c.name, c.phone, c.email, c.notes].join(' ').toLowerCase();
+    return hay.includes(search);
+  });
+
+  if (all.length === 0) {
+    listEl.innerHTML = `<div style="padding:2rem;text-align:center;color:var(--text-light);font-size:0.85rem;">
+      Zatiaľ nemáte žiadnych klientov.<br>
+      <button class="btn btn-primary" style="margin-top:0.75rem;" onclick="closeClientPicker();showPage('clients');setTimeout(()=>openClientForm(),120);">Pridať prvého klienta</button>
+    </div>`;
+    return;
+  }
+  if (filtered.length === 0) {
+    listEl.innerHTML = '<div style="padding:1.25rem;text-align:center;color:var(--text-light);font-size:0.85rem;">Nikto nezodpovedá hľadaniu</div>';
+    return;
+  }
+
+  listEl.innerHTML = filtered.map(c => {
+    const type = CLIENT_TYPE_LABELS[c.type] || CLIENT_TYPE_LABELS.seller;
+    const stage = CLIENT_STAGE_LABELS[c.stage || 'new'];
+    const alreadyLinked = c.propertyId && c.propertyId !== _clientPickerPropId;
+    const linkedPropLabel = alreadyLinked ? _clientPropertyLabel(c.propertyId) : null;
+    return `
+      <div class="cp-item" onclick="linkClientToProperty('${c.id}')">
+        <div class="cp-item-main">
+          <div class="cp-item-row1">
+            <span style="color:${type.color};font-weight:700;">${type.icon}</span>
+            <span class="cp-item-name">${esc(c.name)}</span>
+            <span class="cli-stage-pill" style="background:${stage.bg};color:${stage.color};margin-left:auto;">${stage.icon} ${esc(stage.label)}</span>
+          </div>
+          <div class="cp-item-row2">
+            ${c.phone ? `<span>📞 ${esc(c.phone)}</span>` : ''}
+            ${c.email ? `<span>✉️ ${esc(c.email)}</span>` : ''}
+            ${linkedPropLabel ? `<span class="cp-warn" title="Aktuálne priradený k: ${esc(linkedPropLabel)}">⚠️ už priradený</span>` : ''}
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function linkClientToProperty(clientId) {
+  if (!_clientPickerPropId) return;
+  const clients = getClients();
+  const idx = clients.findIndex(c => c.id === clientId);
+  if (idx === -1) return;
+  clients[idx].propertyId = _clientPickerPropId;
+  clients[idx].updatedAt = new Date().toISOString();
+  saveClients(clients);
+  const propId = _clientPickerPropId;
+  closeClientPicker();
+  _refreshLinkedClientsInDetail(propId);
+}
 
 const CONTACT_CATEGORY_LABELS = {
   klient: 'Klient',

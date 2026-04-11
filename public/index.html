@@ -2207,6 +2207,26 @@
       </div>
     </div>
 
+    <!-- CLIENT PICKER MODAL (link existing client to property) -->
+    <div id="client-picker-modal" style="display:none;position:fixed;inset:0;z-index:16000;background:rgba(0,0,0,0.5);overflow-y:auto;padding:2rem;">
+      <div style="max-width:520px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+        <div style="background:linear-gradient(135deg,#0B2A3C,#1A7A8A);color:#fff;padding:1.1rem 1.35rem;display:flex;justify-content:space-between;align-items:center;">
+          <h3 style="margin:0;font-size:1.1rem;">Priradiť klienta k nehnuteľnosti</h3>
+          <button onclick="closeClientPicker()" style="background:none;border:none;color:#fff;cursor:pointer;font-size:1.5rem;line-height:1;">&times;</button>
+        </div>
+        <div style="padding:1.1rem 1.35rem;">
+          <div style="position:relative;margin-bottom:0.75rem;">
+            <svg style="position:absolute;left:11px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:var(--text-light);opacity:0.6;pointer-events:none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <input type="text" id="client-picker-search" placeholder="Hľadať klienta..." oninput="renderClientPickerList()" style="width:100%;padding:0.6rem 0.85rem 0.6rem 2rem;border:1.5px solid var(--border);border-radius:10px;font-size:0.9rem;outline:none;background:#FAFBFC;" />
+          </div>
+          <div id="client-picker-list" class="cp-list"></div>
+          <div style="margin-top:0.9rem;padding-top:0.75rem;border-top:1px dashed var(--border);text-align:center;">
+            <button class="btn" style="font-size:0.82rem;background:#f0f0f0;color:#333;" onclick="closeClientPicker();showPage('clients');setTimeout(()=>openClientForm(),120);">+ Vytvoriť nového klienta</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- CLIENT FORM MODAL -->
     <div id="client-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.5);overflow-y:auto;padding:2rem;">
       <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
