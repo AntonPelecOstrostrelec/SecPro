@@ -158,11 +158,8 @@
       <div class="nav-item" onclick="showPage('myproperties')">
         <span class="nav-icon"><i data-lucide="home"></i></span> Moje nehnuteľnosti
       </div>
-      <div class="nav-item" onclick="showPage('clients')">
-        <span class="nav-icon"><i data-lucide="users"></i></span> Klienti
-      </div>
       <div class="nav-item" onclick="showPage('contacts')">
-        <span class="nav-icon"><i data-lucide="contact"></i></span> Kontakty
+        <span class="nav-icon"><i data-lucide="contact"></i></span> Klienti &amp; kontakty
       </div>
       <div class="nav-item" onclick="showPage('aml')">
         <span class="nav-icon"><i data-lucide="shield-check"></i></span> AML Preverenie
@@ -2329,17 +2326,18 @@
             <input type="text" class="filter-search" id="contact-filter-search" placeholder="Hľadať meno, email, telefón, firmu..." oninput="filterContacts()" />
           </div>
           <div class="filter-divider"></div>
-          <div class="multi-select" id="ms-contact-category" data-placeholder="Kategória" data-callback="filterContacts">
-            <div class="multi-select-trigger" onclick="toggleMultiSelect(this)">Kategória</div>
+          <div class="multi-select" id="ms-contact-category" data-placeholder="Rola" data-callback="filterContacts">
+            <div class="multi-select-trigger" onclick="toggleMultiSelect(this)">Rola</div>
             <div class="multi-select-dropdown">
               <div class="multi-select-all" onclick="msToggleAll(this)"><span>Vybrať všetko</span><span>Zrušiť</span></div>
-              <div class="multi-select-option" data-value="klient" onclick="msSelect(this)"><div class="multi-select-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>Klient</div>
-              <div class="multi-select-option" data-value="potencialny" onclick="msSelect(this)"><div class="multi-select-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>Potenciálny klient</div>
-              <div class="multi-select-option" data-value="makler" onclick="msSelect(this)"><div class="multi-select-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>Makléř / Partner</div>
-              <div class="multi-select-option" data-value="developer" onclick="msSelect(this)"><div class="multi-select-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>Developer</div>
-              <div class="multi-select-option" data-value="pravnik" onclick="msSelect(this)"><div class="multi-select-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>Právnik / Notár</div>
-              <div class="multi-select-option" data-value="banka" onclick="msSelect(this)"><div class="multi-select-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>Banka / Hypotéky</div>
-              <div class="multi-select-option" data-value="iny" onclick="msSelect(this)"><div class="multi-select-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>Iný</div>
+              <div class="multi-select-option" data-value="seller" onclick="msSelect(this)"><div class="multi-select-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>🏠 Predávajúci</div>
+              <div class="multi-select-option" data-value="buyer" onclick="msSelect(this)"><div class="multi-select-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>🔑 Kupujúci</div>
+              <div class="multi-select-option" data-value="potencialny" onclick="msSelect(this)"><div class="multi-select-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>💡 Potenciálny</div>
+              <div class="multi-select-option" data-value="makler" onclick="msSelect(this)"><div class="multi-select-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>🤝 Maklér / Partner</div>
+              <div class="multi-select-option" data-value="developer" onclick="msSelect(this)"><div class="multi-select-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>🏗️ Developer</div>
+              <div class="multi-select-option" data-value="pravnik" onclick="msSelect(this)"><div class="multi-select-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>⚖️ Právnik / Notár</div>
+              <div class="multi-select-option" data-value="banka" onclick="msSelect(this)"><div class="multi-select-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>🏦 Banka / Hypotéky</div>
+              <div class="multi-select-option" data-value="iny" onclick="msSelect(this)"><div class="multi-select-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>📇 Iný</div>
             </div>
           </div>
           <div class="multi-select" id="ms-contact-status" data-placeholder="Status" data-callback="filterContacts">
@@ -2364,7 +2362,8 @@
                 <th style="text-align:left;padding-left:1rem;">Meno</th>
                 <th style="text-align:left;">Telefón</th>
                 <th style="text-align:left;">E-mail</th>
-                <th style="text-align:left;">Kategória</th>
+                <th style="text-align:left;">Rola</th>
+                <th style="text-align:left;">Fáza</th>
                 <th style="text-align:left;">Status</th>
                 <th style="text-align:center;">AML</th>
                 <th style="text-align:left;">Poznámka</th>
@@ -3262,18 +3261,6 @@
               <input type="text" id="contact-company" placeholder="Názov firmy" />
             </div>
             <div class="form-group">
-              <label>Kategória</label>
-              <select id="contact-category">
-                <option value="klient">Klient</option>
-                <option value="potencialny">Potenciálny klient</option>
-                <option value="makler">Makléř / Partner</option>
-                <option value="developer">Developer</option>
-                <option value="pravnik">Právnik / Notár</option>
-                <option value="banka">Banka / Hypotéky</option>
-                <option value="iny">Iný</option>
-              </select>
-            </div>
-            <div class="form-group">
               <label>Status</label>
               <select id="contact-status">
                 <option value="aktivny">Aktívny</option>
@@ -3281,6 +3268,43 @@
                 <option value="vip">VIP</option>
               </select>
             </div>
+            <div class="form-group" style="grid-column:1/-1;">
+              <label>Rola <span style="font-weight:400;color:var(--text-light);">(môžete zvoliť viac)</span></label>
+              <div id="contact-roles" style="display:flex;flex-wrap:wrap;gap:0.5rem;">
+                <label class="prof-chip prof-chip-role"><input type="checkbox" value="seller" /> <span>🏠 Predávajúci</span></label>
+                <label class="prof-chip prof-chip-role"><input type="checkbox" value="buyer" /> <span>🔑 Kupujúci</span></label>
+                <label class="prof-chip prof-chip-role"><input type="checkbox" value="potencialny" /> <span>💡 Potenciálny</span></label>
+                <label class="prof-chip prof-chip-role"><input type="checkbox" value="makler" /> <span>🤝 Maklér / Partner</span></label>
+                <label class="prof-chip prof-chip-role"><input type="checkbox" value="developer" /> <span>🏗️ Developer</span></label>
+                <label class="prof-chip prof-chip-role"><input type="checkbox" value="pravnik" /> <span>⚖️ Právnik / Notár</span></label>
+                <label class="prof-chip prof-chip-role"><input type="checkbox" value="banka" /> <span>🏦 Banka / Hypotéky</span></label>
+                <label class="prof-chip prof-chip-role"><input type="checkbox" value="iny" /> <span>📇 Iný</span></label>
+              </div>
+            </div>
+
+            <!-- Conditional: deal pipeline (only shown for seller/buyer) -->
+            <div id="contact-deal-section" class="form-group" style="grid-column:1/-1;display:none;background:#F8FAFC;border:1.5px solid var(--border);border-radius:10px;padding:1rem;">
+              <div style="font-size:0.7rem;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.65rem;">🔄 Obchodný pipeline</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.85rem;">
+                <div>
+                  <label style="font-size:0.78rem;font-weight:600;color:var(--text);display:block;margin-bottom:0.35rem;">Fáza obchodu</label>
+                  <select id="contact-stage">
+                    <option value="new">🆕 Nový lead</option>
+                    <option value="viewing">👀 Obhliadka</option>
+                    <option value="offer">💬 Ponuka</option>
+                    <option value="reserved">🔒 Rezervácia</option>
+                    <option value="contract">📝 Zmluva podpísaná</option>
+                    <option value="closed">✅ Uzavretý</option>
+                    <option value="lost">❌ Stratený</option>
+                  </select>
+                </div>
+                <div>
+                  <label style="font-size:0.78rem;font-weight:600;color:var(--text);display:block;margin-bottom:0.35rem;">Priradená nehnuteľnosť</label>
+                  <select id="contact-property"><option value="">— žiadna —</option></select>
+                </div>
+              </div>
+            </div>
+
             <div class="form-group" style="grid-column:1/-1;">
               <label>Adresa</label>
               <input type="text" id="contact-address" placeholder="Ulica, Mesto, PSČ" />

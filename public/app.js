@@ -54,6 +54,8 @@ function restoreSidebarState() {
 }
 
 function showPage(id) {
+  // Legacy redirect: Klienti page merged into Kontakty
+  if (id === 'clients') id = 'contacts';
   closeMobileSidebar();
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -6237,7 +6239,9 @@ const CONTACTS_KEY = 'secpro_contacts';
 function getContacts() { return _getCached('contacts', []); }
 function saveContacts(arr) { _setCached('contacts', arr); }
 
-// ===================== CLIENTS (sellers + buyers) =====================
+// ===================== CLIENTS/CONTACTS (unified) =====================
+// Clients are now a derived view over contacts: contacts with role 'seller' or 'buyer'.
+// Kept for backward compat (property-detail linked clients, client picker).
 const CLIENT_STAGE_LABELS = {
   new:      { label: 'Nový lead',         icon: '🆕', color: '#64748B', bg: '#F1F5F9' },
   viewing:  { label: 'Obhliadka',         icon: '👀', color: '#0891B2', bg: '#ECFEFF' },
@@ -6254,8 +6258,118 @@ const CLIENT_TYPE_LABELS = {
 const CLIENT_ACTIVE_STAGES = ['new','viewing','offer','reserved','contract'];
 let cli_type_filter = 'all';
 
-function getClients() { return _getCached('clients', []); }
-function saveClients(arr) { _setCached('clients', arr); }
+// One-time migration: merge legacy clients → contacts, then clear.
+// Also normalizes contacts to have a `roles` array.
+let _clientsMigrationDone = false;
+function migrateClientsIntoContacts() {
+  if (_clientsMigrationDone) return;
+  _clientsMigrationDone = true;
+  try {
+    const contacts = _getCached('contacts', []) || [];
+    // Normalize every contact to have roles[]
+    contacts.forEach(c => {
+      if (!Array.isArray(c.roles)) {
+        c.roles = c.category ? [c.category] : [];
+      }
+      if (!c.stage) c.stage = '';
+      if (!c.propertyId) c.propertyId = '';
+    });
+    const legacyClients = _getCached('clients', []) || [];
+    if (Array.isArray(legacyClients) && legacyClients.length > 0) {
+      legacyClients.forEach(cl => {
+        // Try to find matching contact by phone/email/name
+        const norm = s => (s || '').toLowerCase().trim();
+        let match = null;
+        if (cl.phone || cl.email) {
+          match = contacts.find(c =>
+            (cl.phone && norm(c.phone) === norm(cl.phone)) ||
+            (cl.email && norm(c.email) === norm(cl.email))
+          );
+        }
+        if (!match && cl.name) {
+          match = contacts.find(c => norm(c.name) === norm(cl.name));
+        }
+        if (match) {
+          if (!match.roles.includes(cl.type)) match.roles.push(cl.type);
+          if (!match.stage || match.stage === 'new') match.stage = cl.stage || match.stage || 'new';
+          if (!match.propertyId && cl.propertyId) match.propertyId = cl.propertyId;
+          if (cl.notes && !match.note) match.note = cl.notes;
+          match.updatedAt = new Date().toISOString();
+        } else {
+          contacts.unshift({
+            id: cl.id || (Date.now().toString(36) + Math.random().toString(36).slice(2,7)),
+            name: cl.name || '',
+            phone: cl.phone || '',
+            email: cl.email || '',
+            company: '',
+            roles: [cl.type || 'buyer'],
+            category: cl.type || '',
+            status: 'aktivny',
+            address: '',
+            note: cl.notes || '',
+            stage: cl.stage || 'new',
+            propertyId: cl.propertyId || '',
+            createdAt: cl.createdAt || new Date().toISOString(),
+            updatedAt: cl.updatedAt || new Date().toISOString(),
+          });
+        }
+      });
+      _setCached('contacts', contacts);
+      _setCached('clients', []); // clear legacy
+    } else {
+      _setCached('contacts', contacts);
+    }
+  } catch (e) {
+    console.warn('Client→contact migration failed', e);
+  }
+}
+
+// Derived client view: returns contact objects shaped as "clients".
+function getClients() {
+  migrateClientsIntoContacts();
+  const contacts = _getCached('contacts', []) || [];
+  const result = [];
+  contacts.forEach(c => {
+    const roles = Array.isArray(c.roles) ? c.roles : (c.category ? [c.category] : []);
+    const isSeller = roles.includes('seller');
+    const isBuyer = roles.includes('buyer');
+    if (!isSeller && !isBuyer) return;
+    // Prefer buyer if both (buyer-side is typically more active)
+    const type = isBuyer ? 'buyer' : 'seller';
+    result.push({
+      id: c.id,
+      _contactId: c.id,
+      type,
+      name: c.name || '',
+      phone: c.phone || '',
+      email: c.email || '',
+      propertyId: c.propertyId || '',
+      stage: c.stage || 'new',
+      notes: c.note || '',
+      createdAt: c.createdAt,
+      updatedAt: c.updatedAt,
+    });
+  });
+  return result;
+}
+
+// Writes a client-shape array back to contacts (by id).
+function saveClients(arr) {
+  const contacts = _getCached('contacts', []) || [];
+  const byId = new Map(contacts.map(c => [c.id, c]));
+  (arr || []).forEach(cl => {
+    const c = byId.get(cl.id);
+    if (!c) return;
+    // Ensure role is present
+    if (!Array.isArray(c.roles)) c.roles = c.category ? [c.category] : [];
+    if (cl.type && !c.roles.includes(cl.type)) c.roles.push(cl.type);
+    c.stage = cl.stage || c.stage || 'new';
+    c.propertyId = cl.propertyId || '';
+    if (typeof cl.notes === 'string') c.note = cl.notes;
+    c.updatedAt = new Date().toISOString();
+  });
+  _setCached('contacts', contacts);
+}
 
 function setClientTypeFilter(t) {
   cli_type_filter = t;
@@ -6276,31 +6390,14 @@ function _populateClientPropertySelect(selectedId) {
     }).join('');
 }
 
-function openClientForm(id) {
-  document.getElementById('client-edit-id').value = id || '';
-  document.getElementById('client-modal-title').textContent = id ? 'Upraviť klienta' : 'Pridať klienta';
-
+// Legacy: opens the unified contact form. If editing by "client id" (= contact id),
+// just opens contact form. When adding new, pre-selects 'buyer' role.
+function openClientForm(id, presetType) {
   if (id) {
-    const c = getClients().find(x => x.id === id);
-    if (c) {
-      document.querySelector('input[name="client-type"][value="' + (c.type || 'seller') + '"]').checked = true;
-      document.getElementById('client-name').value = c.name || '';
-      document.getElementById('client-phone').value = c.phone || '';
-      document.getElementById('client-email').value = c.email || '';
-      document.getElementById('client-stage').value = c.stage || 'new';
-      document.getElementById('client-notes').value = c.notes || '';
-      _populateClientPropertySelect(c.propertyId || '');
-    }
+    openContactForm(id);
   } else {
-    document.querySelector('input[name="client-type"][value="seller"]').checked = true;
-    document.getElementById('client-name').value = '';
-    document.getElementById('client-phone').value = '';
-    document.getElementById('client-email').value = '';
-    document.getElementById('client-stage').value = 'new';
-    document.getElementById('client-notes').value = '';
-    _populateClientPropertySelect('');
+    openContactForm(null, [presetType || 'buyer']);
   }
-  document.getElementById('client-modal').style.display = 'block';
 }
 
 function closeClientForm() {
@@ -6592,7 +6689,20 @@ const CONTACT_CATEGORY_LABELS = {
   developer: 'Developer',
   pravnik: 'Právnik / Notár',
   banka: 'Banka / Hypotéky',
-  iny: 'Iný'
+  iny: 'Iný',
+  seller: 'Predávajúci',
+  buyer: 'Kupujúci'
+};
+const CONTACT_ROLE_META = {
+  seller:      { label: 'Predávajúci',    icon: '🏠', color: '#0D9488', bg: '#CCFBF1' },
+  buyer:       { label: 'Kupujúci',       icon: '🔑', color: '#2563EB', bg: '#DBEAFE' },
+  potencialny: { label: 'Potenciálny',    icon: '💡', color: '#D97706', bg: '#FEF3C7' },
+  klient:      { label: 'Klient',         icon: '⭐', color: '#7C3AED', bg: '#F3E8FF' },
+  makler:      { label: 'Maklér',         icon: '🤝', color: '#0891B2', bg: '#ECFEFF' },
+  developer:   { label: 'Developer',      icon: '🏗️', color: '#475569', bg: '#F1F5F9' },
+  pravnik:     { label: 'Právnik',        icon: '⚖️', color: '#6366F1', bg: '#EEF2FF' },
+  banka:       { label: 'Banka',          icon: '🏦', color: '#059669', bg: '#D1FAE5' },
+  iny:         { label: 'Iný',            icon: '📇', color: '#64748B', bg: '#F1F5F9' },
 };
 const CONTACT_STATUS_LABELS = {
   aktivny: { label: 'Aktívny', color: '#7ED4C8', bg: '#E5F5F1' },
@@ -6600,9 +6710,37 @@ const CONTACT_STATUS_LABELS = {
   vip: { label: 'VIP', color: '#F5A623', bg: '#FFF8EC' }
 };
 
-function openContactForm(id) {
+function _populateContactPropertySelect(selectedId) {
+  const sel = document.getElementById('contact-property');
+  if (!sel) return;
+  const props = (typeof getProperties === 'function') ? getProperties() : [];
+  sel.innerHTML = '<option value="">— žiadna —</option>' +
+    props.map(p => {
+      const label = (p.title || 'Bez názvu') + (p.city ? ' · ' + p.city : '');
+      return `<option value="${p.id}" ${p.id === selectedId ? 'selected' : ''}>${esc(label)}</option>`;
+    }).join('');
+}
+
+function _refreshContactDealSection() {
+  const sec = document.getElementById('contact-deal-section');
+  if (!sec) return;
+  const roles = Array.from(document.querySelectorAll('#contact-roles input[type="checkbox"]:checked')).map(cb => cb.value);
+  const showDeal = roles.includes('seller') || roles.includes('buyer');
+  sec.style.display = showDeal ? 'block' : 'none';
+}
+
+document.addEventListener('change', (e) => {
+  if (e.target && e.target.matches && e.target.matches('#contact-roles input[type="checkbox"]')) {
+    _refreshContactDealSection();
+  }
+});
+
+function openContactForm(id, presetRoles) {
   document.getElementById('contact-edit-id').value = id || '';
   document.getElementById('contact-modal-title').textContent = id ? 'Upraviť kontakt' : 'Pridať kontakt';
+  let roles = [];
+  let stage = 'new';
+  let propertyId = '';
   if (id) {
     const c = getContacts().find(x => x.id === id);
     if (c) {
@@ -6610,21 +6748,32 @@ function openContactForm(id) {
       document.getElementById('contact-phone').value = c.phone || '';
       document.getElementById('contact-email').value = c.email || '';
       document.getElementById('contact-company').value = c.company || '';
-      document.getElementById('contact-category').value = c.category || 'klient';
       document.getElementById('contact-status').value = c.status || 'aktivny';
       document.getElementById('contact-address').value = c.address || '';
       document.getElementById('contact-note').value = c.note || '';
+      roles = Array.isArray(c.roles) ? c.roles.slice() : (c.category ? [c.category] : []);
+      stage = c.stage || 'new';
+      propertyId = c.propertyId || '';
     }
   } else {
     document.getElementById('contact-name').value = '';
     document.getElementById('contact-phone').value = '';
     document.getElementById('contact-email').value = '';
     document.getElementById('contact-company').value = '';
-    document.getElementById('contact-category').value = 'klient';
     document.getElementById('contact-status').value = 'aktivny';
     document.getElementById('contact-address').value = '';
     document.getElementById('contact-note').value = '';
+    roles = Array.isArray(presetRoles) ? presetRoles.slice() : [];
+    stage = 'new';
+    propertyId = '';
   }
+  // Apply roles to checkboxes
+  document.querySelectorAll('#contact-roles input[type="checkbox"]').forEach(cb => {
+    cb.checked = roles.includes(cb.value);
+  });
+  document.getElementById('contact-stage').value = stage;
+  _populateContactPropertySelect(propertyId);
+  _refreshContactDealSection();
   document.getElementById('contact-modal').style.display = 'block';
 }
 
@@ -6638,16 +6787,21 @@ function saveContact() {
 
   const editId = document.getElementById('contact-edit-id').value;
   const contacts = getContacts();
+  const roles = Array.from(document.querySelectorAll('#contact-roles input[type="checkbox"]:checked')).map(cb => cb.value);
+  const hasDeal = roles.includes('seller') || roles.includes('buyer');
   const data = {
     id: editId || Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
     name,
     phone: document.getElementById('contact-phone').value.trim(),
     email: document.getElementById('contact-email').value.trim(),
     company: document.getElementById('contact-company').value.trim(),
-    category: document.getElementById('contact-category').value,
+    roles,
+    category: roles[0] || '', // legacy
     status: document.getElementById('contact-status').value,
     address: document.getElementById('contact-address').value.trim(),
     note: document.getElementById('contact-note').value.trim(),
+    stage: hasDeal ? (document.getElementById('contact-stage').value || 'new') : '',
+    propertyId: hasDeal ? (document.getElementById('contact-property').value || '') : '',
     updatedAt: new Date().toISOString()
   };
 
@@ -6679,13 +6833,15 @@ function filterContacts() {
 }
 
 function renderContacts() {
+  migrateClientsIntoContacts();
   const contacts = getContacts();
   const search = (document.getElementById('contact-filter-search').value || '').toLowerCase();
-  const catFilters = msGetValues('ms-contact-category');
+  const roleFilters = msGetValues('ms-contact-category');
   const statusFilters = msGetValues('ms-contact-status');
 
   const filtered = contacts.filter(c => {
-    if (catFilters.length && !catFilters.includes(c.category)) return false;
+    const roles = Array.isArray(c.roles) ? c.roles : (c.category ? [c.category] : []);
+    if (roleFilters.length && !roles.some(r => roleFilters.includes(r))) return false;
     if (statusFilters.length && !statusFilters.includes(c.status)) return false;
     if (search) {
       const haystack = [c.name, c.phone, c.email, c.company, c.note].join(' ').toLowerCase();
@@ -6722,7 +6878,11 @@ function renderContacts() {
 
   const amlAll = typeof getAmlRecords === 'function' ? getAmlRecords() : [];
   tbody.innerHTML = filtered.map(c => {
-    const cat = CONTACT_CATEGORY_LABELS[c.category] || c.category;
+    const roles = Array.isArray(c.roles) ? c.roles : (c.category ? [c.category] : []);
+    const roleChips = roles.map(r => {
+      const meta = CONTACT_ROLE_META[r] || { label: r, icon: '', color: '#64748B', bg: '#F1F5F9' };
+      return `<span style="display:inline-flex;align-items:center;gap:0.2rem;padding:0.15rem 0.5rem;border-radius:10px;font-size:0.68rem;font-weight:600;background:${meta.bg};color:${meta.color};margin:1px 2px 1px 0;white-space:nowrap;">${meta.icon} ${esc(meta.label)}</span>`;
+    }).join('') || '<span style="font-size:0.7rem;color:var(--text-light);">—</span>';
     const st = CONTACT_STATUS_LABELS[c.status] || { label: c.status, color: '#999', bg: '#f0f0f0' };
     const note = c.note ? (c.note.length > 40 ? c.note.slice(0, 40) + '...' : c.note) : '-';
     const amlRec = amlAll.find(a => a.contactId === c.id);
@@ -6732,13 +6892,20 @@ function renderContacts() {
         : amlRec.status === 'flagged' ? '<span class="aml-badge flagged" style="font-size:0.7rem;padding:0.15rem 0.45rem;">Flagged</span>'
         : '<span class="aml-badge pending" style="font-size:0.7rem;padding:0.15rem 0.45rem;">Čaká</span>')
       : '<span style="font-size:0.7rem;color:var(--text-light);">-</span>';
+    // Stage pill if seller/buyer
+    const hasDeal = roles.includes('seller') || roles.includes('buyer');
+    const stg = hasDeal ? (CLIENT_STAGE_LABELS[c.stage || 'new'] || CLIENT_STAGE_LABELS.new) : null;
+    const stageHtml = stg
+      ? `<span style="display:inline-block;padding:0.15rem 0.5rem;border-radius:10px;font-size:0.68rem;font-weight:600;background:${stg.bg};color:${stg.color};">${stg.icon} ${esc(stg.label)}</span>`
+      : '<span style="font-size:0.7rem;color:var(--text-light);">—</span>';
     return `<tr>
       <td style="text-align:left;padding-left:1rem;font-weight:600;color:#0B2A3C;">
         ${esc(c.name)}${c.company ? '<br><span style="font-weight:400;font-size:0.75rem;color:var(--text-light);">' + esc(c.company) + '</span>' : ''}
       </td>
       <td style="text-align:left;">${c.phone ? '<a href="tel:' + esc(c.phone) + '" style="color:#1A7A8A;text-decoration:none;">' + esc(c.phone) + '</a>' : '-'}</td>
       <td style="text-align:left;">${c.email ? '<a href="mailto:' + esc(c.email) + '" style="color:#1A7A8A;text-decoration:none;">' + esc(c.email) + '</a>' : '-'}</td>
-      <td style="text-align:left;"><span style="font-size:0.78rem;">${esc(cat)}</span></td>
+      <td style="text-align:left;">${roleChips}</td>
+      <td style="text-align:left;">${stageHtml}</td>
       <td style="text-align:left;"><span style="display:inline-block;padding:0.2rem 0.55rem;border-radius:12px;font-size:0.72rem;font-weight:600;background:${st.bg};color:${st.color};">${esc(st.label)}</span></td>
       <td style="text-align:center;">${amlBadge}</td>
       <td style="text-align:left;font-size:0.8rem;color:var(--text-light);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(c.note || '')}">${esc(note)}</td>
