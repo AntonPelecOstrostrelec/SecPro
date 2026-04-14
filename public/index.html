@@ -2450,14 +2450,14 @@
 
     <!-- REMOTE SIGN REQUEST MODAL -->
     <div id="remote-sign-modal" style="display:none;position:fixed;inset:0;z-index:15000;background:rgba(0,0,0,.45);overflow-y:auto;padding:2rem 1rem;">
-      <div style="background:#fff;border-radius:16px;max-width:520px;margin:auto;box-shadow:0 12px 40px rgba(0,0,0,.15);">
+      <div style="background:#fff;border-radius:16px;max-width:480px;margin:auto;box-shadow:0 12px 40px rgba(0,0,0,.15);">
         <div style="background:linear-gradient(135deg,#0b2a3c,#1a5276);padding:1.25rem 1.5rem;border-radius:16px 16px 0 0;color:#fff;">
-          <h3 style="margin:0;font-size:1.1rem;">Nová žiadosť o vzdialený podpis</h3>
-          <p style="margin:4px 0 0;font-size:0.78rem;opacity:.8;">Klient dostane link, podpíše online, vy uvidíte výsledok</p>
+          <h3 style="margin:0;font-size:1.1rem;">Poslať na podpis</h3>
+          <p style="margin:4px 0 0;font-size:0.78rem;opacity:.8;">Klient dostane link a podpíše online</p>
         </div>
         <div style="padding:1.25rem 1.5rem;">
-          <label class="form-label">Typ dokumentu</label>
-          <select id="rs-doc-type" class="form-input" style="margin-bottom:0.75rem;">
+          <label class="form-label">Čo sa podpisuje</label>
+          <select id="rs-doc-type" class="form-input" onchange="updateRsDefaults()" style="margin-bottom:0.75rem;">
             <option value="nabor">Náborový list</option>
             <option value="aml">AML preverenie</option>
             <option value="zmluva">Zmluva</option>
@@ -2465,35 +2465,39 @@
             <option value="other">Iný dokument</option>
           </select>
 
-          <label class="form-label">Referencia dokumentu</label>
-          <input type="text" id="rs-doc-ref" class="form-input" placeholder="napr. Náborový list – Hlavná 12" style="margin-bottom:0.75rem;">
+          <label class="form-label">Názov / adresa nehnuteľnosti</label>
+          <input type="text" id="rs-doc-detail" class="form-input" placeholder="napr. Hlavná 12, Bratislava" style="margin-bottom:0.75rem;">
 
-          <label class="form-label">Meno podpisujúceho</label>
+          <label class="form-label">Kto podpisuje</label>
           <input type="text" id="rs-signer-name" class="form-input" placeholder="Celé meno klienta" style="margin-bottom:0.75rem;">
 
-          <label class="form-label">Rola podpisujúceho</label>
-          <input type="text" id="rs-signer-role" class="form-input" placeholder="napr. Predávajúci, Kupujúci" style="margin-bottom:0.75rem;">
+          <!-- Hidden fields populated by JS -->
+          <input type="hidden" id="rs-doc-ref">
+          <input type="hidden" id="rs-signer-role">
+          <input type="hidden" id="rs-signer-email">
+          <input type="hidden" id="rs-signer-phone">
+          <input type="hidden" id="rs-message">
+          <input type="hidden" id="rs-expires" value="48">
 
-          <label class="form-label">Email (voliteľné)</label>
-          <input type="email" id="rs-signer-email" class="form-input" placeholder="email@priklad.sk" style="margin-bottom:0.75rem;">
+          <details style="margin-bottom:1rem;">
+            <summary style="font-size:0.78rem;color:var(--text-light);cursor:pointer;user-select:none;">Ďalšie nastavenia</summary>
+            <div style="padding-top:0.75rem;">
+              <label class="form-label">Správa pre klienta</label>
+              <textarea id="rs-message-text" class="form-input" rows="2" placeholder="Voliteľná správa, ktorú klient uvidí..." style="margin-bottom:0.75rem;resize:vertical;"></textarea>
 
-          <label class="form-label">Telefón (voliteľné)</label>
-          <input type="tel" id="rs-signer-phone" class="form-input" placeholder="+421..." style="margin-bottom:0.75rem;">
-
-          <label class="form-label">Správa pre klienta (voliteľné)</label>
-          <textarea id="rs-message" class="form-input" rows="2" placeholder="Osobná správa, ktorú klient uvidí..." style="margin-bottom:0.75rem;resize:vertical;"></textarea>
-
-          <label class="form-label">Platnosť odkazu</label>
-          <select id="rs-expires" class="form-input" style="margin-bottom:1rem;">
-            <option value="24">24 hodín</option>
-            <option value="48" selected>48 hodín (predvolené)</option>
-            <option value="72">72 hodín</option>
-            <option value="168">7 dní</option>
-          </select>
+              <label class="form-label">Platnosť odkazu</label>
+              <select id="rs-expires-select" class="form-input" style="margin-bottom:0.5rem;">
+                <option value="24">24 hodín</option>
+                <option value="48" selected>2 dni</option>
+                <option value="72">3 dni</option>
+                <option value="168">7 dní</option>
+              </select>
+            </div>
+          </details>
 
           <div style="display:flex;gap:8px;">
             <button class="action-btn secondary" onclick="closeRemoteSignModal()" style="flex:1;">Zrušiť</button>
-            <button class="action-btn" id="rs-submit-btn" onclick="submitRemoteSignRequest()" style="flex:2;">Vytvoriť a získať link</button>
+            <button class="action-btn" id="rs-submit-btn" onclick="submitRemoteSignRequest()" style="flex:2;">Získať link na podpis</button>
           </div>
         </div>
       </div>

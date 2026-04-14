@@ -11553,19 +11553,39 @@ async function viewRemoteSignature(token) {
 }
 
 // ── Remote sign request modal ──
+// Auto-defaults based on document type
+const RS_DOC_DEFAULTS = {
+  nabor:    { prefix: 'Náborový list',          role: 'Predávajúci' },
+  aml:      { prefix: 'AML preverenie',         role: 'Preverovaná osoba' },
+  zmluva:   { prefix: 'Zmluva',                 role: 'Zmluvná strana' },
+  protokol: { prefix: 'Odovzdávací protokol',   role: 'Preberajúci' },
+  other:    { prefix: 'Dokument',               role: '' },
+};
+
+function updateRsDefaults() {
+  // Just updates hidden role when type changes
+  const t = document.getElementById('rs-doc-type').value;
+  const def = RS_DOC_DEFAULTS[t] || RS_DOC_DEFAULTS.other;
+  document.getElementById('rs-signer-role').value = def.role;
+}
+
 function openRemoteSignModal(presets) {
   const p = presets || {};
   document.getElementById('rs-doc-type').value = p.documentType || 'nabor';
-  document.getElementById('rs-doc-ref').value = p.documentRef || '';
+  document.getElementById('rs-doc-detail').value = p.docDetail || '';
   document.getElementById('rs-signer-name').value = p.signerName || '';
   document.getElementById('rs-signer-role').value = p.signerRole || '';
-  document.getElementById('rs-signer-email').value = p.signerEmail || '';
-  document.getElementById('rs-signer-phone').value = p.signerPhone || '';
-  document.getElementById('rs-message').value = p.message || '';
-  document.getElementById('rs-expires').value = p.expiresInHours || '48';
+  document.getElementById('rs-signer-email').value = '';
+  document.getElementById('rs-signer-phone').value = '';
+  document.getElementById('rs-message').value = '';
+  const msgText = document.getElementById('rs-message-text');
+  if (msgText) msgText.value = p.message || '';
+  const expSel = document.getElementById('rs-expires-select');
+  if (expSel) expSel.value = '48';
   document.getElementById('rs-submit-btn').disabled = false;
-  document.getElementById('rs-submit-btn').textContent = 'Vytvoriť a získať link';
+  document.getElementById('rs-submit-btn').textContent = 'Získať link na podpis';
   document.getElementById('remote-sign-modal').style.display = 'block';
+  if (!p.signerRole) updateRsDefaults();
 }
 
 function closeRemoteSignModal() {
@@ -11575,18 +11595,20 @@ function closeRemoteSignModal() {
 async function submitRemoteSignRequest() {
   const btn = document.getElementById('rs-submit-btn');
   const docType = document.getElementById('rs-doc-type').value;
-  const docRef = document.getElementById('rs-doc-ref').value.trim();
+  const detail = document.getElementById('rs-doc-detail').value.trim();
   const signerName = document.getElementById('rs-signer-name').value.trim();
-  const signerRole = document.getElementById('rs-signer-role').value.trim();
-  const signerEmail = document.getElementById('rs-signer-email').value.trim();
-  const signerPhone = document.getElementById('rs-signer-phone').value.trim();
-  const message = document.getElementById('rs-message').value.trim();
-  const expiresInHours = parseInt(document.getElementById('rs-expires').value);
 
-  if (!docRef || !signerName) {
-    showToast('Vyplňte referenciu dokumentu a meno podpisujúceho', 'warning');
+  if (!signerName) {
+    showToast('Vyplňte meno klienta', 'warning');
     return;
   }
+
+  // Auto-build reference from type + detail
+  const def = RS_DOC_DEFAULTS[docType] || RS_DOC_DEFAULTS.other;
+  const docRef = detail ? def.prefix + ' – ' + detail : def.prefix;
+  const signerRole = document.getElementById('rs-signer-role').value || def.role;
+  const message = (document.getElementById('rs-message-text')?.value || '').trim();
+  const expiresInHours = parseInt((document.getElementById('rs-expires-select')?.value) || '48');
 
   const token = getStoredToken();
   if (!token) { showToast('Nie ste prihlásený', 'error'); return; }
@@ -11598,27 +11620,25 @@ async function submitRemoteSignRequest() {
     const r = await secureFetch('/api/sign/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-      body: JSON.stringify({ documentType: docType, documentRef: docRef, signerName, signerRole, signerEmail, signerPhone, message, expiresInHours }),
+      body: JSON.stringify({ documentType: docType, documentRef: docRef, signerName, signerRole, message, expiresInHours }),
     });
     const data = await r.json();
     if (data.ok) {
       closeRemoteSignModal();
-      // Show link modal
       document.getElementById('rs-link-url').value = data.signUrl;
       document.getElementById('rs-link-expires').textContent = 'Platnosť do: ' + new Date(data.expiresAt).toLocaleString('sk-SK');
       document.getElementById('remote-sign-link-modal').style.display = 'block';
-      // Invalidate cache
       _remoteSignCache = null;
       refreshRemoteSignatures();
     } else {
-      showToast(data.error || 'Chyba pri vytváraní žiadosti', 'error');
+      showToast(data.error || 'Chyba pri vytváraní', 'error');
       btn.disabled = false;
-      btn.textContent = 'Vytvoriť a získať link';
+      btn.textContent = 'Získať link na podpis';
     }
   } catch (e) {
     showToast('Chyba pripojenia k serveru', 'error');
     btn.disabled = false;
-    btn.textContent = 'Vytvoriť a získať link';
+    btn.textContent = 'Získať link na podpis';
   }
 }
 
@@ -11639,14 +11659,12 @@ function sendNaborForRemoteSign(role) {
   const vlastnik = document.getElementById('nb-vlastnik')?.value?.trim() || '';
   const address = (document.getElementById('nb-ulica')?.value || '').trim()
     + (document.getElementById('nb-mesto')?.value ? ', ' + document.getElementById('nb-mesto').value.trim() : '');
-  const docRef = 'Náborový list' + (address ? ' – ' + address : '');
 
   openRemoteSignModal({
     documentType: 'nabor',
-    documentRef: docRef,
+    docDetail: address,
     signerName: role === 'seller' ? vlastnik : (getProfile()?.name || ''),
     signerRole: role === 'seller' ? 'Predávajúci' : 'Maklér',
-    message: 'Prosím podpíšte náborový list pre nehnuteľnosť: ' + (address || docRef),
   });
 }
 
