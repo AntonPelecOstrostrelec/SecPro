@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finančný plánovač</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>Finančný plánovač</h1>
+        <p class="subtitle">Kompletný nástroj pre finančné plánovanie</p>
+    </header>
+
+    <nav class="tabs-nav">
+        <button class="tab-btn active" data-tab="tab-mortgage" onclick="switchTab('tab-mortgage')">Bývanie</button>
+        <button class="tab-btn" data-tab="tab-wealth" onclick="switchTab('tab-wealth')">Budovanie majetku</button>
+        <button class="tab-btn" data-tab="tab-investing" onclick="switchTab('tab-investing')">Investovanie</button>
+        <button class="tab-btn" data-tab="tab-allocation" onclick="switchTab('tab-allocation')">Rozloženie investície</button>
+        <button class="tab-btn" data-tab="tab-million" onclick="switchTab('tab-million')">Miliónová kalk.</button>
+        <button class="tab-btn" data-tab="tab-annuity" onclick="switchTab('tab-annuity')">Renta mesačná</button>
+        <button class="tab-btn" data-tab="tab-yield" onclick="switchTab('tab-yield')">Renta z výnosov</button>
+        <button class="tab-btn" data-tab="tab-pillar" onclick="switchTab('tab-pillar')">II. pilier</button>
+        <button class="tab-btn" data-tab="tab-finmath" onclick="switchTab('tab-finmath')">Fin. matematika</button>
+        <button class="tab-btn" data-tab="tab-dividend" onclick="switchTab('tab-dividend')">Dividenda</button>
+        <button class="tab-btn" data-tab="tab-pension" onclick="switchTab('tab-pension')">Dôchodok</button>
+        <button class="tab-btn" data-tab="tab-reserves" onclick="switchTab('tab-reserves')">Rezervy</button>
+        <button class="tab-btn" data-tab="tab-aof" onclick="switchTab('tab-aof')">Fin. analýza</button>
+    </nav>
+
+    <main>
+        <!-- ========== 1. MORTGAGE (Bývanie) ========== -->
+        <section id="tab-mortgage" class="tab-content active">
+            <h2>Hypotekárna kalkulačka</h2>
+            <div class="calc-grid">
+                <div class="input-group">
+                    <h3>Vstupné údaje</h3>
+                    <label>Výška úveru (€)
+                        <input type="number" id="mort-amount" value="100000" step="1000">
+                    </label>
+                    <label>Úroková sadzba p.a. (%)
+                        <input type="number" id="mort-rate" value="4.5" step="0.1">
+                    </label>
+                    <label>Splatnosť (roky)
+                        <input type="number" id="mort-years" value="30" min="1" max="40">
+                    </label>
+                    <button class="btn-calc" onclick="calcMortgage()">Vypočítať</button>
+                </div>
+                <div class="output-group">
+                    <h3>Výsledky</h3>
+                    <div class="result-row"><span>Mesačná splátka:</span><strong id="mort-monthly">-</strong></div>
+                    <div class="result-row"><span>Celkom zaplatené:</span><strong id="mort-total-paid">-</strong></div>
+                    <div class="result-row"><span>Celkové úroky:</span><strong id="mort-total-interest">-</strong></div>
+                    <div class="result-row"><span>Preplatenie:</span><strong id="mort-overpayment">-</strong></div>
+                </div>
+            </div>
+            <div class="chart-container"><canvas id="mort-chart"></canvas></div>
+            <div class="table-container">
+                <h3>Amortizačný plán</h3>
+                <table>
+                    <thead><tr>
+                        <th>Rok</th><th>Splátka</th><th>Úrok</th><th>Istina</th><th>Zostatok</th>
+                    </tr></thead>
+                    <tbody id="mort-schedule"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- ========== 2. WEALTH BUILDING ========== -->
+        <section id="tab-wealth" class="tab-content">
+            <h2>Budovanie majetku</h2>
+            <div class="calc-grid">
+                <div class="input-group">
+                    <h3>Mesačné výdavky</h3>
+                    <label>Mesačné výdavky (€)
+                        <input type="number" id="wlt-expenses" value="1500" step="100">
+                    </label>
+                    <label>Hodnota nehnuteľností (€)
+                        <input type="number" id="wlt-realestate" value="0" step="1000">
+                    </label>
+
+                    <h3>Krátkodobé (do 3 rokov)</h3>
+                    <div class="asset-row" data-count="4" data-prefix="wlt-short">
+                        <template class="asset-template">
+                            <div class="asset-input">
+                                <input type="number" id="wlt-short-val-{i}" placeholder="Hodnota €" step="100">
+                                <select id="wlt-short-type-{i}">
+                                    <option value="fixne">Fixné</option>
+                                    <option value="variabilne">Variabilné</option>
+                                    <option value="jednorazovo">Jednorázovo</option>
+                                </select>
+                            </div>
+                        </template>
+                    </div>
+                    <div class="asset-inputs">
+                        <div class="asset-input">
+                            <input type="number" id="wlt-short-val-1" placeholder="Hodnota €">
+                            <select id="wlt-short-type-1"><option value="fixne">Fixné</option><option value="variabilne">Variabilné</option><option value="jednorazovo">Jednorázovo</option></select>
+                        </div>
+                        <div class="asset-input">
+                            <input type="number" id="wlt-short-val-2" placeholder="Hodnota €">
+                            <select id="wlt-short-type-2"><option value="fixne">Fixné</option><option value="variabilne">Variabilné</option><option value="jednorazovo">Jednorázovo</option></select>
+                        </div>
+                    </div>
+
+                    <h3>Strednodobé (3-7 rokov)</h3>
+                    <div class="asset-inputs">
+                        <div class="asset-input">
+                            <input type="number" id="wlt-mid-val-1" placeholder="Hodnota €">
+                            <select id="wlt-mid-type-1"><option value="fixne">Fixné</option><option value="variabilne">Variabilné</option><option value="jednorazovo">Jednorázovo</option></select>
+                        </div>
+                        <div class="asset-input">
+                            <input type="number" id="wlt-mid-val-2" placeholder="Hodnota €">
+                            <select id="wlt-mid-type-2"><option value="fixne">Fixné</option><option value="variabilne">Variabilné</option><option value="jednorazovo">Jednorázovo</option></select>
+                        </div>
+                    </div>
+
+                    <h3>Dlhodobé (7+ rokov)</h3>
+                    <div class="asset-inputs">
+                        <div class="asset-input">
+                            <input type="number" id="wlt-long-val-1" placeholder="Hodnota €">
+                            <select id="wlt-long-type-1"><option value="fixne">Fixné</option><option value="variabilne">Variabilné</option><option value="jednorazovo">Jednorázovo</option></select>
+                        </div>
+                        <div class="asset-input">
+                            <input type="number" id="wlt-long-val-2" placeholder="Hodnota €">
+                            <select id="wlt-long-type-2"><option value="fixne">Fixné</option><option value="variabilne">Variabilné</option><option value="jednorazovo">Jednorázovo</option></select>
+                        </div>
+                    </div>
+
+                    <button class="btn-calc" onclick="calcWealth()">Vypočítať</button>
+                </div>
+                <div class="output-group">
+                    <h3>Prehľad majetku</h3>
+                    <div class="result-row"><span>Krátkodobé:</span><strong id="wlt-total-short">-</strong></div>
+                    <div class="result-row"><span>Strednodobé:</span><strong id="wlt-total-mid">-</strong></div>
+                    <div class="result-row"><span>Dlhodobé:</span><strong id="wlt-total-long">-</strong></div>
+                    <div class="result-row highlight"><span>Celkové portfólio:</span><strong id="wlt-total-portfolio">-</strong></div>
+                    <div class="result-row"><span>Ideálna rezerva (6 mes.):</span><strong id="wlt-ideal-reserve">-</strong></div>
+                    <hr>
+                    <h3>Podľa typu</h3>
+                    <div class="result-row"><span>Fixné:</span><strong id="wlt-total-fixne">-</strong></div>
+                    <div class="result-row"><span>Variabilné:</span><strong id="wlt-total-variable">-</strong></div>
+                    <div class="result-row"><span>Jednorázovo:</span><strong id="wlt-total-jednorazovo">-</strong></div>
+                    <hr>
+                    <div class="result-row highlight"><span>Čistá hodnota (+ nehnuteľnosti):</span><strong id="wlt-net-worth">-</strong></div>
+                    <div class="chart-container"><canvas id="wlt-chart"></canvas></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========== 3. INVESTING ========== -->
+        <section id="tab-investing" class="tab-content">
+            <h2>Investovanie - Projekcia rastu</h2>
+            <div class="calc-grid">
+                <div class="input-group">
+                    <h3>Vstupné údaje</h3>
+                    <label>Jednorázový vklad (€)
+                        <input type="number" id="inv-initial" value="5000" step="1000">
+                    </label>
+                    <label>Mesačný vklad (€)
+                        <input type="number" id="inv-monthly" value="200" step="50">
+                    </label>
+                    <label>Očakávaný výnos p.a. (%)
+                        <input type="number" id="inv-rate" value="7" step="0.5">
+                    </label>
+                    <label>Investičný horizont (roky)
+                        <input type="number" id="inv-years" value="20" min="1" max="50">
+                    </label>
+                    <button class="btn-calc" onclick="calcInvesting()">Vypočítať</button>
+                </div>
+                <div class="output-group">
+                    <h3>Výsledky</h3>
+                    <div class="result-row"><span>Očakávaná hodnota:</span><strong id="inv-result-main">-</strong></div>
+                    <div class="result-row"><span>Pesimistický scenár:</span><strong id="inv-result-pess">-</strong></div>
+                    <div class="result-row"><span>Optimistický scenár:</span><strong id="inv-result-opt">-</strong></div>
+                    <div class="result-row"><span>Celkové vklady:</span><strong id="inv-total-contrib">-</strong></div>
+                    <div class="result-row highlight"><span>Zisk (očakávaný):</span><strong id="inv-profit">-</strong></div>
+                </div>
+            </div>
+            <div class="chart-container"><canvas id="inv-chart"></canvas></div>
+            <div class="table-container">
+                <h3>Ročný prehľad</h3>
+                <table>
+                    <thead><tr>
+                        <th>Rok</th><th>Vklady</th><th>Pesim.</th><th>Očakávaný</th><th>Optim.</th>
+                    </tr></thead>
+                    <tbody id="inv-table"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- ========== 4. INVESTMENT ALLOCATION ========== -->
+        <section id="tab-allocation" class="tab-content">
+            <h2>Rozloženie investície</h2>
+            <div class="calc-grid">
+                <div class="input-group">
+                    <h3>Vstupné údaje</h3>
+                    <label>Investičný horizont (roky)
+                        <input type="number" id="alloc-horizon" value="10" min="1" max="40">
+                    </label>
+                    <label>Tolerancia k riziku (1-5)
+                        <input type="number" id="alloc-risk" value="3" min="1" max="5">
+                    </label>
+                    <label>Typ investície
+                        <select id="alloc-type">
+                            <option value="regular">Pravidelná</option>
+                            <option value="lump">Jednorázová</option>
+                        </select>
+                    </label>
+                    <label>Suma investície (€)
+                        <input type="number" id="alloc-amount" value="200" step="50">
+                    </label>
+                    <label>Vstupný poplatok (%)
+                        <input type="number" id="alloc-fee" value="0" step="0.5" min="0" max="10">
+                    </label>
+                    <button class="btn-calc" onclick="calcAllocation()">Vypočítať</button>
+                </div>
+                <div class="output-group">
+                    <h3>Výsledky</h3>
+                    <div class="result-row"><span>Rizikové skóre:</span><strong id="alloc-risk-score">-</strong></div>
+                    <div class="result-row"><span>Čistá investícia:</span><strong id="alloc-net-amount">-</strong></div>
+                    <div class="result-row"><span>Váž. očakávaný výnos:</span><strong id="alloc-weighted-return">-</strong></div>
+                    <div class="result-row"><span>Váž. volatilita:</span><strong id="alloc-weighted-vol">-</strong></div>
+                    <div class="result-row highlight"><span>Projekcia hodnoty:</span><strong id="alloc-projected">-</strong></div>
+                    <div class="chart-container"><canvas id="alloc-chart"></canvas></div>
+                </div>
+            </div>
+            <div class="table-container">
+                <h3>Alokácia portfólia</h3>
+                <table>
+                    <thead><tr>
+                        <th>Fond</th><th>Podiel</th><th>Suma</th><th>Výnos p.a.</th><th>Volatilita</th>
+                    </tr></thead>
+                    <tbody id="alloc-table"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- ========== 5. MILLION CALCULATOR ========== -->
+        <section id="tab-million" class="tab-content">
+            <h2>Miliónová kalkulačka</h2>
+            <div class="calc-grid">
+                <div class="input-group">
+                    <h3>Koľko chcete nasporiť?</h3>
+                    <label>Cieľová suma (€)
+                        <input type="number" id="mil-target" value="1000000" step="10000">
+                    </label>
+                    <label>Doba sporenia (roky)
+                        <input type="number" id="mil-years" value="30" min="1" max="50">
+                    </label>
+                    <label>Očakávaný výnos p.a. (%)
+                        <input type="number" id="mil-rate" value="7" step="0.5">
+                    </label>
+                    <button class="btn-calc" onclick="calcMillion()">Vypočítať</button>
+                </div>
+                <div class="output-group">
+                    <h3>Výsledky</h3>
+                    <div class="result-row highlight"><span>Mesačný vklad:</span><strong id="mil-monthly">-</strong></div>
+                    <div class="result-row"><span>Celkové vklady:</span><strong id="mil-total-contrib">-</strong></div>
+                    <div class="result-row"><span>Zisk z výnosov:</span><strong id="mil-profit">-</strong></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========== 6. MONTHLY ANNUITY ========== -->
+        <section id="tab-annuity" class="tab-content">
+            <h2>Renta mesačná</h2>
+            <div class="calc-grid">
+                <div class="input-group">
+                    <h3>Vstupné údaje</h3>
+                    <label>Nasporené (€)
+                        <input type="number" id="annuity-capital" value="500000" step="10000">
+                    </label>
+                    <label>Doba čerpania (roky)
+                        <input type="number" id="annuity-years" value="20" min="1" max="50">
+                    </label>
+                    <label>Zhodnotenie p.a. (%)
+                        <input type="number" id="annuity-rate" value="3" step="0.5">
+                    </label>
+                    <label>Vyčerpať celý kapitál?
+                        <select id="annuity-exhaust">
+                            <option value="ano">Áno</option>
+                            <option value="nie">Nie</option>
+                        </select>
+                    </label>
+                    <label>Ponechať na konci (€)
+                        <input type="number" id="annuity-keep" value="0" step="10000">
+                    </label>
+                    <button class="btn-calc" onclick="calcMonthlyAnnuity()">Vypočítať</button>
+                </div>
+                <div class="output-group">
+                    <h3>Výsledky</h3>
+                    <div class="result-row highlight"><span>Mesačná renta:</span><strong id="annuity-monthly">-</strong></div>
+                    <div class="result-row"><span>Celkom vyplatené:</span><strong id="annuity-total">-</strong></div>
+                    <div class="result-row"><span>Celkový výnos:</span><strong id="annuity-return">-</strong></div>
+                    <div class="warning" id="annuity-warning"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========== 7. YIELD ANNUITY ========== -->
+        <section id="tab-yield" class="tab-content">
+            <h2>Renta z výnosov</h2>
+            <div class="calc-grid">
+                <div class="input-group">
+                    <h3>Vstupné údaje</h3>
+                    <label>Počiatočný kapitál (€)
+                        <input type="number" id="yield-capital" value="500000" step="10000">
+                    </label>
+                    <label>Ročný výnos (%)
+                        <input type="number" id="yield-rate" value="6" step="0.5">
+                    </label>
+                    <label>Vyplácať z výnosu (%)
+                        <input type="number" id="yield-payout" value="80" step="5" min="0" max="100">
+                    </label>
+                    <label>Počet rokov
+                        <input type="number" id="yield-years" value="20" min="1" max="40">
+                    </label>
+                    <button class="btn-calc" onclick="calcYieldAnnuity()">Vypočítať</button>
+                </div>
+                <div class="output-group">
+                    <h3>Výsledky (na konci obdobia)</h3>
+                    <div class="result-row highlight"><span>Mesačná renta:</span><strong id="yield-monthly-payout">-</strong></div>
+                    <div class="result-row"><span>Ročná renta:</span><strong id="yield-annual-payout">-</strong></div>
+                    <div class="result-row"><span>Celkom vyplatené:</span><strong id="yield-total-payout">-</strong></div>
+                    <div class="result-row"><span>Zostatok kapitálu:</span><strong id="yield-final-capital">-</strong></div>
+                </div>
+            </div>
+            <div class="table-container">
+                <h3>Ročný prehľad</h3>
+                <table>
+                    <thead><tr>
+                        <th>Rok</th><th>Kapitál</th><th>Výnos</th><th>Renta</th><th>Mesačne</th><th>Kumulatívne</th>
+                    </tr></thead>
+                    <tbody id="yield-table"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- ========== 8. II. PILLAR ========== -->
+        <section id="tab-pillar" class="tab-content">
+            <h2>II. pilier 2024</h2>
+            <div class="calc-grid">
+                <div class="input-group">
+                    <h3>Vstupné údaje</h3>
+                    <label>Mesačný príspevok (€)
+                        <input type="number" id="pillar-contrib" value="50" step="10">
+                    </label>
+                    <label>Roky do dôchodku
+                        <input type="number" id="pillar-years" value="30" min="1" max="45">
+                    </label>
+                    <label>Rast mzdy p.a. (%)
+                        <input type="number" id="pillar-salary-growth" value="2" step="0.5">
+                    </label>
+                    <button class="btn-calc" onclick="calcPillar()">Vypočítať</button>
+                </div>
+                <div class="output-group">
+                    <h3>Porovnanie fondov</h3>
+                    <div class="result-row"><span>Dlhopisový fond (3%):</span><strong id="pillar-bond">-</strong></div>
+                    <div class="result-row"><span>Akciový fond (6%):</span><strong id="pillar-stock">-</strong></div>
+                    <div class="result-row"><span>Indexový fond (7%):</span><strong id="pillar-index">-</strong></div>
+                    <div class="result-row"><span>Celkové príspevky:</span><strong id="pillar-contrib-total">-</strong></div>
+                    <div class="result-row highlight"><span>Rozdiel (index vs dlhopisy):</span><strong id="pillar-diff">-</strong></div>
+                </div>
+            </div>
+            <div class="chart-container"><canvas id="pillar-chart"></canvas></div>
+        </section>
+
+        <!-- ========== 9. FINANCIAL MATHEMATICS ========== -->
+        <section id="tab-finmath" class="tab-content">
+            <h2>Finančná matematika</h2>
+            <p class="hint">Vyplňte 4 z 5 polí. Piate sa automaticky dopočíta.</p>
+            <div class="calc-grid">
+                <div class="input-group">
+                    <h3>Premenné</h3>
+                    <label>Súčasná hodnota - PV (€)
+                        <input type="number" id="fm-pv" placeholder="napr. 520000">
+                    </label>
+                    <label>Mesačná platba - PMT (€)
+                        <input type="number" id="fm-pmt" placeholder="napr. 500">
+                    </label>
+                    <label>Budúca hodnota - FV (€)
+                        <input type="number" id="fm-fv" placeholder="napr. 1000000">
+                    </label>
+                    <label>Počet rokov - N
+                        <input type="number" id="fm-n" placeholder="napr. 10">
+                    </label>
+                    <label>Úroková sadzba p.a. (%) - Rate
+                        <input type="number" id="fm-rate" placeholder="napr. 7" step="0.01">
+                    </label>
+                    <label>Frekvencia úročenia
+                        <select id="fm-compounding">
+                            <option value="ročne">Ročne</option>
+                            <option value="štvrťročne">Štvrťročne</option>
+                            <option value="mesačne" selected>Mesačne</option>
+                            <option value="denne">Denne</option>
+                        </select>
+                    </label>
+                    <div class="btn-group">
+                        <button class="btn-calc" onclick="calcFinMath()">Vypočítať</button>
+                        <button class="btn-secondary" onclick="clearFinMath()">Vyčistiť</button>
+                    </div>
+                </div>
+                <div class="output-group">
+                    <h3>Výsledok</h3>
+                    <div class="result-row highlight"><strong id="fm-result">Vyplňte vstupné údaje</strong></div>
+                    <div class="chart-container"><canvas id="fm-chart"></canvas></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========== 10. DIVIDEND ========== -->
+        <section id="tab-dividend" class="tab-content">
+            <h2>Dividendová kalkulačka</h2>
+            <div class="calc-grid">
+                <div class="input-group">
+                    <h3>Vstupné údaje</h3>
+                    <label>Vložená čiastka (€)
+                        <input type="number" id="div-initial" value="10000" step="1000">
+                    </label>
+                    <label>Očakávaný dividendový výnos (%)
+                        <input type="number" id="div-yield" value="5" step="0.5">
+                    </label>
+                    <label>Frekvencia výplaty
+                        <select id="div-frequency">
+                            <option value="quarterly">Štvrťročne</option>
+                            <option value="semiannual">Polročne</option>
+                        </select>
+                    </label>
+                    <label>Reinvestovanie dividend?
+                        <select id="div-reinvest">
+                            <option value="yes">Áno - reinvestuje sa</option>
+                            <option value="no">Nie - vypláca na účet</option>
+                        </select>
+                    </label>
+                    <button class="btn-calc" onclick="calcDividend()">Vypočítať</button>
+                </div>
+                <div class="output-group">
+                    <h3>Výsledky (10 rokov)</h3>
+                    <div class="result-row"><span>Zostatok po 10 rokoch:</span><strong id="div-balance">-</strong></div>
+                    <div class="result-row"><span>Posledná ročná dividenda:</span><strong id="div-annual-div">-</strong></div>
+                    <div class="result-row highlight"><span>Mesačný príjem (posledný rok):</span><strong id="div-monthly-div">-</strong></div>
+                    <div class="result-row"><span>Celkové dividendy:</span><strong id="div-total-div">-</strong></div>
+                </div>
+            </div>
+            <div class="table-container">
+                <h3>Ročný prehľad</h3>
+                <table>
+                    <thead><tr>
+                        <th>Rok</th><th>Hodnota</th><th>Dividenda</th><th>Mesačne</th><th>Kumulat.</th>
+                    </tr></thead>
+                    <tbody id="div-table"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- ========== 11. PENSION CALCULATOR ========== -->
+        <section id="tab-pension" class="tab-content">
+            <h2>Dôchodková kalkulačka</h2>
+            <div class="calc-grid">
+                <div class="input-group">
+                    <h3>Osobné údaje</h3>
+                    <label>Rok narodenia
+                        <input type="number" id="pen-birth-year" value="1985" min="1940" max="2010">
+                    </label>
+                    <label>Hrubá mzda (€/mesiac)
+                        <input type="number" id="pen-salary" value="1800" step="100">
+                    </label>
+                    <label>Vek odchodu do dôchodku
+                        <input type="number" id="pen-retire-age" value="64" min="55" max="70">
+                    </label>
+                    <label>Máte II. pilier?
+                        <select id="pen-2nd-pillar">
+                            <option value="yes">Áno</option>
+                            <option value="no">Nie</option>
+                        </select>
+                    </label>
+                    <label>Rok vstupu do II. piliera
+                        <input type="number" id="pen-pillar-entry" value="2005" min="2005" max="2025">
+                    </label>
+                    <label>Požadovaný dôchodok (€/mesiac)
+                        <input type="number" id="pen-desired" value="1200" step="100">
+                    </label>
+                    <button class="btn-calc" onclick="calcPension()">Vypočítať</button>
+                </div>
+                <div class="output-group">
+                    <h3>Výsledky</h3>
+                    <div class="result-row"><span>Aktuálny vek:</span><strong id="pen-current-age">-</strong></div>
+                    <div class="result-row"><span>Roky do dôchodku:</span><strong id="pen-years-to-retire">-</strong></div>
+                    <div class="result-row"><span>Čistá mzda:</span><strong id="pen-net-salary">-</strong></div>
+                    <hr>
+                    <h3>Odhad dôchodku</h3>
+                    <div class="result-row"><span>I. pilier (štátny):</span><strong id="pen-1st-pillar">-</strong></div>
+                    <div class="result-row"><span>II. pilier (nasporené):</span><strong id="pen-2nd-pillar-value">-</strong></div>
+                    <div class="result-row"><span>II. pilier (mesačná renta):</span><strong id="pen-2nd-pillar-annuity">-</strong></div>
+                    <div class="result-row highlight"><span>Celkový dôchodok:</span><strong id="pen-total-pension">-</strong></div>
+                    <div class="result-row"><span>Náhradový pomer:</span><strong id="pen-replacement-ratio">-</strong></div>
+                    <div class="result-row"><span>Penalizácia za predčasný:</span><strong id="pen-early-penalty">-</strong></div>
+                    <hr>
+                    <h3>Deficit</h3>
+                    <div class="result-row"><span>Mesačný deficit:</span><strong id="pen-shortfall">-</strong></div>
+                    <div class="result-row"><span>Potrebný kapitál:</span><strong id="pen-capital-needed">-</strong></div>
+                    <div class="result-row highlight"><span>Mesačne treba sporiť:</span><strong id="pen-monthly-saving">-</strong></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========== 12. RESERVES ========== -->
+        <section id="tab-reserves" class="tab-content">
+            <h2>Rezervy - Sporenie</h2>
+            <div class="calc-grid">
+                <div class="input-group">
+                    <h3>Vstupné údaje</h3>
+                    <label>Počiatočný vklad (€)
+                        <input type="number" id="res-initial" value="1000" step="500">
+                    </label>
+                    <label>Mesačný vklad (€)
+                        <input type="number" id="res-monthly" value="100" step="50">
+                    </label>
+                    <label>Úroková sadzba p.a. (%)
+                        <input type="number" id="res-rate" value="3" step="0.5">
+                    </label>
+                    <label>Ročný mimoriadny vklad (€)
+                        <input type="number" id="res-extra" value="0" step="500">
+                    </label>
+                    <label>Doba sporenia (roky)
+                        <input type="number" id="res-years" value="10" min="1" max="40">
+                    </label>
+                    <button class="btn-calc" onclick="calcReserves()">Vypočítať</button>
+                </div>
+                <div class="output-group">
+                    <h3>Výsledky</h3>
+                    <div class="result-row highlight"><span>Konečný zostatok:</span><strong id="res-final-balance">-</strong></div>
+                    <div class="result-row"><span>Celkové vklady:</span><strong id="res-total-contrib">-</strong></div>
+                    <div class="result-row"><span>Celkové úroky:</span><strong id="res-total-interest">-</strong></div>
+                </div>
+            </div>
+            <div class="table-container">
+                <h3>Ročný prehľad</h3>
+                <table>
+                    <thead><tr>
+                        <th>Rok</th><th>Zostatok</th><th>Vklady</th><th>Úroky</th>
+                    </tr></thead>
+                    <tbody id="res-table"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- ========== 13. AOF (Financial Analysis) ========== -->
+        <section id="tab-aof" class="tab-content">
+            <h2>Finančná analýza (AOF)</h2>
+            <div class="calc-grid">
+                <div class="input-group">
+                    <h3>Vstupné údaje</h3>
+                    <label>Hrubá mzda (€/mesiac)
+                        <input type="number" id="aof-salary" value="1800" step="100">
+                    </label>
+                    <label>Hrubá mzda partnera (€)
+                        <input type="number" id="aof-partner-salary" value="1200" step="100">
+                    </label>
+                    <label>Vek
+                        <input type="number" id="aof-age" value="35" min="18" max="70">
+                    </label>
+                    <label>Mesačné výdavky domácnosti (€)
+                        <input type="number" id="aof-expenses" value="2000" step="100">
+                    </label>
+                    <button class="btn-calc" onclick="calcAOF()">Vypočítať</button>
+                </div>
+                <div class="output-group">
+                    <h3>Výpočet mzdy</h3>
+                    <div class="result-row"><span>Zdravotné poistenie:</span><strong id="aof-health-ins">-</strong></div>
+                    <div class="result-row"><span>Sociálne poistenie:</span><strong id="aof-social-ins">-</strong></div>
+                    <div class="result-row"><span>Daň z príjmu:</span><strong id="aof-tax">-</strong></div>
+                    <div class="result-row highlight"><span>Čistá mzda:</span><strong id="aof-net-salary">-</strong></div>
+                    <div class="result-row"><span>Čistá mzda partnera:</span><strong id="aof-partner-net">-</strong></div>
+                    <div class="result-row highlight"><span>Príjem domácnosti:</span><strong id="aof-household-net">-</strong></div>
+                    <hr>
+                    <h3>Rizikové scenáre</h3>
+                    <div class="result-row"><span>Ideálna rezerva (6 mes.):</span><strong id="aof-ideal-reserve">-</strong></div>
+                    <div class="result-row"><span>PN (práceneschopnosť):</span><strong id="aof-sick-leave">-</strong></div>
+                    <div class="result-row"><span>Invalidita čiastočná:</span><strong id="aof-disability-partial">-</strong></div>
+                    <div class="result-row"><span>Invalidita úplná:</span><strong id="aof-disability-full">-</strong></div>
+                    <hr>
+                    <h3>Kapitálová potreba</h3>
+                    <div class="result-row"><span>Na 20 rokov:</span><strong id="aof-capital-20">-</strong></div>
+                    <div class="result-row"><span>Do 100 rokov veku:</span><strong id="aof-capital-lifetime">-</strong></div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>Finančný plánovač v7.0 | Webová verzia</p>
+    </footer>
+
+    <script src="financial.js"></script>
+    <script src="calculators.js"></script>
+    <script>
+        function clearFinMath() {
+            ['fm-pv','fm-pmt','fm-fv','fm-n','fm-rate'].forEach(id => document.getElementById(id).value = '');
+            setOutput('fm-result', 'Vyplňte vstupné údaje');
+        }
+    </script>
+</body>
+</html>
