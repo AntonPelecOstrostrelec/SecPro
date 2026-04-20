@@ -1390,9 +1390,12 @@
           </div>
         </div>
 
-        <div style="margin-top:0.75rem;">
+        <div style="margin-top:0.75rem;display:flex;gap:0.5rem;flex-wrap:wrap;">
           <label class="source-chip source-chip-warn active" onclick="toggleChip(this)">
             <input type="checkbox" id="lead-no-agency" checked /><span class="chip-dot"></span> Vynechať realitné kancelárie
+          </label>
+          <label class="source-chip source-chip-deep" onclick="toggleChip(this)" title="Hlbšie skenovanie — stiahne detail stránku každého inzerátu pre presnejšiu adresu, telefón a ďalšie údaje. Trvá ~5-15s dlhšie.">
+            <input type="checkbox" id="lead-deep-scan" /><span class="chip-dot"></span> Detailné vyhľadávanie
           </label>
         </div>
 

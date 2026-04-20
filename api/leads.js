@@ -27,7 +27,7 @@ const { handleCors } = require('../lib/kv');
 module.exports = async function handler(req, res) {
   if (handleCors(req, res, 'GET, OPTIONS')) return;
 
-  const { location, priceMin, priceMax, type, sources, page, noAgency } = req.query;
+  const { location, priceMin, priceMax, type, sources, page, noAgency, deep } = req.query;
 
   // Parse which sources to use
   let activeSources = Object.keys(SCRAPERS);
@@ -35,12 +35,15 @@ module.exports = async function handler(req, res) {
     activeSources = sources.split(',').filter(s => SCRAPERS[s]);
   }
 
+  const deepMode = deep === '1' || deep === 'true';
+
   const params = {
     location: location || '',
     priceMin: priceMin ? parseInt(priceMin) : null,
     priceMax: priceMax ? parseInt(priceMax) : null,
     type: type || 'byt',
     page: page ? parseInt(page) : 1,
+    deep: deepMode,
   };
 
   // Run all scrapers in parallel with timeout

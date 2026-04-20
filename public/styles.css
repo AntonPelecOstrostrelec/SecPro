@@ -2463,6 +2463,17 @@
     }
     .source-chip-warn.active { border-color: #F5A623; background: #FFF3E0; }
     .source-chip-warn.active .chip-dot { background: #F5A623; }
+    .source-chip-deep {
+      border-color: #B8E8E0;
+      background: #F0FAFA;
+      color: #0B2A3C;
+    }
+    .source-chip-deep.active {
+      border-color: #2EC4D4;
+      background: linear-gradient(135deg, #E0F7FA, #B2EBF2);
+      box-shadow: 0 2px 8px rgba(46, 196, 212, 0.18);
+    }
+    .source-chip-deep.active .chip-dot { background: #2EC4D4; box-shadow: 0 0 8px rgba(46,196,212,0.5); }
     /* Lead search form modern */
     .lead-search-card {
       background: white;

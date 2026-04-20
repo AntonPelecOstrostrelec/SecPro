@@ -2514,6 +2514,12 @@ async function searchLeads() {
     const noAgency = document.getElementById('lead-no-agency').checked;
     params.set('noAgency', noAgency ? '1' : '0');
 
+    // Deep scan — fetches detail page per listing for richer data
+    const deepEl = document.getElementById('lead-deep-scan');
+    if (deepEl && deepEl.checked) {
+      params.set('deep', '1');
+    }
+
     const resp = await fetch(`/api/leads?${params.toString()}`);
     const data = await resp.json();
 
