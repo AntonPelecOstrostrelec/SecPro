@@ -2593,10 +2593,33 @@ function setSearchLeadStatus(url, status) {
   }
   all[url].updatedAt = new Date().toISOString();
   saveLeadStatuses(all);
-  // Reset status filter so the card doesn't vanish
-  const sfEl = document.getElementById('leads-status-filter');
-  if (sfEl && sfEl.value) sfEl.value = '';
-  reRenderLeadCards();
+
+  // Targeted DOM update — only update THIS card (no full re-render)
+  const hash = _leadUrlHash(url);
+  const card = document.getElementById('lcard-' + hash);
+  if (card) {
+    const badges = card.querySelector('.lc2-badges');
+    if (badges) {
+      // Remove existing status badge
+      const existing = badges.querySelector('.lc-status-active');
+      if (existing) existing.remove();
+      // Add new status badge if status is set
+      const newStatus = all[url].status;
+      if (newStatus) {
+        const st = SEARCH_LEAD_STATUSES.find(function(s) { return s.key === newStatus; });
+        if (st) {
+          const span = document.createElement('span');
+          span.className = 'lc-status-active';
+          span.style.cssText = 'background:' + st.bg + ';color:' + st.color + ';border-color:' + st.color + ';';
+          span.textContent = st.label;
+          badges.appendChild(span);
+        }
+      }
+    }
+    // Update the select dropdown to reflect the new state
+    const sel = card.querySelector('.lc2-status-select');
+    if (sel) sel.value = all[url].status || '';
+  }
 }
 
 function saveSearchLeadNote(url) {
@@ -2698,9 +2721,12 @@ function detectDuplicates(leads) {
   phoneMap.forEach(group => {
     if (group.length < 2) return;
     group.forEach(lead => {
-      if (!duplicateMap.has(lead.url)) duplicateMap.set(lead.url, new Set());
       group.forEach(other => {
-        if (other.url !== lead.url) duplicateMap.get(lead.url).add(other.url);
+        if (other.url === lead.url) return;
+        // Only flag cross-portal duplicates (skip same source)
+        if (other.source === lead.source) return;
+        if (!duplicateMap.has(lead.url)) duplicateMap.set(lead.url, new Set());
+        duplicateMap.get(lead.url).add(other.url);
       });
     });
   });
@@ -2726,6 +2752,8 @@ function detectDuplicates(leads) {
     for (let j = i + 1; j < allLeads.length; j++) {
       const a = allLeads[i];
       const b = allLeads[j];
+      // Only flag cross-portal duplicates (skip same source)
+      if (a.source === b.source) continue;
       // Already linked by phone — skip
       if (duplicateMap.has(a.url) && duplicateMap.get(a.url).has(b.url)) continue;
       // Must have same location (normalized)
@@ -2768,6 +2796,16 @@ function toggleDupPanel(hash) {
   panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
 }
 
+function isRealAddress(loc) {
+  if (!loc || loc.length > 60) return false;
+  // Contains common non-address words → probably a title
+  var titleWords = /predaj|predám|prenáj|ponúk|krásn|priestrann|novostavb|rekonštruk|investič|výborn|moderný|luxus|útulný|slnečn|zariad|nezariad|čiastočn|komplet|3.?izb|2.?izb|1.?izb|4.?izb|rodinný dom|garsón|mezonet|penthouse|byt\s|bytu\s|domu\s/i;
+  if (titleWords.test(loc)) return false;
+  // Looks like an address: contains city name, postal code, or street indicators
+  var addressPattern = /\d{3}\s?\d{2}|ulica|ul\.|nám\.|námestie|cesta|trieda|bratislava|košice|žilina|banská|nitra|trnava|prešov|trenčín|martin|poprad|zvolen|komárno|piešťany|michalovce|levice|topoľčany|ružinov|petržalka|staré mesto|nové mesto|dúbravka|karlova|devín|rača|vajnory|lamač|podunaj/i;
+  return addressPattern.test(loc);
+}
+
 function renderLeadCards(leads) {
   const grid = document.getElementById('leads-cards-grid');
   if (!grid) return;
@@ -2779,10 +2817,23 @@ function renderLeadCards(leads) {
   const dupMap = detectDuplicates(leads);
 
   // ── Compute market stats for price intelligence ──
-  const validPrices = leads.filter(l => l.price > 0 && l.size > 0);
-  const ppmValues = validPrices.map(l => l.price / l.size);
+  // Filter: must have price > 5000€ (excludes monthly rents) and size > 10m² and PPM in realistic range
+  const validPrices = leads.filter(l => l.price > 5000 && l.size > 10);
+  const ppmValues = validPrices.map(l => l.price / l.size).filter(v => v > 200 && v < 15000);
   const avgPPM = ppmValues.length > 0 ? ppmValues.reduce((a, b) => a + b, 0) / ppmValues.length : 0;
-  const medianPPM = ppmValues.length > 0 ? ppmValues.sort((a, b) => a - b)[Math.floor(ppmValues.length / 2)] : 0;
+  const medianPPM = ppmValues.length >= 3 ? ppmValues.sort((a, b) => a - b)[Math.floor(ppmValues.length / 2)] : 0;
+  // Group by property type for type-specific medians
+  const ppmByType = {};
+  validPrices.forEach(function(l) {
+    var t = l.type || 'other';
+    var v = l.price / l.size;
+    if (v < 200 || v > 15000) return;
+    if (!ppmByType[t]) ppmByType[t] = [];
+    ppmByType[t].push(v);
+  });
+  Object.keys(ppmByType).forEach(function(t) {
+    ppmByType[t].sort(function(a, b) { return a - b; });
+  });
 
   let visible = 0;
   let html = '';
@@ -2808,16 +2859,21 @@ function renderLeadCards(leads) {
       ? formatPriceChangeBadge(matchedSaved.priceHistory) : '';
 
     // ── Price per m² + market position ──
-    const ppm = (lead.price > 0 && lead.size > 0) ? Math.round(lead.price / lead.size) : 0;
+    const ppm = (lead.price > 5000 && lead.size > 10) ? Math.round(lead.price / lead.size) : 0;
     var ppmHtml = '';
     var marketBadge = '';
-    if (ppm > 0) {
+    if (ppm > 200 && ppm < 15000) {
       ppmHtml = '<span class="lc-ppm">' + ppm.toLocaleString('sk-SK') + ' \u20AC/m\u00B2</span>';
-      if (medianPPM > 0) {
-        var diff = ((ppm - medianPPM) / medianPPM) * 100;
-        if (diff < -12) marketBadge = '<span class="lc-market lc-market-hot" title="V\u00FDrazne pod medi\u00E1nom trhu">Pod cenou</span>';
-        else if (diff < -5) marketBadge = '<span class="lc-market lc-market-good" title="Mierne pod medi\u00E1nom trhu">Dobr\u00E1 cena</span>';
-        else if (diff > 15) marketBadge = '<span class="lc-market lc-market-over" title="V\u00FDrazne nad medi\u00E1nom trhu">Nadcenen\u00E9</span>';
+      // Use type-specific median if available (≥3 samples), otherwise global
+      var leadType = lead.type || 'other';
+      var typeArr = ppmByType[leadType];
+      var useMedian = (typeArr && typeArr.length >= 3) ? typeArr[Math.floor(typeArr.length / 2)] : medianPPM;
+      var medLabel = (typeArr && typeArr.length >= 3) ? 'medi\u00E1n ' + leadType : 'medi\u00E1n trhu';
+      if (useMedian > 0) {
+        var diff = ((ppm - useMedian) / useMedian) * 100;
+        if (diff < -12) marketBadge = '<span class="sec-tooltip-wrap"><span class="lc-market lc-market-hot">Pod cenou</span><span class="sec-tooltip">' + ppm.toLocaleString('sk-SK') + ' \u20AC/m\u00B2 vs ' + medLabel + ' ' + Math.round(useMedian).toLocaleString('sk-SK') + ' \u20AC/m\u00B2 (' + diff.toFixed(1) + '%)</span></span>';
+        else if (diff < -5) marketBadge = '<span class="sec-tooltip-wrap"><span class="lc-market lc-market-good">Dobr\u00E1 cena</span><span class="sec-tooltip">' + ppm.toLocaleString('sk-SK') + ' \u20AC/m\u00B2 vs ' + medLabel + ' ' + Math.round(useMedian).toLocaleString('sk-SK') + ' \u20AC/m\u00B2 (' + diff.toFixed(1) + '%)</span></span>';
+        else if (diff > 15) marketBadge = '<span class="sec-tooltip-wrap"><span class="lc-market lc-market-over">Nadcenen\u00E9</span><span class="sec-tooltip">' + ppm.toLocaleString('sk-SK') + ' \u20AC/m\u00B2 vs ' + medLabel + ' ' + Math.round(useMedian).toLocaleString('sk-SK') + ' \u20AC/m\u00B2 (+' + diff.toFixed(1) + '%)</span></span>';
       }
     }
 
@@ -2841,7 +2897,15 @@ function renderLeadCards(leads) {
       : '<span class="lc2-no-phone">Bez telef\u00F3nu</span>';
 
     // ── Duplicate badge ──
-    var dupBadge = dupMap.has(lead.url) ? '<span class="lc-dup-badge" onclick="toggleDupPanel(\'' + hash + '\')">Podobn\u00E9 ' + dupMap.get(lead.url).length + 'x</span>' : '';
+    var dupBadge = '';
+    if (dupMap.has(lead.url)) {
+      var dups = dupMap.get(lead.url);
+      var dupReasons = dups.map(function(d) {
+        if (d.phone && lead.phone && d.phone === lead.phone) return 'Aj na ' + d.source + ' (rovnak\u00FD telef\u00F3n)';
+        return 'Aj na ' + d.source + ' (podobn\u00FD n\u00E1zov)';
+      }).join(', ');
+      dupBadge = '<span class="sec-tooltip-wrap"><span class="lc-dup-badge" onclick="toggleDupPanel(\'' + hash + '\')">Podobn\u00E9 ' + dups.length + 'x</span><span class="sec-tooltip">' + esc(dupReasons) + '</span></span>';
+    }
 
     // ── Card HTML v2 ──
     html += '<div class="lc2' + (isHidden ? ' lc-hidden' : '') + (alreadySaved ? ' lc2-saved' : '') + '" id="lcard-' + hash + '">'
@@ -2859,11 +2923,15 @@ function renderLeadCards(leads) {
       + '</div>'
       // ── Main content ──
       + '<div class="lc2-main">'
+        + (lead.imageUrl ? '<img class="lc2-thumb" src="' + esc(lead.imageUrl) + '" alt="" loading="lazy" onerror="this.style.display=\'none\'">' : '')
         // Left: info
         + '<div class="lc2-info">'
           + '<div class="lc2-title" title="' + esc(lead.title) + '">' + esc(lead.title || 'Bez n\u00E1zvu') + '</div>'
           + '<div class="lc2-meta">'
-            + (lead.location ? '<span class="lc2-loc">\uD83D\uDCCD ' + esc(lead.location) + '</span>' : '')
+            + (lead.location ? (isRealAddress(lead.location)
+                ? '<a href="https://www.google.com/maps/search/' + encodeURIComponent(lead.location + ', Slovensko') + '" target="_blank" rel="noopener" class="lc2-loc" title="Otvoriť v Google Maps">📍 ' + esc(lead.location) + '</a>'
+                : '<span class="lc2-loc">📍 ' + esc(lead.location) + '</span>')
+              : '')
             + (lead.size ? '<span class="lc2-size">' + lead.size + ' m\u00B2</span>' : '')
           + '</div>'
         + '</div>'
@@ -2876,14 +2944,14 @@ function renderLeadCards(leads) {
       // ── Action bar ──
       + '<div class="lc2-actions">'
         + phoneBtn
-        + '<a href="' + esc(lead.url) + '" target="_blank" rel="noopener" class="lc2-open" title="Otvori\u0165 inzer\u00E1t">'
+        + '<a href="' + esc(lead.url) + '" target="_blank" rel="noopener" class="lc2-open" title="Otvori\u0165 na ' + esc(lead.source) + '">'
           + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>'
-          + 'Inzer\u00E1t</a>'
+          + esc(lead.source) + '</a>'
         + '<select class="lc2-status-select" onchange="setSearchLeadStatus(\'' + escUrl + '\', this.value)">'
           + '<option value="">Status...</option>' + statusOpts + '</select>'
         + (alreadySaved
-          ? '<span class="lc2-saved-tag">\u2713</span>'
-          : '<button class="lc2-save" onclick="saveLead(leadsData.find(l=>l.url===\'' + escUrl + '\'));this.outerHTML=\'<span class=lc2-saved-tag>\u2713</span>\';updateNavLeadCount();" title="Ulo\u017Ei\u0165 do leadov">+</button>')
+          ? '<button class="lc2-saved-tag" onclick="unsaveLead(\'' + escUrl + '\');reRenderLeadCards();" title="Zru\u0161i\u0165 ulo\u017Eenie">\u2713</button>'
+          : '<button class="lc2-save" onclick="saveLead(leadsData.find(l=>l.url===\'' + escUrl + '\'));reRenderLeadCards();" title="Ulo\u017Ei\u0165 do leadov">+</button>')
       + '</div>'
       // ── Expandable: note + history + duplicates ──
       + '<div class="lc2-expand">'
@@ -3903,7 +3971,7 @@ function refreshViewingPersonSelect() {
 
 function addInterestedParty() {
   const name = document.getElementById('ii-new-name').value.trim();
-  if (!name) { alert('Vyplňte meno záujemcu.'); return; }
+  if (!name) { secAlert('Vyplňte meno záujemcu.'); return; }
   tempInterested.push({
     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
     name,
@@ -3971,8 +4039,8 @@ function renderInterestedList() {
 function addViewing() {
   const dateVal = document.getElementById('vi-new-date').value;
   const personIdx = document.getElementById('vi-new-person').value;
-  if (!dateVal) { alert('Vyplňte dátum prehliadky.'); return; }
-  if (personIdx === '') { alert('Vyberte záujemcu.'); return; }
+  if (!dateVal) { secAlert('Vyplňte dátum prehliadky.'); return; }
+  if (personIdx === '') { secAlert('Vyberte záujemcu.'); return; }
   const person = tempInterested[parseInt(personIdx)];
   tempViewings.push({
     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
@@ -4129,7 +4197,7 @@ function refreshQuickViewingPersonSelect(p) {
 function quickAddInterested() {
   const propId = document.getElementById('quick-prop-id').value;
   const name = document.getElementById('qi-name').value.trim();
-  if (!name) { alert('Vyplňte meno záujemcu.'); return; }
+  if (!name) { secAlert('Vyplňte meno záujemcu.'); return; }
 
   const props = getProperties();
   const pIdx = props.findIndex(x => x.id === propId);
@@ -4160,8 +4228,8 @@ function quickAddViewing() {
   const propId = document.getElementById('quick-prop-id').value;
   const dateVal = document.getElementById('qv-date').value;
   const personIdx = document.getElementById('qv-person').value;
-  if (!dateVal) { alert('Vyplňte dátum prehliadky.'); return; }
-  if (personIdx === '') { alert('Vyberte záujemcu.'); return; }
+  if (!dateVal) { secAlert('Vyplňte dátum prehliadky.'); return; }
+  if (personIdx === '') { secAlert('Vyberte záujemcu.'); return; }
 
   const props = getProperties();
   const pIdx = props.findIndex(x => x.id === propId);
@@ -4972,7 +5040,7 @@ function generateProtocolPDF() {
   if (!p) return;
 
   const viewIdx = document.getElementById('proto-viewing-select').value;
-  if (viewIdx === '') { alert('Vyberte prehliadku.'); return; }
+  if (viewIdx === '') { secAlert('Vyberte prehliadku.'); return; }
   const v = (p.viewings || [])[parseInt(viewIdx)];
   if (!v) return;
 
@@ -4980,13 +5048,13 @@ function generateProtocolPDF() {
   const clientName = document.getElementById('proto-client-name').value.trim();
   const notes = document.getElementById('proto-notes').value.trim();
 
-  if (!brokerName) { alert('Vyplňte meno makléra.'); return; }
-  if (!clientName) { alert('Vyplňte meno záujemcu.'); return; }
+  if (!brokerName) { secAlert('Vyplňte meno makléra.'); return; }
+  if (!clientName) { secAlert('Vyplňte meno záujemcu.'); return; }
 
   const brokerPad = sigPads['sig-broker'];
   const clientPad = sigPads['sig-client'];
-  if (!brokerPad || brokerPad.isEmpty()) { alert('Chýba podpis makléra.'); return; }
-  if (!clientPad || clientPad.isEmpty()) { alert('Chýba podpis záujemcu.'); return; }
+  if (!brokerPad || brokerPad.isEmpty()) { secAlert('Chýba podpis makléra.'); return; }
+  if (!clientPad || clientPad.isEmpty()) { secAlert('Chýba podpis záujemcu.'); return; }
 
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF('p', 'mm', 'a4');
@@ -5172,7 +5240,7 @@ function generateViewingDocument(propId) {
   if (!p) return;
   const viewings = p.viewings || [];
   const interested = p.interested || [];
-  if (viewings.length === 0) { alert('Táto nehnuteľnosť nemá žiadne prehliadky.'); return; }
+  if (viewings.length === 0) { secAlert('Táto nehnuteľnosť nemá žiadne prehliadky.'); return; }
 
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF('p', 'mm', 'a4');
@@ -5275,10 +5343,10 @@ async function saveProperty() {
   const phone = document.getElementById('prop-phone').value.trim();
   const priceVal = document.getElementById('prop-price').value;
 
-  if (!title) { alert('Vyplňte názov nehnuteľnosti'); return; }
-  if (!city) { alert('Vyplňte mesto / obec'); return; }
-  if (!phone) { alert('Vyplňte telefónne číslo'); return; }
-  if (!priceVal) { alert('Vyplňte cenu'); return; }
+  if (!title) { secAlert('Vyplňte názov nehnuteľnosti'); return; }
+  if (!city) { secAlert('Vyplňte mesto / obec'); return; }
+  if (!phone) { secAlert('Vyplňte telefónne číslo'); return; }
+  if (!priceVal) { secAlert('Vyplňte cenu'); return; }
 
   // Collect photos + categories from preview (data URLs)
   const photoCards = Array.from(document.querySelectorAll('#prop-photo-preview .pm-card')).slice(0, 10);
@@ -5773,7 +5841,7 @@ function renderDetailGallery() {
 
 function exportPropertiesCSV() {
   const props = getProperties();
-  if (!props.length) { alert('Žiadne nehnuteľnosti na export'); return; }
+  if (!props.length) { secAlert('Žiadne nehnuteľnosti na export'); return; }
   const headers = ['Názov','Typ','Status','Adresa','Mesto','Okres','Cena','Výmera','Izby','Poschodie','Rok','Stav','Vlastník','Telefón','Email','URL','Popis','Poznámky','Dátum'];
   const rows = props.map(p => [
     `"${(p.title||'').replace(/"/g,'""')}"`,
@@ -6005,8 +6073,8 @@ function renderAiPageSampleAds() {
 function addSampleAdFromPage() {
   const textarea = document.getElementById('ai-page-new-sample');
   const text = textarea.value.trim();
-  if (!text) { alert('Vložte text inzerátu'); return; }
-  if (text.length < 50) { alert('Text je príliš krátky (min. 50 znakov).'); return; }
+  if (!text) { secAlert('Vložte text inzerátu'); return; }
+  if (text.length < 50) { secAlert('Text je príliš krátky (min. 50 znakov).'); return; }
   const ads = getSampleAds();
   ads.push(text);
   saveSampleAdsData(ads);
@@ -6094,8 +6162,8 @@ function renderSampleAdsList() {
 function addSampleAd() {
   const textarea = document.getElementById('new-sample-ad');
   const text = textarea.value.trim();
-  if (!text) { alert('Vložte text inzerátu'); return; }
-  if (text.length < 50) { alert('Text je príliš krátky. Vložte celý text inzerátu (aspoň 50 znakov).'); return; }
+  if (!text) { secAlert('Vložte text inzerátu'); return; }
+  if (text.length < 50) { secAlert('Text je príliš krátky. Vložte celý text inzerátu (aspoň 50 znakov).'); return; }
 
   const ads = getSampleAds();
   ads.push(text);
@@ -6207,7 +6275,7 @@ function getPropertyPhotosBase64(max) {
 async function aiGenerateDescription() {
   const settings = getAiSettings();
   if (!settings.apiKey) {
-    alert('Najprv nastavte API kľúč v sekcii AI Nastavenia.');
+    secAlert({title: 'API kľúč', message: 'Najprv nastavte API kľúč v sekcii AI Nastavenia.', type: 'warning'});
     showPage('ai');
     return;
   }
@@ -6266,14 +6334,14 @@ async function aiGenerateDescription() {
 async function aiGenerateHeadline() {
   const settings = getAiSettings();
   if (!settings.apiKey) {
-    alert('Najprv nastavte API kľúč v sekcii AI Nastavenia.');
+    secAlert({title: 'API kľúč', message: 'Najprv nastavte API kľúč v sekcii AI Nastavenia.', type: 'warning'});
     showPage('ai');
     return;
   }
 
   const property = getPropertyFormData();
   if (!property.city && !property.type) {
-    alert('Vyplňte aspoň typ a mesto pred generovaním.');
+    secAlert('Vyplňte aspoň typ a mesto pred generovaním.');
     return;
   }
 
@@ -6307,7 +6375,7 @@ async function aiGenerateHeadline() {
       document.getElementById('prop-title').value = data.text;
     }
   } catch (err) {
-    alert('Chyba: ' + err.message);
+    secAlert({title: 'Chyba', message: err.message, type: 'danger'});
   }
 }
 
@@ -6873,7 +6941,7 @@ function closeContactForm() {
 
 function saveContact() {
   const name = document.getElementById('contact-name').value.trim();
-  if (!name) { alert('Vyplňte meno kontaktu.'); return; }
+  if (!name) { secAlert('Vyplňte meno kontaktu.'); return; }
 
   const editId = document.getElementById('contact-edit-id').value;
   const contacts = getContacts();
@@ -7018,7 +7086,7 @@ function esc(str) {
 
 function exportContactsCSV() {
   const contacts = getContacts();
-  if (contacts.length === 0) { alert('Žiadne kontakty na export.'); return; }
+  if (contacts.length === 0) { secAlert('Žiadne kontakty na export.'); return; }
   const headers = ['Meno','Telefón','E-mail','Firma','Kategória','Status','Adresa','Poznámka','Vytvorený'];
   const rows = contacts.map(c => [
     c.name, c.phone, c.email, c.company,
@@ -7200,6 +7268,60 @@ function secConfirm(opts) {
     function onKey(e) {
       if (e.key === 'Escape') { document.removeEventListener('keydown', onKey); close(false); }
       if (e.key === 'Enter') { document.removeEventListener('keydown', onKey); close(true); }
+    }
+    document.addEventListener('keydown', onKey);
+  });
+}
+
+// ===== CUSTOM ALERT DIALOG =====
+// Replaces native alert() with SecPro branded modal (single OK button).
+// Usage: secAlert('Message');  or  secAlert({ title: 'Chyba', message: 'Msg', type: 'warning' });
+function secAlert(opts) {
+  if (typeof opts === 'string') opts = { message: opts };
+  const type = opts.type || 'info';
+  const title = opts.title || (type === 'danger' ? 'Chyba' : type === 'warning' ? 'Upozornenie' : 'Informácia');
+  const message = opts.message || '';
+  const okText = opts.ok || 'OK';
+
+  const icons = {
+    info: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>',
+    danger: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
+    warning: '<svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+  };
+
+  return new Promise(function(resolve) {
+    var overlay = document.createElement('div');
+    overlay.className = 'sec-confirm-overlay';
+    overlay.innerHTML =
+      '<div class="sec-confirm-box">' +
+        '<div class="sec-confirm-header sec-type-' + type + '">' +
+          '<div class="sec-confirm-icon">' + (icons[type] || icons.info) + '</div>' +
+          '<div class="sec-confirm-title">' + title + '</div>' +
+        '</div>' +
+        '<div class="sec-confirm-body">' +
+          '<div class="sec-confirm-message">' + message.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div>' +
+        '</div>' +
+        '<div class="sec-confirm-footer">' +
+          '<button class="sec-confirm-btn sec-confirm-ok sec-btn-' + type + '">' + okText + '</button>' +
+        '</div>' +
+      '</div>';
+
+    document.body.appendChild(overlay);
+    requestAnimationFrame(function() { overlay.classList.add('sec-confirm-visible'); });
+
+    var okBtn = overlay.querySelector('.sec-confirm-ok');
+    setTimeout(function() { okBtn.focus(); }, 100);
+
+    function close() {
+      overlay.classList.remove('sec-confirm-visible');
+      setTimeout(function() { overlay.remove(); }, 300);
+      resolve(true);
+    }
+
+    okBtn.addEventListener('click', close);
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) close(); });
+    function onKey(e) {
+      if (e.key === 'Escape' || e.key === 'Enter') { document.removeEventListener('keydown', onKey); close(); }
     }
     document.addEventListener('keydown', onKey);
   });
@@ -7989,7 +8111,7 @@ async function amlAutoCheck() {
   }
 
   if (!name || name.length < 2) {
-    alert('Najprv vyplňte meno klienta.');
+    secAlert('Najprv vyplňte meno klienta.');
     return;
   }
 
@@ -8177,11 +8299,11 @@ function saveAml() {
   // Validate required fields
   if (clientType === 'fo') {
     if (!document.getElementById('aml-fo-firstname').value.trim() || !document.getElementById('aml-fo-lastname').value.trim()) {
-      alert('Meno a priezvisko sú povinné.'); return;
+      secAlert('Meno a priezvisko sú povinné.'); return;
     }
   } else {
     if (!document.getElementById('aml-po-name').value.trim()) {
-      alert('Obchodné meno je povinné.'); return;
+      secAlert('Obchodné meno je povinné.'); return;
     }
   }
 
@@ -8530,7 +8652,7 @@ function approveAml() {
 
 function exportAmlCSV() {
   const records = getAmlRecords();
-  if (!records.length) { alert('Žiadne záznamy na export.'); return; }
+  if (!records.length) { secAlert('Žiadne záznamy na export.'); return; }
   const headers = ['Meno/Názov','Typ','IČO','Status','Riziko','Skóre','PEP','Účel','Hodnota','Pôvod prostriedkov','Dátum'];
   const rows = records.map(r => [
     '"' + getAmlDisplayName(r).replace(/"/g,'""') + '"',
@@ -8775,6 +8897,15 @@ function saveLead(lead) {
   });
   saveSavedLeads(leads);
   updateNavLeadCount();
+}
+
+function unsaveLead(url) {
+  const leads = getSavedLeads();
+  const idx = leads.findIndex(l => l.url === url);
+  if (idx === -1) return;
+  leads.splice(idx, 1);
+  saveSavedLeads(leads);
+  showToast('Lead odstr\u00E1nen\u00FD z ulo\u017Een\u00FDch.', 'success');
 }
 
 function formatPriceChangeBadge(priceHistory) {
@@ -9022,7 +9153,7 @@ function renderSavedLeads() {
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.75rem;">' +
         '<div style="flex:1;min-width:0;">' +
           '<div style="font-size:0.92rem;font-weight:600;color:var(--dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + esc(lead.title) + '">' + esc(lead.title || 'Bez n\u00E1zvu') + '</div>' +
-          '<div style="font-size:0.78rem;color:var(--text-light);margin-top:0.2rem;">' + esc(lead.location || '') + (lead.source ? ' \u00B7 ' + esc(lead.source) : '') + (savedDupCount > 0 ? ' <span class="lc-dup-badge" style="cursor:default;" title="' + savedDupCount + ' \u010Falš\u00EDch leadov s rovnak\u00FDm telef\u00F3nom">Dup ' + savedDupCount + 'x</span>' : '') + '</div>' +
+          '<div style="font-size:0.78rem;color:var(--text-light);margin-top:0.2rem;">' + esc(lead.location || '') + (lead.source ? ' \u00B7 ' + esc(lead.source) : '') + (savedDupCount > 0 ? ' <span class="sec-tooltip-wrap"><span class="lc-dup-badge" style="cursor:default;">Dup ' + savedDupCount + 'x</span><span class="sec-tooltip">' + savedDupCount + ' \u010Falš\u00EDch leadov s rovnak\u00FDm telef\u00F3nom</span></span>' : '') + '</div>' +
         '</div>' +
         '<div style="display:flex;align-items:center;gap:0.5rem;margin-left:0.5rem;flex-shrink:0;">' +
           '<div style="width:32px;height:32px;border-radius:50%;background:' + scoreColor + '15;color:' + scoreColor + ';display:flex;align-items:center;justify-content:center;font-size:0.72rem;font-weight:700;" title="Lead score: ' + lead.score + '">' + lead.score + '</div>' +
@@ -10730,7 +10861,7 @@ async function generateFilledDocx() {
   const file = _currentDocFile;
   // .doc files can't be processed - just download template
   if (file.endsWith('.doc') && !file.endsWith('.docx')) {
-    alert('Tento formát (.doc) nepodporuje automatické vyplnenie. Stiahne sa šablóna.');
+    secAlert({title: 'Formát .doc', message: 'Tento formát (.doc) nepodporuje automatické vyplnenie. Stiahne sa šablóna.', type: 'warning'});
     downloadDoc(file);
     return;
   }
@@ -10814,7 +10945,7 @@ async function generateFilledDocx() {
     URL.revokeObjectURL(url);
 
   } catch (err) {
-    alert('Chyba pri generovaní: ' + err.message);
+    secAlert({title: 'Chyba', message: 'Chyba pri generovaní: ' + err.message, type: 'danger'});
     console.error(err);
   } finally {
     if (btn) { btn.disabled = false; btn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> Vygenerovať DOCX'; }

@@ -93,12 +93,19 @@ module.exports = async function handler(req, res) {
     allListings.push(...data.listings);
   }
 
+  // Filter broken/empty leads
+  const validListings = allListings.filter(l => {
+    if (!l.title || l.title.length < 5) return false;
+    if (!l.url || !l.url.startsWith('http')) return false;
+    return true;
+  });
+
   // Filter out agency listings if requested
   const filterAgencies = noAgency !== '0' && noAgency !== 'false'; // ON by default
-  let filtered = allListings;
+  let filtered = validListings;
   let agencyCount = 0;
   if (filterAgencies) {
-    filtered = allListings.filter(listing => {
+    filtered = validListings.filter(listing => {
       if (isAgencyListing(listing)) {
         agencyCount++;
         return false;
