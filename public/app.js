@@ -3584,9 +3584,10 @@ function goToWizStep(step) {
   document.getElementById('wiz-btn-back').style.display = step > 1 ? '' : 'none';
   const isLast = step === PROP_WIZ_TOTAL_STEPS;
   document.getElementById('wiz-btn-next').style.display = isLast ? 'none' : '';
-  document.getElementById('wiz-btn-save-final').style.display = isLast ? '' : 'none';
-  // Save draft button visible on all steps
-  document.getElementById('wiz-btn-save-draft').style.display = prop_wiz_is_edit ? 'none' : '';
+  // Save button now visible on ALL steps — user can save any time
+  document.getElementById('wiz-btn-save-final').style.display = '';
+  // Hide the separate "save draft" button — it did the same as save-final and was confusing
+  document.getElementById('wiz-btn-save-draft').style.display = 'none';
   // Render listing preview when entering step 5
   if (step === 5) renderListingPreview();
   // Scroll modal to top
