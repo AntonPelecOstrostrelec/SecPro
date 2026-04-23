@@ -6292,6 +6292,58 @@ function getPropertyPhotosBase64(max) {
   return result;
 }
 
+// Detects errors that mean the chosen model doesn't support multimodal/vision input
+function _isVisionUnsupportedError(raw) {
+  if (!raw) return false;
+  return /content must be a string|does not support (image|vision|multimodal)|image.*not.*support|unsupported.*(image|vision)|invalid.*(image|content.*type)/i.test(raw);
+}
+
+// Translate raw API error into a friendly Slovak message
+function _friendlyAiError(status, raw) {
+  const s = String(raw || '');
+  if (status === 401 || /invalid.*(api|key)|authentication|unauthorized/i.test(s)) {
+    return 'API kľúč je neplatný. Skontrolujte ho v AI nastaveniach.';
+  }
+  if (status === 429 || /rate.?limit|quota|credit/i.test(s)) {
+    return 'Prekročený limit API. Skúste o chvíľu znova alebo skontrolujte kredit.';
+  }
+  if (/model.*not.?found|unknown.*model|does not exist|invalid.*model/i.test(s)) {
+    return 'Zvolený AI model nie je dostupný. Vyberte iný v AI nastaveniach.';
+  }
+  return s || ('Chyba ' + status);
+}
+
+// Shared AI API caller with automatic retry without images if model is text-only
+async function _callAiGenerate(payload, allowImageRetry) {
+  const resp = await fetch('/api/ai-generate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  let data; try { data = await resp.json(); } catch (e) { data = {}; }
+
+  if (!resp.ok) {
+    const raw = data.error || ('HTTP ' + resp.status);
+    // Auto-retry without images if model doesn't support vision
+    if (allowImageRetry && payload.images && _isVisionUnsupportedError(raw)) {
+      const retryPayload = Object.assign({}, payload, { images: null });
+      const retry = await _callAiGenerate(retryPayload, false);
+      retry._imagesSkipped = true;
+      return retry;
+    }
+    const friendly = _friendlyAiError(resp.status, raw);
+    const err = new Error(friendly);
+    err.status = resp.status;
+    throw err;
+  }
+
+  if (!data.text) {
+    throw new Error('AI nevrátilo žiadny text. Skúste znova alebo zmeňte model.');
+  }
+  return data;
+}
+
 // AI Generate Description
 async function aiGenerateDescription() {
   const errEl = document.getElementById('ai-gen-error');
@@ -6300,8 +6352,13 @@ async function aiGenerateDescription() {
 
   const showErr = (msg) => {
     if (errEl) { errEl.innerHTML = msg; errEl.style.display = 'block'; }
-    if (textEl) textEl.style.display = 'inline';
-    if (spinEl) spinEl.style.display = 'none';
+  };
+  const showInfo = (msg) => {
+    if (errEl) {
+      errEl.innerHTML = msg;
+      errEl.style.color = '#D97706';
+      errEl.style.display = 'block';
+    }
   };
 
   const settings = getAiSettings();
@@ -6316,64 +6373,45 @@ async function aiGenerateDescription() {
     return;
   }
 
-  // Show spinner
+  // Reset error color + show spinner
+  if (errEl) { errEl.style.color = ''; errEl.style.display = 'none'; }
   if (textEl) textEl.style.display = 'none';
   if (spinEl) spinEl.style.display = 'inline';
-  if (errEl) errEl.style.display = 'none';
 
   try {
     const sampleAds = getSampleAds();
     const images = (settings.usePhotos !== false) ? getPropertyPhotosBase64(5) : [];
-    const resp = await fetch('/api/ai-generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        provider: settings.provider || 'anthropic',
-        apiKey: settings.apiKey,
-        model: settings.model || 'claude-sonnet-4-6',
-        property,
-        sampleAds: sampleAds.length > 0 ? sampleAds : null,
-        images: images.length > 0 ? images : null,
-        mode: 'description',
-        tone: settings.tones || ['profesionalny'],
-        length: settings.length || 'stredny',
-        style: settings.style || 'informativny',
-        formal: settings.formal !== false,
-        emoji: settings.emoji === true,
-        okolie: settings.okolie !== false,
-        cta: settings.cta !== false,
-        customInstructions: settings.customInstructions || '',
-      }),
-    });
-
-    let data;
-    try { data = await resp.json(); } catch (e) { data = {}; }
-
-    if (!resp.ok) {
-      const raw = data.error || ('HTTP ' + resp.status);
-      let msg = raw;
-      if (resp.status === 401 || /invalid.*(api|key)|authentication/i.test(raw)) {
-        msg = 'API kľúč je neplatný. Skontrolujte ho v AI nastaveniach.';
-      } else if (resp.status === 429 || /rate.?limit|quota/i.test(raw)) {
-        msg = 'Prekročený limit API. Skúste o chvíľu znova alebo skontrolujte kredit.';
-      } else if (/model|not.?found/i.test(raw)) {
-        msg = 'Zvolený AI model nie je dostupný. Vyberte iný model v AI nastaveniach.';
-      }
-      throw new Error(msg);
-    }
-
-    if (!data.text) throw new Error('AI nevrátilo žiadny text. Skúste znova alebo zmeňte model.');
+    const data = await _callAiGenerate({
+      provider: settings.provider || 'anthropic',
+      apiKey: settings.apiKey,
+      model: settings.model || 'claude-sonnet-4-6',
+      property,
+      sampleAds: sampleAds.length > 0 ? sampleAds : null,
+      images: images.length > 0 ? images : null,
+      mode: 'description',
+      tone: settings.tones || ['profesionalny'],
+      length: settings.length || 'stredny',
+      style: settings.style || 'informativny',
+      formal: settings.formal !== false,
+      emoji: settings.emoji === true,
+      okolie: settings.okolie !== false,
+      cta: settings.cta !== false,
+      customInstructions: settings.customInstructions || '',
+    }, true);
 
     const desc = document.getElementById('prop-description');
     if (desc) {
       desc.value = data.text;
       desc.dispatchEvent(new Event('input', { bubbles: true }));
     }
-    if (errEl) errEl.style.display = 'none';
+    if (data._imagesSkipped) {
+      showInfo('Hotovo. Zvolený model nepodporuje obrázky, popis bol vygenerovaný len z textových údajov.');
+    } else if (errEl) {
+      errEl.style.display = 'none';
+    }
   } catch (err) {
     const msg = (err && err.message) ? err.message : 'Neznáma chyba pri generovaní.';
     showErr(msg.replace(/</g, '&lt;').replace(/>/g, '&gt;'));
-    return;
   } finally {
     if (textEl) textEl.style.display = 'inline';
     if (spinEl) spinEl.style.display = 'none';
@@ -6383,7 +6421,8 @@ async function aiGenerateDescription() {
 // AI Generate Headline
 async function aiGenerateHeadline() {
   const errEl = document.getElementById('ai-gen-error');
-  const showErr = (msg) => { if (errEl) { errEl.innerHTML = msg; errEl.style.display = 'block'; } };
+  const showErr = (msg) => { if (errEl) { errEl.innerHTML = msg; errEl.style.color = ''; errEl.style.display = 'block'; } };
+  const showInfo = (msg) => { if (errEl) { errEl.innerHTML = msg; errEl.style.color = '#D97706'; errEl.style.display = 'block'; } };
 
   const settings = getAiSettings();
   if (!settings.apiKey) {
@@ -6398,46 +6437,31 @@ async function aiGenerateHeadline() {
   }
 
   try {
-    if (errEl) errEl.style.display = 'none';
+    if (errEl) { errEl.style.color = ''; errEl.style.display = 'none'; }
     const sampleAds = getSampleAds();
     const images = (settings.usePhotos !== false) ? getPropertyPhotosBase64(3) : [];
-    const resp = await fetch('/api/ai-generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        provider: settings.provider || 'anthropic',
-        apiKey: settings.apiKey,
-        model: settings.model || 'claude-sonnet-4-6',
-        property,
-        sampleAds: sampleAds.length > 0 ? sampleAds : null,
-        images: images.length > 0 ? images : null,
-        mode: 'headline',
-        tone: settings.tones || ['profesionalny'],
-        formal: settings.formal !== false,
-        emoji: settings.emoji === true,
-        customInstructions: settings.customInstructions || '',
-      }),
-    });
-
-    let data; try { data = await resp.json(); } catch (e) { data = {}; }
-    if (!resp.ok) {
-      const raw = data.error || ('HTTP ' + resp.status);
-      let msg = raw;
-      if (resp.status === 401 || /invalid.*(api|key)|authentication/i.test(raw)) {
-        msg = 'API kľúč je neplatný. Skontrolujte ho v AI nastaveniach.';
-      } else if (resp.status === 429 || /rate.?limit|quota/i.test(raw)) {
-        msg = 'Prekročený limit API. Skúste o chvíľu znova.';
-      } else if (/model|not.?found/i.test(raw)) {
-        msg = 'Zvolený AI model nie je dostupný. Vyberte iný model v AI nastaveniach.';
-      }
-      throw new Error(msg);
-    }
-    if (!data.text) throw new Error('AI nevrátilo žiadny text.');
+    const data = await _callAiGenerate({
+      provider: settings.provider || 'anthropic',
+      apiKey: settings.apiKey,
+      model: settings.model || 'claude-sonnet-4-6',
+      property,
+      sampleAds: sampleAds.length > 0 ? sampleAds : null,
+      images: images.length > 0 ? images : null,
+      mode: 'headline',
+      tone: settings.tones || ['profesionalny'],
+      formal: settings.formal !== false,
+      emoji: settings.emoji === true,
+      customInstructions: settings.customInstructions || '',
+    }, true);
 
     const titleEl = document.getElementById('prop-ai-headline');
     if (titleEl) titleEl.value = data.text;
     const mainTitle = document.getElementById('prop-title');
     if (mainTitle && !mainTitle.value.trim()) mainTitle.value = data.text;
+
+    if (data._imagesSkipped) {
+      showInfo('Hotovo. Zvolený model nepodporuje obrázky, titulok bol vygenerovaný len z textových údajov.');
+    }
   } catch (err) {
     showErr((err && err.message) ? err.message.replace(/</g, '&lt;').replace(/>/g, '&gt;') : 'Chyba pri generovaní.');
   }
