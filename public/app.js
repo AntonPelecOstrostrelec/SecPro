@@ -6294,24 +6294,32 @@ function getPropertyPhotosBase64(max) {
 
 // AI Generate Description
 async function aiGenerateDescription() {
+  const errEl = document.getElementById('ai-gen-error');
+  const textEl = document.getElementById('ai-gen-text');
+  const spinEl = document.getElementById('ai-gen-spinner');
+
+  const showErr = (msg) => {
+    if (errEl) { errEl.innerHTML = msg; errEl.style.display = 'block'; }
+    if (textEl) textEl.style.display = 'inline';
+    if (spinEl) spinEl.style.display = 'none';
+  };
+
   const settings = getAiSettings();
   if (!settings.apiKey) {
-    secAlert({title: 'API kľúč', message: 'Najprv nastavte API kľúč v sekcii AI Nastavenia.', type: 'warning'});
-    showPage('ai');
+    showErr('Nemáte nastavený API kľúč pre AI. <a href="javascript:void(0)" onclick="closePropertyForm();showPage(\'ai\');" style="color:#7C3AED;font-weight:600;text-decoration:underline;">Otvoriť AI nastavenia</a>');
     return;
   }
 
   const property = getPropertyFormData();
   if (!property.city && !property.type) {
-    document.getElementById('ai-gen-error').textContent = 'Vyplňte aspoň typ a mesto pred generovaním.';
-    document.getElementById('ai-gen-error').style.display = 'block';
+    showErr('Vyplňte aspoň typ a mesto pred generovaním.');
     return;
   }
 
   // Show spinner
-  document.getElementById('ai-gen-text').style.display = 'none';
-  document.getElementById('ai-gen-spinner').style.display = 'inline';
-  document.getElementById('ai-gen-error').style.display = 'none';
+  if (textEl) textEl.style.display = 'none';
+  if (spinEl) spinEl.style.display = 'inline';
+  if (errEl) errEl.style.display = 'none';
 
   try {
     const sampleAds = getSampleAds();
@@ -6338,35 +6346,59 @@ async function aiGenerateDescription() {
       }),
     });
 
-    const data = await resp.json();
-    if (!resp.ok) throw new Error(data.error || 'Chyba pri generovaní');
+    let data;
+    try { data = await resp.json(); } catch (e) { data = {}; }
 
-    document.getElementById('prop-description').value = data.text;
+    if (!resp.ok) {
+      const raw = data.error || ('HTTP ' + resp.status);
+      let msg = raw;
+      if (resp.status === 401 || /invalid.*(api|key)|authentication/i.test(raw)) {
+        msg = 'API kľúč je neplatný. Skontrolujte ho v AI nastaveniach.';
+      } else if (resp.status === 429 || /rate.?limit|quota/i.test(raw)) {
+        msg = 'Prekročený limit API. Skúste o chvíľu znova alebo skontrolujte kredit.';
+      } else if (/model|not.?found/i.test(raw)) {
+        msg = 'Zvolený AI model nie je dostupný. Vyberte iný model v AI nastaveniach.';
+      }
+      throw new Error(msg);
+    }
+
+    if (!data.text) throw new Error('AI nevrátilo žiadny text. Skúste znova alebo zmeňte model.');
+
+    const desc = document.getElementById('prop-description');
+    if (desc) {
+      desc.value = data.text;
+      desc.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    if (errEl) errEl.style.display = 'none';
   } catch (err) {
-    document.getElementById('ai-gen-error').textContent = err.message;
-    document.getElementById('ai-gen-error').style.display = 'block';
+    const msg = (err && err.message) ? err.message : 'Neznáma chyba pri generovaní.';
+    showErr(msg.replace(/</g, '&lt;').replace(/>/g, '&gt;'));
+    return;
   } finally {
-    document.getElementById('ai-gen-text').style.display = 'inline';
-    document.getElementById('ai-gen-spinner').style.display = 'none';
+    if (textEl) textEl.style.display = 'inline';
+    if (spinEl) spinEl.style.display = 'none';
   }
 }
 
 // AI Generate Headline
 async function aiGenerateHeadline() {
+  const errEl = document.getElementById('ai-gen-error');
+  const showErr = (msg) => { if (errEl) { errEl.innerHTML = msg; errEl.style.display = 'block'; } };
+
   const settings = getAiSettings();
   if (!settings.apiKey) {
-    secAlert({title: 'API kľúč', message: 'Najprv nastavte API kľúč v sekcii AI Nastavenia.', type: 'warning'});
-    showPage('ai');
+    showErr('Nemáte nastavený API kľúč pre AI. <a href="javascript:void(0)" onclick="closePropertyForm();showPage(\'ai\');" style="color:#7C3AED;font-weight:600;text-decoration:underline;">Otvoriť AI nastavenia</a>');
     return;
   }
 
   const property = getPropertyFormData();
   if (!property.city && !property.type) {
-    secAlert('Vyplňte aspoň typ a mesto pred generovaním.');
+    showErr('Vyplňte aspoň typ a mesto pred generovaním.');
     return;
   }
 
   try {
+    if (errEl) errEl.style.display = 'none';
     const sampleAds = getSampleAds();
     const images = (settings.usePhotos !== false) ? getPropertyPhotosBase64(3) : [];
     const resp = await fetch('/api/ai-generate', {
@@ -6387,16 +6419,27 @@ async function aiGenerateHeadline() {
       }),
     });
 
-    const data = await resp.json();
-    if (!resp.ok) throw new Error(data.error || 'Chyba pri generovaní');
-
-    document.getElementById('prop-ai-headline').value = data.text;
-    // Also update main title if empty
-    if (!document.getElementById('prop-title').value.trim()) {
-      document.getElementById('prop-title').value = data.text;
+    let data; try { data = await resp.json(); } catch (e) { data = {}; }
+    if (!resp.ok) {
+      const raw = data.error || ('HTTP ' + resp.status);
+      let msg = raw;
+      if (resp.status === 401 || /invalid.*(api|key)|authentication/i.test(raw)) {
+        msg = 'API kľúč je neplatný. Skontrolujte ho v AI nastaveniach.';
+      } else if (resp.status === 429 || /rate.?limit|quota/i.test(raw)) {
+        msg = 'Prekročený limit API. Skúste o chvíľu znova.';
+      } else if (/model|not.?found/i.test(raw)) {
+        msg = 'Zvolený AI model nie je dostupný. Vyberte iný model v AI nastaveniach.';
+      }
+      throw new Error(msg);
     }
+    if (!data.text) throw new Error('AI nevrátilo žiadny text.');
+
+    const titleEl = document.getElementById('prop-ai-headline');
+    if (titleEl) titleEl.value = data.text;
+    const mainTitle = document.getElementById('prop-title');
+    if (mainTitle && !mainTitle.value.trim()) mainTitle.value = data.text;
   } catch (err) {
-    secAlert({title: 'Chyba', message: err.message, type: 'danger'});
+    showErr((err && err.message) ? err.message.replace(/</g, '&lt;').replace(/>/g, '&gt;') : 'Chyba pri generovaní.');
   }
 }
 
