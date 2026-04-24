@@ -9,6 +9,7 @@ const mojereality = require('../lib/scrapers/mojereality');
 const bytsk = require('../lib/scrapers/bytsk');
 
 const { isAgencyListing } = require('../lib/scrapers/utils');
+const { matchesLocation } = require('../lib/scrapers/location-matcher');
 
 const SCRAPERS = {
   'bazos': bazos,
@@ -138,33 +139,9 @@ module.exports = async function handler(req, res) {
     return false;
   }
 
-  // Location mismatch — user searched for X, scraper returned listing clearly in different city
-  // Only trigger when BOTH location field contains another Slovak city AND search location is clear
-  function isLocationMismatch(lead, searchLocation) {
-    if (!searchLocation || searchLocation.length < 3) return false;
-    const searchLower = stripDiacr(searchLocation.toLowerCase().trim());
-    const leadLoc = stripDiacr((lead.location || '').toLowerCase());
-    const leadTitle = stripDiacr((lead.title || '').toLowerCase());
-    // Short-circuit: if lead location/title contains the search city, it's fine
-    if (leadLoc.includes(searchLower) || leadTitle.includes(searchLower)) return false;
-    // Check if lead location mentions a DIFFERENT major Slovak city
-    const otherCities = [
-      'bratislava', 'kosice', 'presov', 'nitra', 'zilina', 'banska bystrica',
-      'trnava', 'trencin', 'martin', 'poprad', 'prievidza', 'zvolen',
-      'piestany', 'michalovce', 'levice', 'komarno', 'lucenec', 'bardejov',
-      'dunajska streda', 'humenne', 'spisska nova ves', 'nove zamky',
-      'topolcany', 'ruzomberok', 'dubnica', 'senica', 'sala', 'malacky',
-      'pezinok', 'senec', 'skalica'
-    ].filter(c => c !== searchLower && !searchLower.includes(c));
-    for (const city of otherCities) {
-      if (leadLoc.includes(city)) return true;
-    }
-    return false;
-  }
-
-  function stripDiacr(s) {
-    return (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  }
+  // NOTE: Location matching is delegated to lib/scrapers/location-matcher.js
+  // which uses a deterministic whitelist (city name + districts + postal code range)
+  // — see matchesLocation() import above.
 
   // Filter broken/empty leads
   const validListings = allListings.filter(l => {
@@ -176,8 +153,9 @@ module.exports = async function handler(req, res) {
     if (isRentalListing(l)) return false;
     // Strip listings whose type doesn't match the user's search
     if (isWrongType(l, params.type)) return false;
-    // Strip listings clearly in a different city than what user searched for
-    if (isLocationMismatch(l, params.location)) return false;
+    // POSITIVE location match — listing must clearly belong to searched city
+    // (by name, district, or postal code). Unknown → reject.
+    if (!matchesLocation(l, params.location)) return false;
     return true;
   });
 
