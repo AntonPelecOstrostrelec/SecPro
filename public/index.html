@@ -1390,13 +1390,21 @@
           </div>
         </div>
 
-        <div style="margin-top:0.75rem;display:flex;gap:0.5rem;flex-wrap:wrap;">
+        <div style="margin-top:0.75rem;display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">
           <label class="source-chip source-chip-warn active" onclick="toggleChip(this)">
             <input type="checkbox" id="lead-no-agency" checked /><span class="chip-dot"></span> Vynechať realitné kancelárie
           </label>
           <label class="source-chip source-chip-deep" onclick="toggleChip(this)" title="Hlbšie skenovanie — stiahne detail stránku každého inzerátu pre presnejšiu adresu, telefón a ďalšie údaje. Trvá ~5-15s dlhšie.">
             <input type="checkbox" id="lead-deep-scan" /><span class="chip-dot"></span> Detailné vyhľadávanie
           </label>
+          <div style="display:inline-flex;align-items:center;gap:0.5rem;padding:0.35rem 0.75rem;background:#F0FAFA;border:1px solid #B8E8E0;border-radius:20px;font-size:0.85rem;color:#0B2A3C;">
+            <span style="font-weight:600;">Rozsah:</span>
+            <select id="lead-max-pages" style="border:none;background:transparent;font-size:0.85rem;font-weight:600;color:#1A7A8A;outline:none;cursor:pointer;">
+              <option value="3">~300 inzerátov</option>
+              <option value="5" selected>~500 inzerátov</option>
+              <option value="10">~1000 inzerátov (pomalšie)</option>
+            </select>
+          </div>
         </div>
 
         <div class="lead-actions">

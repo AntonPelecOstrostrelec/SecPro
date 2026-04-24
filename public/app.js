@@ -2520,6 +2520,12 @@ async function searchLeads() {
       params.set('deep', '1');
     }
 
+    // Max pages per scraper — controls breadth of search
+    const maxPagesEl = document.getElementById('lead-max-pages');
+    if (maxPagesEl && maxPagesEl.value) {
+      params.set('maxPages', maxPagesEl.value);
+    }
+
     const resp = await fetch(`/api/leads?${params.toString()}`);
     const data = await resp.json();
 

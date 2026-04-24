@@ -28,7 +28,7 @@ const { handleCors } = require('../lib/kv');
 module.exports = async function handler(req, res) {
   if (handleCors(req, res, 'GET, OPTIONS')) return;
 
-  const { location, priceMin, priceMax, type, sources, page, noAgency, deep } = req.query;
+  const { location, priceMin, priceMax, type, sources, page, noAgency, deep, maxPages } = req.query;
 
   // Parse which sources to use
   let activeSources = Object.keys(SCRAPERS);
@@ -37,28 +37,54 @@ module.exports = async function handler(req, res) {
   }
 
   const deepMode = deep === '1' || deep === 'true';
+  // How many pages to fetch per scraper (parallel). Default 5 → ~1000 listings max.
+  // Capped at 10 to prevent abuse / long queries.
+  const pagesPerScraper = Math.min(10, Math.max(1, parseInt(maxPages) || 5));
 
-  const params = {
+  const baseParams = {
     location: location || '',
     priceMin: priceMin ? parseInt(priceMin) : null,
     priceMax: priceMax ? parseInt(priceMax) : null,
     type: type || 'byt',
-    page: page ? parseInt(page) : 1,
     deep: deepMode,
   };
 
-  // Run all scrapers in parallel with timeout
+  // Helper: fetch N pages of a scraper in parallel, dedupe by URL
+  async function scrapeMultiPage(name, scraper, pagesToFetch) {
+    const pagePromises = [];
+    for (let p = 1; p <= pagesToFetch; p++) {
+      pagePromises.push(
+        scraper.scrape({ ...baseParams, page: p }).catch(() => [])
+      );
+    }
+    const pageResults = await Promise.all(pagePromises);
+    const seen = new Set();
+    const merged = [];
+    for (const pageListings of pageResults) {
+      if (!Array.isArray(pageListings)) continue;
+      for (const listing of pageListings) {
+        const key = listing.url || listing.id;
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        merged.push(listing);
+      }
+    }
+    return merged;
+  }
+
+  // Run all scrapers (each fetching multiple pages) in parallel
   const results = await Promise.allSettled(
     activeSources.map(async (name) => {
       const start = Date.now();
       try {
-        const listings = await SCRAPERS[name].scrape(params);
+        const listings = await scrapeMultiPage(name, SCRAPERS[name], pagesPerScraper);
         return {
           name,
           status: 'ok',
           count: listings.length,
           listings,
           ms: Date.now() - start,
+          pages: pagesPerScraper,
         };
       } catch (err) {
         return {
@@ -152,18 +178,18 @@ module.exports = async function handler(req, res) {
     // Strip rental listings when user searches for sale
     if (isRentalListing(l)) return false;
     // Strip listings whose type doesn't match the user's search
-    if (isWrongType(l, params.type)) return false;
+    if (isWrongType(l, baseParams.type)) return false;
     // POSITIVE location match — listing must clearly belong to searched city
     // (by name, district, or postal code). Unknown → reject.
-    if (!matchesLocation(l, params.location)) return false;
+    if (!matchesLocation(l, baseParams.location)) return false;
     return true;
   });
 
   // HARD price filter — enforce range even if scraper returned wrong results.
   // When user has set a price range, exclude listings with unknown price (can't verify).
   // Only keep price-unknowns if user did NOT set a price filter.
-  const pMin = params.priceMin;
-  const pMax = params.priceMax;
+  const pMin = baseParams.priceMin;
+  const pMax = baseParams.priceMax;
   const hasPriceFilter = (pMin !== null && pMin > 0) || (pMax !== null && pMax > 0);
   const priceFiltered = validListings.filter(l => {
     if (l.price === null || l.price === undefined || l.price === 0) {
