@@ -187,6 +187,10 @@ async function scrapePage(opts) {
 
     const seller = detectSellerType(listing.offeredBy, graph);
 
+    // City: prefer structured addressLocality, fall back to the search location
+    // (which we know is the canonical city since it's in the URL slug).
+    const cityNormalized = addressLocality || (location ? location.charAt(0).toUpperCase() + location.slice(1).toLowerCase() : null);
+
     return {
       external_id: externalId,
       url: listingUrl,
@@ -202,7 +206,7 @@ async function scrapePage(opts) {
         title: listing.name || null,
         description: desc,
         street: streetAddress,
-        city: addressLocality || null,
+        city: cityNormalized,
         postal_code: postalCode || null,
         image_url: typeof image === 'string' ? image : null,
         seller_type: seller.type,

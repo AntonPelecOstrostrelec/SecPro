@@ -45,6 +45,7 @@ async function ingestListings({ portalSlug, portalId, listings }) {
             postal_code: item.derived.postal_code || null,
             seller_type: item.derived.seller_type || 'unknown',
             seller_name: item.derived.seller_name || null,
+            phone_primary: item.derived.phone || null,
             first_seen_at: new Date().toISOString(),
             last_seen_at: new Date().toISOString(),
             is_active: true,
@@ -53,15 +54,32 @@ async function ingestListings({ portalSlug, portalId, listings }) {
           .single();
         if (cErr) throw cErr;
         listingId = newListing.id;
+
+        // Insert phone into phones table if present
+        if (item.derived.phone) {
+          await supabase.from('phones').upsert({
+            listing_id: listingId,
+            phone_e164: item.derived.phone,
+            phone_display: item.derived.phone,
+          }, { onConflict: 'listing_id,phone_e164' });
+        }
       } else {
-        // Touch last_seen_at + maybe update price
+        // Touch last_seen_at + update fields that may have changed
+        // (price, city, phone — these can drift between runs)
+        const updates = {
+          last_seen_at: new Date().toISOString(),
+          is_active: true,
+          price: item.derived.price,
+        };
+        if (item.derived.city) updates.city = item.derived.city;
+        if (item.derived.postal_code) updates.postal_code = item.derived.postal_code;
+        if (item.derived.street) updates.street = item.derived.street;
+        if (item.derived.phone) updates.phone_primary = item.derived.phone;
+        if (item.derived.title) updates.title = item.derived.title;
+        if (item.derived.size_m2) updates.size_m2 = item.derived.size_m2;
         await supabase
           .from('listings')
-          .update({
-            last_seen_at: new Date().toISOString(),
-            price: item.derived.price,
-            is_active: true,
-          })
+          .update(updates)
           .eq('id', listingId);
       }
 

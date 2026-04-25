@@ -24,9 +24,27 @@ const SCRAPERS = {
 };
 
 const { handleCors } = require('../lib/kv');
+const { searchSupabase } = require('../lib/v2-search');
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res, 'GET, OPTIONS')) return;
+
+  // ── V2 BACKEND ROUTING ──
+  // If frontend opts in via ?backend=v2, query Supabase directly (no live scraping).
+  // Returns same shape as live API. Falls back to live scrape on Supabase error.
+  if (req.query.backend === 'v2') {
+    try {
+      const t0 = Date.now();
+      const result = await searchSupabase(req.query);
+      return res.status(200).json({
+        results: result.results,
+        meta: { ...result.meta, ms: Date.now() - t0, backend: 'supabase-v2' },
+      });
+    } catch (e) {
+      console.error('v2 backend error, falling back to live scrape:', e.message);
+      // continue with live scrape below
+    }
+  }
 
   const { location, priceMin, priceMax, type, sources, page, noAgency, deep, maxPages } = req.query;
 

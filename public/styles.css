@@ -2493,6 +2493,17 @@
       box-shadow: 0 2px 8px rgba(46, 196, 212, 0.18);
     }
     .source-chip-deep.active .chip-dot { background: #2EC4D4; box-shadow: 0 0 8px rgba(46,196,212,0.5); }
+    .source-chip-v2 {
+      border-color: #C7B8F5;
+      background: #F5F0FE;
+      color: #0B2A3C;
+    }
+    .source-chip-v2.active {
+      border-color: #8B5CF6;
+      background: linear-gradient(135deg, #F0E8FF, #DDD0FB);
+      box-shadow: 0 2px 8px rgba(139, 92, 246, 0.18);
+    }
+    .source-chip-v2.active .chip-dot { background: #8B5CF6; box-shadow: 0 0 8px rgba(139,92,246,0.5); }
     /* Lead search form modern */
     .lead-search-card {
       background: white;

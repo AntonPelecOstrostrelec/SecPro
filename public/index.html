@@ -1397,6 +1397,9 @@
           <label class="source-chip source-chip-deep" onclick="toggleChip(this)" title="Hlbšie skenovanie — stiahne detail stránku každého inzerátu pre presnejšiu adresu, telefón a ďalšie údaje. Trvá ~5-15s dlhšie.">
             <input type="checkbox" id="lead-deep-scan" /><span class="chip-dot"></span> Detailné vyhľadávanie
           </label>
+          <label class="source-chip source-chip-v2" onclick="toggleChip(this)" title="Beta backend — hľadá v Supabase databáze (predzbierané + AI obohatené dáta). Rýchlejšie (~500ms) ale zatiaľ obsahuje len ~150 inzerátov.">
+            <input type="checkbox" id="lead-backend-v2" /><span class="chip-dot"></span> Beta: Supabase backend
+          </label>
           <div style="display:inline-flex;align-items:center;gap:0.5rem;padding:0.35rem 0.75rem;background:#F0FAFA;border:1px solid #B8E8E0;border-radius:20px;font-size:0.85rem;color:#0B2A3C;">
             <span style="font-weight:600;">Rozsah:</span>
             <select id="lead-max-pages" style="border:none;background:transparent;font-size:0.85rem;font-weight:600;color:#1A7A8A;outline:none;cursor:pointer;">

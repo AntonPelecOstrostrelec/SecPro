@@ -2526,6 +2526,15 @@ async function searchLeads() {
       params.set('maxPages', maxPagesEl.value);
     }
 
+    // V2 backend feature flag — query Supabase instead of live scraping
+    // Toggle via: localStorage.setItem('secpro_backend', 'v2')  (or 'live')
+    const backendMode = localStorage.getItem('secpro_backend');
+    const v2El = document.getElementById('lead-backend-v2');
+    const useV2 = backendMode === 'v2' || (v2El && v2El.checked);
+    if (useV2) {
+      params.set('backend', 'v2');
+    }
+
     const resp = await fetch(`/api/leads?${params.toString()}`);
     const data = await resp.json();
 
