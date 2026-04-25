@@ -109,16 +109,27 @@ function findListings(jsonLdDocs) {
 
 function detectSellerType(offeredBy, graph) {
   if (!offeredBy) return { type: 'unknown', name: null };
-  // Resolve @id reference
+  if (typeof offeredBy === 'string') {
+    return { type: 'agency', name: offeredBy };
+  }
+
+  // Resolve @id reference if present
   let node = offeredBy;
   if (offeredBy['@id']) {
     const found = graph.find(n => n['@id'] === offeredBy['@id']);
     if (found) node = found;
   }
-  if (typeof node === 'string') {
-    return { type: 'agency', name: node };
+
+  // Direct @type
+  let t = node['@type'];
+
+  // Fallback: parse type from @id URL path (e.g. ".../schema/RealEstateAgent/{uuid}")
+  // — when graph lookup fails because Schema.org keeps the entity in a separate chunk.
+  if (!t && node['@id']) {
+    const m = node['@id'].match(/schema\/([A-Za-z]+)\//);
+    if (m) t = m[1];
   }
-  const t = node['@type'];
+
   const name = node.name || null;
   if (t === 'RealEstateAgent' || t === 'Organization' || t === 'LocalBusiness') {
     return { type: 'agency', name };
