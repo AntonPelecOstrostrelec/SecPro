@@ -10,9 +10,26 @@ const { sleep } = require('../lib/http');
 const bazosScraper = require('../scrapers/bazos');
 const nehnutelnostiScraper = require('../scrapers/nehnutelnosti');
 
-const CITIES = ['Bratislava', 'Košice', 'Trenčín', 'Žilina', 'Nitra', 'Trnava', 'Banská Bystrica', 'Prešov'];
+const ALL_CITIES = ['Bratislava', 'Košice', 'Trenčín', 'Žilina', 'Nitra', 'Trnava', 'Banská Bystrica', 'Prešov',
+                    'Liptovský Mikuláš', 'Poprad', 'Komárno', 'Martin', 'Piešťany'];
 const TYPES = ['byt', 'dom', 'pozemok'];
 const PAGES_PER_RUN = 5;
+
+// CLI parses --city Bratislava → only that city. Default: all.
+function parseArgs(argv) {
+  const args = {};
+  for (let i = 2; i < argv.length; i++) {
+    const a = argv[i];
+    if (a.startsWith('--')) {
+      const k = a.slice(2);
+      const v = argv[i+1] && !argv[i+1].startsWith('--') ? argv[++i] : true;
+      args[k] = v;
+    }
+  }
+  return args;
+}
+const args = parseArgs(process.argv);
+const CITIES = args.city ? [args.city] : ALL_CITIES;
 
 // Matrix: [portal_slug, scraperFn]
 const PORTALS = [
