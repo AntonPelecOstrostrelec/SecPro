@@ -4765,7 +4765,10 @@ function generateNaborPDF() {
     if (y + needed > 278) { doc.addPage(); y = 14; }
   }
 
-  function sectionTitle(title) {
+  // Deferred section title — header is only drawn when the first non-empty
+  // row in that section is rendered. Empty sections are silently dropped.
+  let _pendingSection = null;
+  function _drawSectionTitle(title) {
     checkPage(14);
     y += 1;
     doc.setFillColor(11, 42, 60);
@@ -4777,9 +4780,17 @@ function generateNaborPDF() {
     y += 10.5;
     doc.setTextColor(30, 30, 30);
   }
+  function sectionTitle(title) { _pendingSection = title; }
+  function _flushSection() {
+    if (_pendingSection !== null) {
+      _drawSectionTitle(_pendingSection);
+      _pendingSection = null;
+    }
+  }
 
   function fieldRow(label, value) {
     if (!value) return;
+    _flushSection();
     const valText = sk(value);
     const labText = sk(label);
     doc.setFont('helvetica', 'normal');
@@ -4805,6 +4816,7 @@ function generateNaborPDF() {
 
   function fieldRow2(l1, v1, l2, v2) {
     if (!v1 && !v2) return;
+    _flushSection();
     checkPage(6.5);
     const half = contentW / 2 - 1;
     doc.setFillColor(248, 250, 252);
@@ -4842,6 +4854,7 @@ function generateNaborPDF() {
 
   function multilineField(label, value) {
     if (!value) return;
+    _flushSection();
     const labText = sk(label);
     const valText = sk(value);
     doc.setFont('helvetica', 'normal');
@@ -11240,155 +11253,177 @@ function _doNaborPreview() {
     if (!wrap) return '';
     return [...wrap.querySelectorAll('.nabor-chip.active')].map(x => x.textContent.trim()).join(', ');
   };
-  const e = (val) => val || '<span class="np-empty">—</span>';
 
   let html = '';
   const titleText = type === 'byt' ? 'PRACOVNÝ LIST - BYT' : 'PRACOVNÝ LIST - RODINNÝ DOM';
   html += `<div class="np-title-bar">${titleText}</div>`;
 
+  // Deferred-section helpers — section header is only rendered if at least one
+  // non-empty row follows it. Sections with no content are dropped entirely.
+  let pendingSection = null;
+  const sec = (title) => { pendingSection = title; };
+  const flushSec = () => {
+    if (pendingSection !== null) {
+      html += _npSection(pendingSection);
+      pendingSection = null;
+    }
+  };
+  const row = (label, value) => {
+    const r = _npRow(label, value);
+    if (r) { flushSec(); html += r; }
+  };
+  const row2 = (l1, v1, l2, v2) => {
+    const r = _npRow2(l1, v1, l2, v2);
+    if (r) { flushSec(); html += r; }
+  };
+  const multi = (label, value) => {
+    const r = _npMulti(label, value);
+    if (r) { flushSec(); html += r; }
+  };
+
   if (type === 'byt') {
-    html += _npSection('Základné údaje');
-    html += _npRow('Adresa', e(v('nb-adresa')));
-    html += _npRow2('Vlastníctvo', e(c('nb-vlastnictvo')), 'Vlastník', e(v('nb-vlastnik')));
-    html += _npRow2('Podiel', v('nb-podiel'), 'Správca bytovky', v('nb-spravca-bytovky'));
-    html += _npRow('Ťarcha', c('nb-tarcha'));
+    sec('Základné údaje');
+    row('Adresa', v('nb-adresa'));
+    row2('Vlastníctvo', c('nb-vlastnictvo'), 'Vlastník', v('nb-vlastnik'));
+    row2('Podiel', v('nb-podiel'), 'Správca bytovky', v('nb-spravca-bytovky'));
+    row('Ťarcha', c('nb-tarcha'));
 
-    html += _npSection('Bytový dom');
-    html += _npRow2('Vek BD', v('nb-vek-bd'), 'Výťah', c('nb-vytah'));
-    html += _npRow2('Materiál', c('nb-material-bd'), 'Vstup do BD', c('nb-vstup-bd'));
-    html += _npRow('Stav BD', c('nb-stav-bd'));
-    html += _npRow('Rekonštrukcia BD', v('nb-rekon-bd'));
-    html += _npRow('Parkovanie', c('nb-parkovanie-byt'));
+    sec('Bytový dom');
+    row2('Vek BD', v('nb-vek-bd'), 'Výťah', c('nb-vytah'));
+    row2('Materiál', c('nb-material-bd'), 'Vstup do BD', c('nb-vstup-bd'));
+    row('Stav BD', c('nb-stav-bd'));
+    row('Rekonštrukcia BD', v('nb-rekon-bd'));
+    row('Parkovanie', c('nb-parkovanie-byt'));
 
-    html += _npSection('Byt');
-    html += _npRow2('Počet izieb', e(v('nb-izby')), 'Poschodie', e(v('nb-poschodie')));
-    html += _npRow('Obytná plocha', v('nb-obytna-plocha') ? v('nb-obytna-plocha') + ' m²' : '');
-    html += _npMulti('Dispozícia', v('nb-dispozicia'));
-    html += _npRow('Vykurovanie', c('nb-vykurovanie-byt'));
-    html += _npRow('Ohrev vody', v('nb-ohrev-byt'));
-    html += _npRow2('Okná', c('nb-okna-byt'), 'Komory/Sklá', v('nb-komory-byt'));
-    html += _npRow2('Dvere', c('nb-dvere-byt'), 'Stav bytu', c('nb-stav-bytu'));
+    sec('Byt');
+    row2('Počet izieb', v('nb-izby'), 'Poschodie', v('nb-poschodie'));
+    row('Obytná plocha', v('nb-obytna-plocha') ? v('nb-obytna-plocha') + ' m²' : '');
+    multi('Dispozícia', v('nb-dispozicia'));
+    row('Vykurovanie', c('nb-vykurovanie-byt'));
+    row('Ohrev vody', v('nb-ohrev-byt'));
+    row2('Okná', c('nb-okna-byt'), 'Komory/Sklá', v('nb-komory-byt'));
+    row2('Dvere', c('nb-dvere-byt'), 'Stav bytu', c('nb-stav-bytu'));
 
-    html += _npSection('Príslušenstvo');
-    html += _npRow2('Pivnica', v('nb-pivnica-byt'), 'Terasa', v('nb-terasa-byt'));
-    html += _npRow2('Balkón', v('nb-balkon-byt'), 'Šatník', v('nb-satnik-byt'));
-    html += _npRow2('Špajza', v('nb-spajza-byt'), 'Park. miesto', v('nb-park-miesto'));
+    sec('Príslušenstvo');
+    row2('Pivnica', v('nb-pivnica-byt'), 'Terasa', v('nb-terasa-byt'));
+    row2('Balkón', v('nb-balkon-byt'), 'Šatník', v('nb-satnik-byt'));
+    row2('Špajza', v('nb-spajza-byt'), 'Park. miesto', v('nb-park-miesto'));
 
-    html += _npSection('Rekonštrukcia bytu');
-    html += _npRow2('Rekonštrukcia', c('nb-rekon-byt'), 'Rok', v('nb-rekon-rok-byt'));
-    html += _npMulti('Rozpis', v('nb-rekon-rozpis-byt'));
+    sec('Rekonštrukcia bytu');
+    row2('Rekonštrukcia', c('nb-rekon-byt'), 'Rok', v('nb-rekon-rok-byt'));
+    multi('Rozpis', v('nb-rekon-rozpis-byt'));
 
-    html += _npSection('Zariadenie');
-    html += _npRow('Zariadenie', c('nb-zariadenie-byt'));
-    html += _npMulti('Rozpis zariadenia', v('nb-zariadenie-rozpis-byt'));
+    sec('Zariadenie');
+    row('Zariadenie', c('nb-zariadenie-byt'));
+    multi('Rozpis zariadenia', v('nb-zariadenie-rozpis-byt'));
 
-    html += _npSection('Mesačné náklady');
-    html += _npRow2('Celkom', v('nb-naklady-celkom') ? v('nb-naklady-celkom') + ' €' : '', 'Správca', v('nb-naklady-spravca') ? v('nb-naklady-spravca') + ' €' : '');
-    html += _npRow2('Elektrika', v('nb-naklady-elektrika-byt') ? v('nb-naklady-elektrika-byt') + ' €' : '', 'Plyn', v('nb-naklady-plyn-byt') ? v('nb-naklady-plyn-byt') + ' €' : '');
-    html += _npRow2('Zateplenie', v('nb-zateplenie-byt'), 'Stupačky', v('nb-stupacky'));
-    html += _npRow2('Energ. certifikát', v('nb-ecert-byt'), 'Podlahy', v('nb-podlahy'));
-    html += _npRow('Ostatné', v('nb-naklady-ostatne-byt'));
+    sec('Mesačné náklady');
+    row2('Celkom', v('nb-naklady-celkom') ? v('nb-naklady-celkom') + ' €' : '', 'Správca', v('nb-naklady-spravca') ? v('nb-naklady-spravca') + ' €' : '');
+    row2('Elektrika', v('nb-naklady-elektrika-byt') ? v('nb-naklady-elektrika-byt') + ' €' : '', 'Plyn', v('nb-naklady-plyn-byt') ? v('nb-naklady-plyn-byt') + ' €' : '');
+    row2('Zateplenie', v('nb-zateplenie-byt'), 'Stupačky', v('nb-stupacky'));
+    row2('Energ. certifikát', v('nb-ecert-byt'), 'Podlahy', v('nb-podlahy'));
+    row('Ostatné', v('nb-naklady-ostatne-byt'));
 
-    html += _npSection('Ostatné');
-    html += _npRow2('Internet', c('nb-internet-byt'), 'Poskytovateľ', v('nb-internet-provider-byt'));
-    html += _npRow('Vysťahovanie', v('nb-vystahovanie'));
-    html += _npMulti('Vady / poškodenia', v('nb-vady-byt'));
-    html += _npMulti('Poznámky', v('nb-poznamky-byt'));
-    html += _npRow('Podmienený prevod', v('nb-podmieneny-byt'));
-    html += _npRow('Kúpa novej - predstava', v('nb-nova-predstava-byt'));
-    html += _npRow('Financovanie', v('nb-financovanie-byt'));
+    sec('Ostatné');
+    row2('Internet', c('nb-internet-byt'), 'Poskytovateľ', v('nb-internet-provider-byt'));
+    row('Vysťahovanie', v('nb-vystahovanie'));
+    multi('Vady / poškodenia', v('nb-vady-byt'));
+    multi('Poznámky', v('nb-poznamky-byt'));
+    row('Podmienený prevod', v('nb-podmieneny-byt'));
+    row('Kúpa novej - predstava', v('nb-nova-predstava-byt'));
+    row('Financovanie', v('nb-financovanie-byt'));
 
-    html += _npSection('Ceny a záver');
-    html += _npRow2('Odporúč. cena', v('nb-cena-odporucana-byt'), 'Cena do inzercie', v('nb-cena-inzercia-byt'));
-    html += _npRow('Provízia pre RK', v('nb-provizia-byt'));
-    html += _npRow('Nadobúdací doklad', v('nb-nadobudaci-byt'));
-    html += _npRow2('Telefón vlastníka', v('nb-tel-vlastnik'), 'Email vlastníka', v('nb-email-vlastnik'));
-    html += _npRow2('Fotenie', v('nb-fotenie-byt'), 'Inzercia', v('nb-inzercia-byt'));
-    html += _npRow2('Maklér', v('nb-makler-byt'), 'Dátum', v('nb-datum-byt'));
+    sec('Ceny a záver');
+    row2('Odporúč. cena', v('nb-cena-odporucana-byt'), 'Cena do inzercie', v('nb-cena-inzercia-byt'));
+    row('Provízia pre RK', v('nb-provizia-byt'));
+    row('Nadobúdací doklad', v('nb-nadobudaci-byt'));
+    row2('Telefón vlastníka', v('nb-tel-vlastnik'), 'Email vlastníka', v('nb-email-vlastnik'));
+    row2('Fotenie', v('nb-fotenie-byt'), 'Inzercia', v('nb-inzercia-byt'));
+    row2('Maklér', v('nb-makler-byt'), 'Dátum', v('nb-datum-byt'));
 
   } else {
-    html += _npSection('Základné údaje');
-    html += _npRow('Adresa', e(v('nd-adresa')));
-    html += _npRow2('Počet podlaží', v('nd-podlazia'), 'Počet izieb', v('nd-izby'));
-    html += _npRow('Typ RD', c('nd-typ-rd'));
-    html += _npRow('Stav RD', c('nd-stav-rd'));
+    sec('Základné údaje');
+    row('Adresa', v('nd-adresa'));
+    row2('Počet podlaží', v('nd-podlazia'), 'Počet izieb', v('nd-izby'));
+    row('Typ RD', c('nd-typ-rd'));
+    row('Stav RD', c('nd-stav-rd'));
 
-    html += _npSection('Rodinný dom');
-    html += _npRow2('Vek RD', v('nd-vek-rd'), 'Energ. certifikát', v('nd-ecert'));
-    html += _npRow2('Zastavaná plocha', v('nd-zastavana') ? v('nd-zastavana') + ' m²' : '', 'Úžitková plocha', v('nd-uzitkova') ? v('nd-uzitkova') + ' m²' : '');
-    html += _npRow('Pozemok celkom', v('nd-pozemok') ? v('nd-pozemok') + ' m²' : '');
+    sec('Rodinný dom');
+    row2('Vek RD', v('nd-vek-rd'), 'Energ. certifikát', v('nd-ecert'));
+    row2('Zastavaná plocha', v('nd-zastavana') ? v('nd-zastavana') + ' m²' : '', 'Úžitková plocha', v('nd-uzitkova') ? v('nd-uzitkova') + ' m²' : '');
+    row('Pozemok celkom', v('nd-pozemok') ? v('nd-pozemok') + ' m²' : '');
 
-    html += _npSection('Inžinierske siete');
-    html += _npRow2('Elektrika', c('nd-elektrika'), 'Voda', c('nd-voda'));
-    html += _npRow2('Odpad', c('nd-odpad'), 'Žumpa (m³)', v('nd-zumpa-m3'));
-    html += _npRow('Plyn', c('nd-plyn'));
+    sec('Inžinierske siete');
+    row2('Elektrika', c('nd-elektrika'), 'Voda', c('nd-voda'));
+    row2('Odpad', c('nd-odpad'), 'Žumpa (m³)', v('nd-zumpa-m3'));
+    row('Plyn', c('nd-plyn'));
 
-    html += _npSection('Konštrukcia');
-    html += _npRow('Materiál', c('nd-material'));
-    html += _npRow2('Obvodové murivo', v('nd-murivo'), 'Deliace priečky', v('nd-priecky'));
-    html += _npRow2('Zateplenie', c('nd-zateplenie'), 'Hrúbka', v('nd-zateplenie-hrubka'));
-    html += _npRow('Fasáda', v('nd-fasada'));
+    sec('Konštrukcia');
+    row('Materiál', c('nd-material'));
+    row2('Obvodové murivo', v('nd-murivo'), 'Deliace priečky', v('nd-priecky'));
+    row2('Zateplenie', c('nd-zateplenie'), 'Hrúbka', v('nd-zateplenie-hrubka'));
+    row('Fasáda', v('nd-fasada'));
 
-    html += _npSection('Strecha');
-    html += _npRow('Typ strechy', c('nd-strecha-typ'));
-    html += _npRow('Materiál strechy', c('nd-strecha-mat'));
-    html += _npRow('Izolácia', v('nd-strecha-izolacia'));
+    sec('Strecha');
+    row('Typ strechy', c('nd-strecha-typ'));
+    row('Materiál strechy', c('nd-strecha-mat'));
+    row('Izolácia', v('nd-strecha-izolacia'));
 
-    html += _npSection('Okná, dvere, zabezpečenie');
-    html += _npRow2('Okná', c('nd-okna'), 'Komory/Sklá', v('nd-komory'));
-    html += _npRow('Žalúzie', c('nd-zaluzie'));
-    html += _npRow2('Vstupné dvere', c('nd-dvere'), 'Zabezpečenie', c('nd-zabezpecenie'));
+    sec('Okná, dvere, zabezpečenie');
+    row2('Okná', c('nd-okna'), 'Komory/Sklá', v('nd-komory'));
+    row('Žalúzie', c('nd-zaluzie'));
+    row2('Vstupné dvere', c('nd-dvere'), 'Zabezpečenie', c('nd-zabezpecenie'));
 
-    html += _npSection('Vykurovanie a vybavenie');
-    html += _npRow2('Krb', c('nd-krb'), 'Klimatizácia', c('nd-klima'));
-    html += _npRow('Vykurovanie', c('nd-vykurovanie'));
-    html += _npRow('Ohrev vody', v('nd-ohrev'));
-    html += _npMulti('Dispozícia RD', v('nd-dispozicia'));
+    sec('Vykurovanie a vybavenie');
+    row2('Krb', c('nd-krb'), 'Klimatizácia', c('nd-klima'));
+    row('Vykurovanie', c('nd-vykurovanie'));
+    row('Ohrev vody', v('nd-ohrev'));
+    multi('Dispozícia RD', v('nd-dispozicia'));
 
-    html += _npSection('Príslušenstvo');
-    html += _npRow2('Pivnica', v('nd-pivnica'), 'Terasa', v('nd-terasa'));
-    html += _npRow2('Balkón', v('nd-balkon'), 'Povala', v('nd-povala'));
+    sec('Príslušenstvo');
+    row2('Pivnica', v('nd-pivnica'), 'Terasa', v('nd-terasa'));
+    row2('Balkón', v('nd-balkon'), 'Povala', v('nd-povala'));
 
-    html += _npSection('Rekonštrukcia');
-    html += _npRow2('Rekonštrukcia', c('nd-rekon'), 'Rok', v('nd-rekon-rok'));
-    html += _npMulti('Rozpis', v('nd-rekon-rozpis'));
+    sec('Rekonštrukcia');
+    row2('Rekonštrukcia', c('nd-rekon'), 'Rok', v('nd-rekon-rok'));
+    multi('Rozpis', v('nd-rekon-rozpis'));
 
-    html += _npSection('Zariadenie');
-    html += _npRow('Zariadenie', c('nd-zariadenie'));
-    html += _npMulti('Rozpis zariadenia', v('nd-zariadenie-rozpis'));
+    sec('Zariadenie');
+    row('Zariadenie', c('nd-zariadenie'));
+    multi('Rozpis zariadenia', v('nd-zariadenie-rozpis'));
 
-    html += _npSection('Exteriér');
-    html += _npRow('Parkovanie', c('nd-parkovanie'));
-    html += _npRow2('Garáž', v('nd-garaz'), 'Altánok', v('nd-altanok'));
-    html += _npRow2('Bazén', v('nd-bazen'), 'Studňa', v('nd-studna'));
-    html += _npRow('Iná stavba', v('nd-ina-stavba'));
-    html += _npMulti('Rozpis exteriéru', v('nd-ext-rozpis'));
+    sec('Exteriér');
+    row('Parkovanie', c('nd-parkovanie'));
+    row2('Garáž', v('nd-garaz'), 'Altánok', v('nd-altanok'));
+    row2('Bazén', v('nd-bazen'), 'Studňa', v('nd-studna'));
+    row('Iná stavba', v('nd-ina-stavba'));
+    multi('Rozpis exteriéru', v('nd-ext-rozpis'));
 
-    html += _npSection('Mesačné náklady');
-    html += _npRow2('Elektrika', v('nd-naklady-elektrika') ? v('nd-naklady-elektrika') + ' €' : '', 'Voda', v('nd-naklady-voda') ? v('nd-naklady-voda') + ' €' : '');
-    html += _npRow2('Plyn', v('nd-naklady-plyn') ? v('nd-naklady-plyn') + ' €' : '', 'Žumpa', v('nd-naklady-zumpa') ? v('nd-naklady-zumpa') + ' €' : '');
-    html += _npRow2('Odpad', v('nd-naklady-odpad') ? v('nd-naklady-odpad') + ' €' : '', 'TV', v('nd-naklady-tv') ? v('nd-naklady-tv') + ' €' : '');
-    html += _npRow('Internet', v('nd-naklady-internet') ? v('nd-naklady-internet') + ' €' : '');
-    html += _npRow2('Poskytovateľ', v('nd-internet-provider'), 'Typ pripojenia', c('nd-internet-typ'));
+    sec('Mesačné náklady');
+    row2('Elektrika', v('nd-naklady-elektrika') ? v('nd-naklady-elektrika') + ' €' : '', 'Voda', v('nd-naklady-voda') ? v('nd-naklady-voda') + ' €' : '');
+    row2('Plyn', v('nd-naklady-plyn') ? v('nd-naklady-plyn') + ' €' : '', 'Žumpa', v('nd-naklady-zumpa') ? v('nd-naklady-zumpa') + ' €' : '');
+    row2('Odpad', v('nd-naklady-odpad') ? v('nd-naklady-odpad') + ' €' : '', 'TV', v('nd-naklady-tv') ? v('nd-naklady-tv') + ' €' : '');
+    row('Internet', v('nd-naklady-internet') ? v('nd-naklady-internet') + ' €' : '');
+    row2('Poskytovateľ', v('nd-internet-provider'), 'Typ pripojenia', c('nd-internet-typ'));
 
-    html += _npSection('Ostatné');
-    html += _npMulti('Vady / poškodenia', v('nd-vady'));
-    html += _npMulti('Poznámky', v('nd-poznamky'));
-    html += _npRow('Podmienený prevod', v('nd-podmieneny'));
+    sec('Ostatné');
+    multi('Vady / poškodenia', v('nd-vady'));
+    multi('Poznámky', v('nd-poznamky'));
+    row('Podmienený prevod', v('nd-podmieneny'));
 
-    html += _npSection('Vlastníctvo');
-    html += _npRow('Vlastníctvo', c('nd-vlastnictvo'));
-    html += _npRow2('Vlastník 1', v('nd-vlastnik1'), 'Podiel 1', v('nd-podiel1'));
-    html += _npRow2('Vlastník 2', v('nd-vlastnik2'), 'Podiel 2', v('nd-podiel2'));
-    html += _npRow('Ťarcha', c('nd-tarcha'));
-    html += _npRow('Nadobúdací doklad', v('nd-nadobudaci'));
-    html += _npRow('Dokumenty', v('nd-dokumenty'));
+    sec('Vlastníctvo');
+    row('Vlastníctvo', c('nd-vlastnictvo'));
+    row2('Vlastník 1', v('nd-vlastnik1'), 'Podiel 1', v('nd-podiel1'));
+    row2('Vlastník 2', v('nd-vlastnik2'), 'Podiel 2', v('nd-podiel2'));
+    row('Ťarcha', c('nd-tarcha'));
+    row('Nadobúdací doklad', v('nd-nadobudaci'));
+    row('Dokumenty', v('nd-dokumenty'));
 
-    html += _npSection('Ceny a záver');
-    html += _npRow2('Odporúč. cena', v('nd-cena-odporucana'), 'Cena do inzercie', v('nd-cena-inzercia'));
-    html += _npRow('Provízia pre RK', v('nd-provizia'));
-    html += _npRow2('Fotenie', v('nd-fotenie'), 'Inzercia', v('nd-inzercia'));
-    html += _npRow2('Maklér', v('nd-makler'), 'Dátum', v('nd-datum'));
+    sec('Ceny a záver');
+    row2('Odporúč. cena', v('nd-cena-odporucana'), 'Cena do inzercie', v('nd-cena-inzercia'));
+    row('Provízia pre RK', v('nd-provizia'));
+    row2('Fotenie', v('nd-fotenie'), 'Inzercia', v('nd-inzercia'));
+    row2('Maklér', v('nd-makler'), 'Dátum', v('nd-datum'));
   }
 
   html += `<div class="np-footer">Vygenerované v SecPro | ${new Date().toLocaleDateString('sk-SK')}</div>`;
