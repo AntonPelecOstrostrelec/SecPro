@@ -4674,6 +4674,16 @@ function openNaborModal(propId) {
 
   document.getElementById('naborModal').style.display = 'block';
   setTimeout(updateNaborPreview, 50);
+  // Show initial name previews under signature boxes
+  if (typeof _refreshAllNaborSigNames === 'function') _refreshAllNaborSigNames();
+  // Live-update the name previews when the relevant form fields change
+  ['nb-vlastnik','nd-vlastnik1','nb-makler-byt','nd-makler'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && !el.dataset.naborSigBound) {
+      el.addEventListener('input', _refreshAllNaborSigNames);
+      el.dataset.naborSigBound = '1';
+    }
+  });
 }
 
 function closeNaborModal() {
@@ -4699,6 +4709,43 @@ function _refreshNaborSigPreview(role) {
     if (meta) meta.style.display = 'none';
     if (clearBtn) clearBtn.style.display = 'none';
   }
+  if (typeof _refreshNaborSigName === 'function') _refreshNaborSigName(role);
+}
+
+// Updates the small italic name preview under each signature header.
+// Pulls the name from the signature itself (if drawn) or from the
+// vlastník / maklér field in the active form.
+function _refreshNaborSigName(role) {
+  const el = document.getElementById(`nabor-sig-${role}-name`);
+  if (!el) return;
+  const type = document.getElementById('nabor-type')?.value;
+  const sig = _naborSigState && _naborSigState[role];
+  let name = '';
+  if (sig && sig.signerName) {
+    name = sig.signerName;
+  } else if (role === 'seller') {
+    name = (document.getElementById('nb-vlastnik')?.value
+         || document.getElementById('nd-vlastnik1')?.value || '').trim();
+  } else {
+    name = (document.getElementById('nb-makler-byt')?.value
+         || document.getElementById('nd-makler')?.value || '').trim();
+  }
+  if (name) {
+    el.textContent = '— ' + name;
+    el.style.color = 'var(--text-light)';
+  } else {
+    const sourceField = role === 'seller'
+      ? (type === 'byt' ? '"Vlastník"' : '"Vlastník 1"')
+      : '"Maklér"';
+    el.textContent = '— vyplňte pole ' + sourceField;
+    el.style.color = '#B45309';
+  }
+}
+
+// Refresh both name previews — call when relevant form fields change
+function _refreshAllNaborSigNames() {
+  _refreshNaborSigName('seller');
+  _refreshNaborSigName('agent');
 }
 
 function openNaborSignature(role) {
@@ -4706,10 +4753,17 @@ function openNaborSignature(role) {
   const profile = (typeof getProfile === 'function') ? getProfile() : {};
   let signerName = '';
   if (role === 'agent') {
-    signerName = profile.name || 'Maklér';
+    // Prefer the maklér name from the form (auto-filled from session at modal open)
+    signerName = (document.getElementById('nb-makler-byt')?.value
+                 || document.getElementById('nd-makler')?.value
+                 || profile.name
+                 || 'Maklér').trim();
   } else {
-    // Try to pick name from vlastník field in nábor form
-    signerName = (document.getElementById('nb-vlastnik')?.value || document.getElementById('nd-vlastnik')?.value || document.getElementById('np-vlastnik')?.value || '').trim();
+    // Pick name from vlastník field in nábor form (byt or dom)
+    signerName = (document.getElementById('nb-vlastnik')?.value
+                 || document.getElementById('nd-vlastnik1')?.value
+                 || document.getElementById('np-vlastnik')?.value
+                 || '').trim();
   }
   openSignaturePad({
     title: role === 'agent' ? 'Podpis makléra' : 'Podpis predávajúceho',
@@ -5036,10 +5090,16 @@ function generateNaborPDF() {
     fieldRow2('Maklér', v('nd-makler'), 'Dátum', v('nd-datum'));
   }
 
-  // Signatures block (before footer)
+  // Signatures block (before footer) — always rendered with names from form
   const sellerSig = _naborSigState && _naborSigState.seller;
   const agentSig = _naborSigState && _naborSigState.agent;
-  if (sellerSig || agentSig) {
+  const formVal = (id) => document.getElementById(id)?.value?.trim() || '';
+  const sellerName = (sellerSig && sellerSig.signerName) ||
+    (type === 'byt' ? formVal('nb-vlastnik') : formVal('nd-vlastnik1'));
+  const agentName = (agentSig && agentSig.signerName) ||
+    (type === 'byt' ? formVal('nb-makler-byt') : formVal('nd-makler'));
+
+  if (sellerSig || agentSig || sellerName || agentName) {
     checkPage(55);
     y += 8;
     doc.setDrawColor(200, 200, 200);
@@ -5059,7 +5119,7 @@ function generateNaborPDF() {
     doc.line(margin, sigY + 28, margin + colW, sigY + 28);
     doc.setFontSize(7);
     doc.setTextColor(80, 80, 80);
-    doc.text(sk('Predávajúci: ' + (sellerSig ? sellerSig.signerName : '')), margin, sigY + 32);
+    doc.text(sk('Predávajúci: ' + sellerName), margin, sigY + 32);
     if (sellerSig) doc.text(sk(new Date(sellerSig.signedAt).toLocaleString('sk-SK')), margin, sigY + 36);
     // Agent
     const ax = margin + colW + 8;
@@ -5067,7 +5127,7 @@ function generateNaborPDF() {
       try { doc.addImage(agentSig.dataUrl, 'PNG', ax, sigY, Math.min(colW, 70), 25); } catch (e) {}
     }
     doc.line(ax, sigY + 28, ax + colW, sigY + 28);
-    doc.text(sk('Maklér: ' + (agentSig ? agentSig.signerName : '')), ax, sigY + 32);
+    doc.text(sk('Maklér: ' + agentName), ax, sigY + 32);
     if (agentSig) doc.text(sk(new Date(agentSig.signedAt).toLocaleString('sk-SK')), ax, sigY + 36);
     y = sigY + 40;
   }
