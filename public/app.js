@@ -4519,46 +4519,157 @@ function clearNaborForm(prefix) {
   modal.querySelectorAll('.nabor-chip.active').forEach(el => el.classList.remove('active'));
 }
 
+// ── Read all field values + active chips for a given form (prefix 'nb' or 'nd') ──
+function _naborReadFormData(prefix) {
+  const formId = prefix === 'nb' ? 'nabor-form-byt' : 'nabor-form-dom';
+  const form = document.getElementById(formId);
+  if (!form) return null;
+  const fields = {};
+  form.querySelectorAll('input, textarea, select').forEach(el => {
+    if (el.id) fields[el.id] = el.value;
+  });
+  const chips = {};
+  form.querySelectorAll('.nabor-chips').forEach(group => {
+    if (!group.id) return;
+    chips[group.id] = Array.from(group.querySelectorAll('.nabor-chip.active'))
+      .map(c => c.textContent.trim());
+  });
+  return { fields, chips };
+}
+
+// ── Apply previously saved data back to form fields + chip selections ──
+function _naborApplyFormData(prefix, saved) {
+  if (!saved) return;
+  const formId = prefix === 'nb' ? 'nabor-form-byt' : 'nabor-form-dom';
+  const form = document.getElementById(formId);
+  if (!form) return;
+  if (saved.fields) {
+    Object.entries(saved.fields).forEach(([id, val]) => {
+      const el = document.getElementById(id);
+      if (el && val !== undefined && val !== null) el.value = val;
+    });
+  }
+  if (saved.chips) {
+    Object.entries(saved.chips).forEach(([groupId, activeLabels]) => {
+      const group = document.getElementById(groupId);
+      if (!group) return;
+      group.querySelectorAll('.nabor-chip').forEach(chip => {
+        const isActive = activeLabels.includes(chip.textContent.trim());
+        chip.classList.toggle('active', isActive);
+      });
+    });
+  }
+}
+
+// ── Save the current nábor form into property.nabor ──
+async function saveNabor() {
+  const propId = document.getElementById('nabor-prop-id').value;
+  const type = document.getElementById('nabor-type').value;
+  if (!propId) return;
+
+  const prefix = type === 'byt' ? 'nb' : 'nd';
+  const formData = _naborReadFormData(prefix);
+  if (!formData) {
+    showToast('Nepodarilo sa prečítať údaje', 'error');
+    return;
+  }
+
+  const props = getProperties();
+  const idx = props.findIndex(x => x.id === propId);
+  if (idx === -1) return;
+
+  const existed = !!props[idx].nabor;
+  props[idx].nabor = {
+    type,
+    data: formData,
+    signatures: {
+      seller: _naborSigState && _naborSigState.seller ? _naborSigState.seller : null,
+      agent:  _naborSigState && _naborSigState.agent  ? _naborSigState.agent  : null,
+    },
+    savedAt: new Date().toISOString(),
+  };
+  saveProperties(props);
+
+  showToast(existed ? 'Náborový list aktualizovaný ✓' : 'Náborový list uložený ✓', 'success');
+  if (typeof renderProperties === 'function') renderProperties();
+}
+
 function openNaborModal(propId) {
   const props = getProperties();
   const p = props.find(x => x.id === propId);
   if (!p) return;
 
   const type = p.type; // 'byt' or 'dom'
+  const hasSaved = !!(p.nabor && p.nabor.type === type && p.nabor.data);
+
   document.getElementById('nabor-prop-id').value = propId;
   document.getElementById('nabor-type').value = type;
 
   // Show correct form
   document.getElementById('nabor-form-byt').style.display = type === 'byt' ? 'block' : 'none';
   document.getElementById('nabor-form-dom').style.display = type === 'dom' ? 'block' : 'none';
-  document.getElementById('nabor-title').textContent = type === 'byt' ? 'Náborový list - Byt' : 'Náborový list - Rodinný dom';
+  const titleSuffix = hasSaved ? ' (uložený)' : '';
+  document.getElementById('nabor-title').textContent =
+    (type === 'byt' ? 'Náborový list - Byt' : 'Náborový list - Rodinný dom') + titleSuffix;
+
+  // Show saved-info banner
+  const savedInfo = document.getElementById('nabor-saved-info');
+  if (savedInfo) {
+    if (hasSaved) {
+      const dt = new Date(p.nabor.savedAt);
+      savedInfo.innerHTML = '<span style="color:#065F46;">✓ Uložený náborák</span> – posledná zmena: <b>' +
+        dt.toLocaleString('sk-SK') + '</b>';
+      savedInfo.style.display = '';
+    } else {
+      savedInfo.style.display = 'none';
+    }
+  }
 
   // Clear forms
   clearNaborForm('nb');
   clearNaborForm('nd');
 
-  // Pre-fill from property data
-  if (type === 'byt') {
-    if (p.address) document.getElementById('nb-adresa').value = (p.address || '') + (p.city ? ', ' + p.city : '');
-    if (p.rooms) document.getElementById('nb-izby').value = p.rooms;
-    if (p.area) document.getElementById('nb-obytna-plocha').value = p.area;
-    if (p.floor) document.getElementById('nb-poschodie').value = p.floor;
-    if (p.ownerName) document.getElementById('nb-vlastnik').value = p.ownerName;
-    if (p.ownerPhone) document.getElementById('nb-tel-vlastnik').value = p.ownerPhone;
-    if (p.ownerEmail) document.getElementById('nb-email-vlastnik').value = p.ownerEmail;
-    if (p.price) document.getElementById('nb-cena-inzercia-byt').value = p.price + ' €';
-    document.getElementById('nb-datum-byt').value = new Date().toISOString().split('T')[0];
-    const session = getStoredUser();
-    if (session) document.getElementById('nb-makler-byt').value = session.name;
+  if (hasSaved) {
+    // Restore saved state — overrides property pre-fill
+    _naborApplyFormData(type === 'byt' ? 'nb' : 'nd', p.nabor.data);
+    // Restore signatures if present
+    _naborSigState = {
+      seller: (p.nabor.signatures && p.nabor.signatures.seller) || null,
+      agent:  (p.nabor.signatures && p.nabor.signatures.agent)  || null,
+    };
+    if (typeof _refreshNaborSigPreview === 'function') {
+      _refreshNaborSigPreview('seller');
+      _refreshNaborSigPreview('agent');
+    }
   } else {
-    if (p.address) document.getElementById('nd-adresa').value = (p.address || '') + (p.city ? ', ' + p.city : '');
-    if (p.rooms) document.getElementById('nd-izby').value = p.rooms;
-    if (p.area) document.getElementById('nd-uzitkova').value = p.area;
-    if (p.ownerName) document.getElementById('nd-vlastnik1').value = p.ownerName;
-    if (p.price) document.getElementById('nd-cena-inzercia').value = p.price + ' €';
-    document.getElementById('nd-datum').value = new Date().toISOString().split('T')[0];
-    const session = getStoredUser();
-    if (session) document.getElementById('nd-makler').value = session.name;
+    // Pre-fill from property data
+    if (type === 'byt') {
+      if (p.address) document.getElementById('nb-adresa').value = (p.address || '') + (p.city ? ', ' + p.city : '');
+      if (p.rooms) document.getElementById('nb-izby').value = p.rooms;
+      if (p.area) document.getElementById('nb-obytna-plocha').value = p.area;
+      if (p.floor) document.getElementById('nb-poschodie').value = p.floor;
+      if (p.ownerName) document.getElementById('nb-vlastnik').value = p.ownerName;
+      if (p.ownerPhone) document.getElementById('nb-tel-vlastnik').value = p.ownerPhone;
+      if (p.ownerEmail) document.getElementById('nb-email-vlastnik').value = p.ownerEmail;
+      if (p.price) document.getElementById('nb-cena-inzercia-byt').value = p.price + ' €';
+      document.getElementById('nb-datum-byt').value = new Date().toISOString().split('T')[0];
+      const session = getStoredUser();
+      if (session) document.getElementById('nb-makler-byt').value = session.name;
+    } else {
+      if (p.address) document.getElementById('nd-adresa').value = (p.address || '') + (p.city ? ', ' + p.city : '');
+      if (p.rooms) document.getElementById('nd-izby').value = p.rooms;
+      if (p.area) document.getElementById('nd-uzitkova').value = p.area;
+      if (p.ownerName) document.getElementById('nd-vlastnik1').value = p.ownerName;
+      if (p.price) document.getElementById('nd-cena-inzercia').value = p.price + ' €';
+      document.getElementById('nd-datum').value = new Date().toISOString().split('T')[0];
+      const session = getStoredUser();
+      if (session) document.getElementById('nd-makler').value = session.name;
+    }
+    _naborSigState = { seller: null, agent: null };
+    if (typeof _refreshNaborSigPreview === 'function') {
+      _refreshNaborSigPreview('seller');
+      _refreshNaborSigPreview('agent');
+    }
   }
 
   document.getElementById('naborModal').style.display = 'block';
@@ -5716,7 +5827,7 @@ function renderProperties() {
       <div class="prop-card-footer">
         <span class="prop-card-date">${dateStr}</span>
         <div class="prop-card-actions">
-          ${(p.type === 'byt' || p.type === 'dom') ? `<button onclick="openNaborModal('${p.id}')" class="pca-btn" style="color:#0B2A3C;" title="Náborový list"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg></button>` : ''}
+          ${(p.type === 'byt' || p.type === 'dom') ? `<button onclick="openNaborModal('${p.id}')" class="pca-btn ${p.nabor ? 'pca-nabor-done' : ''}" style="${p.nabor ? 'color:#065F46;background:#D1FAE5;border-color:#A7F3D0;' : 'color:#0B2A3C;'}" title="${p.nabor ? 'Upraviť náborák ✓' : 'Náborový list'}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${p.nabor ? '<polyline points="20 6 9 17 4 12"/>' : '<path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>'}</svg></button>` : ''}
           ${viewCount ? `<button onclick="openProtocolModal('${p.id}')" class="pca-btn" style="color:#1A7A8A;" title="Protokol s podpisom"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button>` : ''}
           ${viewCount ? `<button onclick="generateViewingDocument('${p.id}')" class="pca-btn pca-doc" title="Zápisnica PDF"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></button>` : ''}
           ${p.url ? `<a href="${p.url}" target="_blank" class="pca-btn pca-link" title="Inzerát"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>` : ''}
