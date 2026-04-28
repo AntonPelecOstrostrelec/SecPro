@@ -3193,6 +3193,19 @@ function getDealRecord(p, key) {
   return p && p.deals && p.deals[key] ? p.deals[key] : null;
 }
 
+// Count attached documents for a deal (nabor: signatures only; others: files[]).
+function getDealFileCount(p, key) {
+  if (key === 'nabor') {
+    if (!p || !p.nabor || !p.nabor.signatures) return 0;
+    let n = 0;
+    if (p.nabor.signatures.seller) n++;
+    if (p.nabor.signatures.agent) n++;
+    return n;
+  }
+  const rec = p && p.deals && p.deals[key];
+  return (rec && Array.isArray(rec.files)) ? rec.files.length : 0;
+}
+
 // Build the deal-tracker chip row HTML for a property card.
 function getDealsRowHtml(p) {
   const chips = DEAL_TYPES.map(t => {
@@ -3201,10 +3214,15 @@ function getDealsRowHtml(p) {
     const onClick = t.key === 'nabor'
       ? `openNaborModal('${p.id}')`
       : `openDealStatusEditor('${p.id}', '${t.key}')`;
-    const titleAttr = t.label + ' — ' + meta.label;
+    const fileCount = getDealFileCount(p, t.key);
+    const titleAttr = t.label + ' — ' + meta.label + (fileCount ? ' · ' + fileCount + ' dok.' : '');
+    const fileBadge = fileCount > 0
+      ? `<span class="deal-chip-files" title="${fileCount} priložených dokumentov">${fileCount}</span>`
+      : '';
     return `<button class="deal-chip deal-chip-${status}" onclick="event.stopPropagation();${onClick}" title="${titleAttr}">
       <span class="deal-dot" style="background:${meta.dot};"></span>
       <span class="deal-chip-label">${t.abbr}</span>
+      ${fileBadge}
     </button>`;
   }).join('');
   return `<div class="deal-row">
@@ -3212,6 +3230,9 @@ function getDealsRowHtml(p) {
     <div class="deal-row-chips">${chips}</div>
   </div>`;
 }
+
+// Working files for the currently open deal-editor session
+let _dealEditorFiles = [];
 
 // Open small popover to set status + notes for a non-nabor deal.
 function openDealStatusEditor(propId, key) {
@@ -3238,10 +3259,14 @@ function openDealStatusEditor(propId, key) {
     subtypeWrap.style.display = 'none';
   }
 
-  // Hide payment-related verified label tweak — universal for now
+  // Status buttons
   document.querySelectorAll('.deal-status-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.status === status);
   });
+
+  // Files
+  _dealEditorFiles = Array.isArray(cur.files) ? cur.files.map(f => ({ ...f })) : [];
+  _renderDealEditorFiles();
 
   // Last updated info
   const info = document.getElementById('deal-editor-info');
@@ -3257,12 +3282,125 @@ function openDealStatusEditor(propId, key) {
 
 function closeDealStatusEditor() {
   document.getElementById('deal-editor-modal').style.display = 'none';
+  _dealEditorFiles = [];
+  const fi = document.getElementById('deal-editor-file-input');
+  if (fi) fi.value = '';
 }
 
 function setDealStatusFromEditor(newStatus) {
   document.querySelectorAll('.deal-status-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.status === newStatus);
   });
+}
+
+// File handling — read selected files into base64 data URLs
+async function dealAddFiles(event) {
+  const files = Array.from(event.target.files || []);
+  const MAX_BYTES = 5 * 1024 * 1024; // 5 MB per file
+  const TOTAL_LIMIT = 10;
+
+  for (const f of files) {
+    if (_dealEditorFiles.length >= TOTAL_LIMIT) {
+      showToast('Max ' + TOTAL_LIMIT + ' dokumentov na jednu fázu', 'warning');
+      break;
+    }
+    if (f.size > MAX_BYTES) {
+      showToast('Súbor "' + f.name + '" je väčší ako 5 MB', 'warning');
+      continue;
+    }
+    try {
+      const dataUrl = await _readFileAsDataUrl(f);
+      _dealEditorFiles.push({
+        name: f.name,
+        type: f.type || 'application/octet-stream',
+        size: f.size,
+        dataUrl,
+        uploadedAt: new Date().toISOString(),
+      });
+    } catch (e) {
+      console.warn('File read failed:', f.name, e);
+    }
+  }
+  event.target.value = '';
+  _renderDealEditorFiles();
+}
+
+function _readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(file);
+  });
+}
+
+function _renderDealEditorFiles() {
+  const list = document.getElementById('deal-editor-files-list');
+  if (!list) return;
+  if (_dealEditorFiles.length === 0) {
+    list.innerHTML = '';
+    return;
+  }
+  list.innerHTML = _dealEditorFiles.map((f, i) => {
+    const sizeStr = _formatFileSize(f.size);
+    const icon = _fileIconSvg(f.type, f.name);
+    return `<div class="deal-file-item">
+      <span class="deal-file-icon">${icon}</span>
+      <span class="deal-file-name" onclick="dealOpenFile(${i})" title="Kliknite na otvorenie">${_escHtml(f.name)}</span>
+      <span class="deal-file-size">${sizeStr}</span>
+      <button class="deal-file-remove" onclick="dealRemoveFile(${i})" title="Odstrániť">&times;</button>
+    </div>`;
+  }).join('');
+}
+
+function dealOpenFile(idx) {
+  const f = _dealEditorFiles[idx];
+  if (!f) return;
+  const isImage = (f.type || '').startsWith('image/');
+  const isPdf = f.type === 'application/pdf' || /\.pdf$/i.test(f.name);
+  if (isImage || isPdf) {
+    // Open in new tab
+    const w = window.open();
+    if (!w) return;
+    if (isImage) {
+      w.document.write('<html><head><title>' + _escHtml(f.name) + '</title></head><body style="margin:0;background:#222;display:flex;align-items:center;justify-content:center;min-height:100vh;"><img src="' + f.dataUrl + '" style="max-width:100%;max-height:100vh;" /></body></html>');
+    } else {
+      w.location.href = f.dataUrl;
+    }
+  } else {
+    // Force download for DOCX etc.
+    const a = document.createElement('a');
+    a.href = f.dataUrl;
+    a.download = f.name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+}
+
+function dealRemoveFile(idx) {
+  _dealEditorFiles.splice(idx, 1);
+  _renderDealEditorFiles();
+}
+
+function _formatFileSize(bytes) {
+  if (!bytes) return '';
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+}
+
+function _fileIconSvg(type, name) {
+  const isImage = (type || '').startsWith('image/');
+  if (isImage) return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>';
+  if (type === 'application/pdf' || /\.pdf$/i.test(name)) return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>';
+  return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>';
+}
+
+function _escHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s == null ? '' : String(s);
+  return d.innerHTML;
 }
 
 function saveDealFromEditor() {
@@ -3281,6 +3419,7 @@ function saveDealFromEditor() {
     ...(props[idx].deals[key] || {}),
     status,
     notes,
+    files: _dealEditorFiles.slice(),
     ...(subtype !== null ? { subtype } : {}),
     updatedAt: new Date().toISOString(),
   };

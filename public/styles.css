@@ -965,6 +965,87 @@
       flex-shrink: 0;
     }
 
+    /* Deal files — dropzone + list */
+    .deal-files-dropzone {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.55rem 0.75rem;
+      border: 1.5px dashed #CBD5E1;
+      border-radius: 10px;
+      background: #FAFBFC;
+      cursor: pointer;
+      font-size: 0.82rem;
+      color: #64748B;
+      transition: all 0.15s;
+    }
+    .deal-files-dropzone:hover {
+      border-color: #1A7A8A;
+      background: #F0FAFA;
+      color: #0B2A3C;
+    }
+    .deal-files-dropzone svg { color: #94A3B8; flex-shrink: 0; }
+    .deal-files-dropzone:hover svg { color: #1A7A8A; }
+    .deal-files-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-top: 6px;
+    }
+    .deal-file-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 0.6rem;
+      background: #F1F5F9;
+      border-radius: 8px;
+      font-size: 0.8rem;
+    }
+    .deal-file-icon { flex-shrink: 0; color: #1A7A8A; }
+    .deal-file-name {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: #0B2A3C;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .deal-file-name:hover { color: #1A7A8A; text-decoration: underline; }
+    .deal-file-size {
+      font-size: 0.72rem;
+      color: #64748B;
+      flex-shrink: 0;
+    }
+    .deal-file-remove {
+      background: transparent;
+      border: none;
+      color: #DC2626;
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
+    .deal-file-remove:hover { background: #FEE2E2; }
+
+    /* Deal chip file-count badge */
+    .deal-chip-files {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 14px;
+      height: 14px;
+      padding: 0 4px;
+      margin-left: 2px;
+      font-size: 0.62rem;
+      font-weight: 700;
+      background: rgba(11,42,60,0.85);
+      color: #fff;
+      border-radius: 10px;
+      line-height: 1;
+    }
+
     /* Compact pipeline dots */
     .prop-card-pipeline {
       display: flex;

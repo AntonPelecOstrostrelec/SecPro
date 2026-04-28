@@ -2505,11 +2505,22 @@
           <label class="form-label" style="margin-top:0.85rem;">Poznámka (voliteľné)</label>
           <textarea id="deal-editor-notes" class="form-input" rows="2" placeholder="napr. Suma 5000 €, splatnosť 14 dní..."></textarea>
 
+          <!-- Document attachments -->
+          <div style="margin-top:0.85rem;">
+            <label class="form-label">Priložené dokumenty</label>
+            <label class="deal-files-dropzone" for="deal-editor-file-input">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <span>Pridať dokument (PDF, DOCX, foto)</span>
+              <input type="file" id="deal-editor-file-input" accept=".pdf,.doc,.docx,image/*" multiple onchange="dealAddFiles(event)" style="display:none;" />
+            </label>
+            <div id="deal-editor-files-list" class="deal-files-list"></div>
+          </div>
+
           <div id="deal-editor-info" style="display:none;font-size:0.72rem;color:var(--text-light);margin-top:0.75rem;font-style:italic;"></div>
 
           <div style="display:flex;gap:8px;margin-top:1rem;">
             <button class="action-btn secondary" onclick="closeDealStatusEditor()" style="flex:1;">Zrušiť</button>
-            <button class="action-btn" onclick="saveDealFromEditor()" style="flex:2;">Uložiť stav</button>
+            <button class="action-btn" onclick="saveDealFromEditor()" style="flex:2;">Uložiť</button>
           </div>
         </div>
       </div>
