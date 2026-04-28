@@ -3149,6 +3149,147 @@ const PROP_PIPELINE = [
 ];
 const PROP_PIPELINE_KEYS = PROP_PIPELINE.map(s => s.key);
 
+// ===================== DEAL DOCUMENTS TRACKER =====================
+// 5-stage transaction lifecycle with traffic-light status.
+// Náborák status is auto-derived from p.nabor; the rest is manual.
+const DEAL_TYPES = [
+  { key: 'nabor',   abbr: 'Náborák',  label: 'Náborový list',           paymentApplicable: false },
+  { key: 'sz',      abbr: 'SZ',       label: 'Sprostredkovateľská zmluva', paymentApplicable: false, hasSubtype: true },
+  { key: 'rezerv',  abbr: 'Rezerv.',  label: 'Rezervačná zmluva',       paymentApplicable: true },
+  { key: 'kupna',   abbr: 'Kúpna',    label: 'Kúpna zmluva',            paymentApplicable: true },
+  { key: 'faktura', abbr: 'Faktúra',  label: 'Fakturácia',              paymentApplicable: true },
+];
+
+// Status meta: traffic-light colors per the agent's feedback.
+// not_started = čierna (nerealizované)
+// pending     = červená (vyžaduje doplnenie)
+// verified    = oranžová (overená, čaká na úhradu / na podpis)
+// done        = zelená  (uhradená / podpísaná / hotová)
+const DEAL_STATUS_META = {
+  not_started: { dot: '#1F2937', bg: '#F3F4F6', color: '#374151', label: 'Nerealizované' },
+  pending:     { dot: '#DC2626', bg: '#FEE2E2', color: '#991B1B', label: 'Vyžaduje doplnenie' },
+  verified:    { dot: '#F59E0B', bg: '#FEF3C7', color: '#92400E', label: 'Overené, čaká na úhradu' },
+  done:        { dot: '#10B981', bg: '#D1FAE5', color: '#065F46', label: 'Uhradené / Hotové' },
+};
+const DEAL_STATUS_KEYS = ['not_started', 'pending', 'verified', 'done'];
+
+// Get deal status for a given property + deal type.
+// For 'nabor' the status is derived from p.nabor presence + signatures.
+// For others it's read from p.deals[key].status (default: not_started).
+function getDealStatus(p, key) {
+  if (key === 'nabor') {
+    if (!p || !p.nabor) return 'not_started';
+    const sigs = p.nabor.signatures || {};
+    const hasSig = !!(sigs.seller || sigs.agent);
+    return hasSig ? 'done' : 'pending';
+  }
+  if (!p || !p.deals || !p.deals[key]) return 'not_started';
+  const s = p.deals[key].status;
+  return DEAL_STATUS_KEYS.includes(s) ? s : 'not_started';
+}
+
+function getDealRecord(p, key) {
+  if (key === 'nabor') return p && p.nabor ? p.nabor : null;
+  return p && p.deals && p.deals[key] ? p.deals[key] : null;
+}
+
+// Build the deal-tracker chip row HTML for a property card.
+function getDealsRowHtml(p) {
+  const chips = DEAL_TYPES.map(t => {
+    const status = getDealStatus(p, t.key);
+    const meta = DEAL_STATUS_META[status];
+    const onClick = t.key === 'nabor'
+      ? `openNaborModal('${p.id}')`
+      : `openDealStatusEditor('${p.id}', '${t.key}')`;
+    const titleAttr = t.label + ' — ' + meta.label;
+    return `<button class="deal-chip deal-chip-${status}" onclick="event.stopPropagation();${onClick}" title="${titleAttr}">
+      <span class="deal-dot" style="background:${meta.dot};"></span>
+      <span class="deal-chip-label">${t.abbr}</span>
+    </button>`;
+  }).join('');
+  return `<div class="deal-row">
+    <div class="deal-row-title">📋 Dokumentácia obchodu:</div>
+    <div class="deal-row-chips">${chips}</div>
+  </div>`;
+}
+
+// Open small popover to set status + notes for a non-nabor deal.
+function openDealStatusEditor(propId, key) {
+  const dt = DEAL_TYPES.find(x => x.key === key);
+  if (!dt || dt.key === 'nabor') return;
+  const props = getProperties();
+  const p = props.find(x => x.id === propId);
+  if (!p) return;
+
+  const cur = (p.deals && p.deals[key]) || {};
+  const status = cur.status || 'not_started';
+
+  document.getElementById('deal-editor-prop-id').value = propId;
+  document.getElementById('deal-editor-key').value = key;
+  document.getElementById('deal-editor-title').textContent = dt.label;
+  document.getElementById('deal-editor-notes').value = cur.notes || '';
+
+  // Subtype (only for SZ)
+  const subtypeWrap = document.getElementById('deal-editor-subtype-wrap');
+  if (dt.hasSubtype) {
+    subtypeWrap.style.display = '';
+    document.getElementById('deal-editor-subtype').value = cur.subtype || '';
+  } else {
+    subtypeWrap.style.display = 'none';
+  }
+
+  // Hide payment-related verified label tweak — universal for now
+  document.querySelectorAll('.deal-status-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.status === status);
+  });
+
+  // Last updated info
+  const info = document.getElementById('deal-editor-info');
+  if (cur.updatedAt) {
+    info.textContent = 'Posledná zmena: ' + new Date(cur.updatedAt).toLocaleString('sk-SK');
+    info.style.display = '';
+  } else {
+    info.style.display = 'none';
+  }
+
+  document.getElementById('deal-editor-modal').style.display = 'flex';
+}
+
+function closeDealStatusEditor() {
+  document.getElementById('deal-editor-modal').style.display = 'none';
+}
+
+function setDealStatusFromEditor(newStatus) {
+  document.querySelectorAll('.deal-status-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.status === newStatus);
+  });
+}
+
+function saveDealFromEditor() {
+  const propId = document.getElementById('deal-editor-prop-id').value;
+  const key = document.getElementById('deal-editor-key').value;
+  const status = document.querySelector('.deal-status-btn.active')?.dataset.status || 'not_started';
+  const notes = document.getElementById('deal-editor-notes').value.trim();
+  const dt = DEAL_TYPES.find(x => x.key === key);
+  const subtype = (dt && dt.hasSubtype) ? document.getElementById('deal-editor-subtype').value : null;
+
+  const props = getProperties();
+  const idx = props.findIndex(x => x.id === propId);
+  if (idx === -1) return;
+  if (!props[idx].deals) props[idx].deals = {};
+  props[idx].deals[key] = {
+    ...(props[idx].deals[key] || {}),
+    status,
+    notes,
+    ...(subtype !== null ? { subtype } : {}),
+    updatedAt: new Date().toISOString(),
+  };
+  saveProperties(props);
+  closeDealStatusEditor();
+  if (typeof renderProperties === 'function') renderProperties();
+  showToast('Stav obchodu uložený ✓', 'success');
+}
+
 // Legacy status mapping (backward compat)
 const PROP_STATUS_MAP = {
   'novy':          { label: 'Nový lead',     color: '#64748B', bg: '#F1F5F9' },
@@ -5839,6 +5980,9 @@ function renderProperties() {
           ${p.rooms ? `<span class="prop-tag">${p.rooms} izby</span>` : ''}
           ${condName ? `<span class="prop-tag">${condName}</span>` : ''}
         </div>
+
+        <!-- Deal documents tracker (semafor) -->
+        ${getDealsRowHtml(p)}
 
         <!-- Pipeline compact -->
         <div class="prop-card-pipeline">

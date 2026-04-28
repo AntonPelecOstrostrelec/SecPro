@@ -878,6 +878,93 @@
       color: #4A5568;
       letter-spacing: 0.01em;
     }
+    /* Deal documents tracker (semafor) on property card */
+    .deal-row {
+      margin: 0.5rem 0 0.4rem;
+      padding: 0.5rem 0.65rem;
+      background: linear-gradient(135deg, #FAFBFC 0%, #F5F7FA 100%);
+      border: 1px solid #E5E9F0;
+      border-radius: 10px;
+    }
+    .deal-row-title {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: #6B7280;
+      margin-bottom: 0.4rem;
+    }
+    .deal-row-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+    .deal-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 8px 3px 6px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid transparent;
+      background: #fff;
+      color: #374151;
+      transition: all 0.15s ease;
+    }
+    .deal-chip:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    }
+    .deal-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .deal-chip-not_started { background: #F3F4F6; color: #6B7280; border-color: #E5E7EB; }
+    .deal-chip-pending     { background: #FEE2E2; color: #991B1B; border-color: #FCA5A5; }
+    .deal-chip-verified    { background: #FEF3C7; color: #92400E; border-color: #FCD34D; }
+    .deal-chip-done        { background: #D1FAE5; color: #065F46; border-color: #6EE7B7; }
+
+    /* Deal status editor — radio button list */
+    .deal-status-btn-row {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+    .deal-status-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.55rem 0.75rem;
+      border: 1.5px solid #E5E7EB;
+      border-radius: 10px;
+      background: #fff;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: #374151;
+      text-align: left;
+      transition: all 0.15s;
+    }
+    .deal-status-btn:hover { background: #F9FAFB; border-color: #D1D5DB; }
+    .deal-status-btn.active {
+      border-width: 2px;
+      font-weight: 600;
+    }
+    .deal-status-btn.active.deal-status-not_started { border-color: #1F2937; background: #F3F4F6; }
+    .deal-status-btn.active.deal-status-pending     { border-color: #DC2626; background: #FEE2E2; }
+    .deal-status-btn.active.deal-status-verified    { border-color: #F59E0B; background: #FEF3C7; }
+    .deal-status-btn.active.deal-status-done        { border-color: #10B981; background: #D1FAE5; }
+    .deal-status-btn-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
     /* Compact pipeline dots */
     .prop-card-pipeline {
       display: flex;

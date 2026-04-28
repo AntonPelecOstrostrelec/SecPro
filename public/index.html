@@ -2462,6 +2462,59 @@
       </div>
     </div>
 
+    <!-- DEAL STATUS EDITOR MODAL -->
+    <div id="deal-editor-modal" style="display:none;position:fixed;inset:0;z-index:14500;background:rgba(0,0,0,.45);align-items:center;justify-content:center;padding:1rem;">
+      <div style="background:#fff;border-radius:14px;max-width:440px;width:100%;box-shadow:0 12px 40px rgba(0,0,0,.18);overflow:hidden;">
+        <div style="background:linear-gradient(135deg,#0b2a3c,#1a5276);padding:1rem 1.25rem;color:#fff;">
+          <h3 id="deal-editor-title" style="margin:0;font-size:1rem;">Stav obchodu</h3>
+          <p style="margin:2px 0 0;font-size:0.75rem;opacity:.8;">Nastavte stav semaforu a poznámku</p>
+        </div>
+        <div style="padding:1.1rem 1.25rem;">
+          <input type="hidden" id="deal-editor-prop-id">
+          <input type="hidden" id="deal-editor-key">
+
+          <div id="deal-editor-subtype-wrap" style="display:none;margin-bottom:0.85rem;">
+            <label class="form-label">Typ zmluvy</label>
+            <select id="deal-editor-subtype" class="form-input">
+              <option value="">— vybrať —</option>
+              <option value="vyhradna">Výhradná</option>
+              <option value="nevyhradna">Nevýhradná</option>
+            </select>
+          </div>
+
+          <label class="form-label">Stav</label>
+          <div class="deal-status-btn-row">
+            <button type="button" class="deal-status-btn deal-status-not_started" data-status="not_started" onclick="setDealStatusFromEditor('not_started')">
+              <span class="deal-status-btn-dot" style="background:#1F2937;"></span>
+              <span>Nerealizované</span>
+            </button>
+            <button type="button" class="deal-status-btn deal-status-pending" data-status="pending" onclick="setDealStatusFromEditor('pending')">
+              <span class="deal-status-btn-dot" style="background:#DC2626;"></span>
+              <span>Vyžaduje doplnenie</span>
+            </button>
+            <button type="button" class="deal-status-btn deal-status-verified" data-status="verified" onclick="setDealStatusFromEditor('verified')">
+              <span class="deal-status-btn-dot" style="background:#F59E0B;"></span>
+              <span>Overené, čaká na úhradu</span>
+            </button>
+            <button type="button" class="deal-status-btn deal-status-done" data-status="done" onclick="setDealStatusFromEditor('done')">
+              <span class="deal-status-btn-dot" style="background:#10B981;"></span>
+              <span>Uhradené / Hotové</span>
+            </button>
+          </div>
+
+          <label class="form-label" style="margin-top:0.85rem;">Poznámka (voliteľné)</label>
+          <textarea id="deal-editor-notes" class="form-input" rows="2" placeholder="napr. Suma 5000 €, splatnosť 14 dní..."></textarea>
+
+          <div id="deal-editor-info" style="display:none;font-size:0.72rem;color:var(--text-light);margin-top:0.75rem;font-style:italic;"></div>
+
+          <div style="display:flex;gap:8px;margin-top:1rem;">
+            <button class="action-btn secondary" onclick="closeDealStatusEditor()" style="flex:1;">Zrušiť</button>
+            <button class="action-btn" onclick="saveDealFromEditor()" style="flex:2;">Uložiť stav</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- REMOTE SIGN REQUEST MODAL -->
     <div id="remote-sign-modal" style="display:none;position:fixed;inset:0;z-index:15000;background:rgba(0,0,0,.45);overflow-y:auto;padding:2rem 1rem;">
       <div style="background:#fff;border-radius:16px;max-width:480px;margin:auto;box-shadow:0 12px 40px rgba(0,0,0,.15);">
