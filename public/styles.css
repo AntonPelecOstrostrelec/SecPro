@@ -1180,6 +1180,182 @@
     }
     .deal-file-remove:hover { background: #FEE2E2; }
 
+    /* Signed-document CARD — bigger "completed certificate" view that
+       replaces the small banner once the client has signed. */
+    .signed-card {
+      margin-top: 0.65rem;
+      background: linear-gradient(180deg, #F0FDF4 0%, #DCFCE7 100%);
+      border: 1.5px solid #86EFAC;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(34, 197, 94, 0.12);
+    }
+    .signed-card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.65rem 0.85rem;
+      background: linear-gradient(135deg, #15803D 0%, #166534 100%);
+      color: #fff;
+    }
+    .signed-card-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+    }
+    .scb-icon {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      font-weight: 700;
+    }
+    .signed-card-date {
+      font-size: 0.72rem;
+      opacity: 0.9;
+      font-variant-numeric: tabular-nums;
+    }
+    .signed-card-body {
+      display: flex;
+      align-items: stretch;
+      gap: 0.85rem;
+      padding: 0.85rem;
+    }
+    .signed-card-info {
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-width: 130px;
+    }
+    .signed-card-info-label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: #166534;
+      font-weight: 700;
+      opacity: 0.85;
+    }
+    .signed-card-info-value {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #14532D;
+      margin-top: 2px;
+      word-break: break-word;
+    }
+    .signed-card-sig {
+      flex: 1;
+      min-width: 0;
+      background: #fff;
+      border: 1px solid #BBF7D0;
+      border-radius: 8px;
+      padding: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 70px;
+    }
+    .signed-card-sig img {
+      max-width: 100%;
+      max-height: 70px;
+      object-fit: contain;
+    }
+    .signed-card-sig-loading {
+      font-size: 0.74rem;
+      color: #64748B;
+      font-style: italic;
+    }
+    .signed-card-actions {
+      display: flex;
+      gap: 6px;
+      padding: 0 0.85rem 0.85rem;
+    }
+    .signed-card-btn {
+      flex: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px 10px;
+      border: 1.5px solid;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.18s;
+      background: #fff;
+    }
+    .signed-card-btn-view {
+      color: #14532D;
+      border-color: #BBF7D0;
+    }
+    .signed-card-btn-view:hover {
+      background: #14532D;
+      color: #fff;
+      border-color: #14532D;
+    }
+    .signed-card-btn-pdf {
+      color: #fff;
+      background: linear-gradient(135deg, #15803D 0%, #14532D 100%);
+      border-color: #14532D;
+    }
+    .signed-card-btn-pdf:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 10px rgba(20, 83, 45, 0.3);
+    }
+
+    /* Locked-state banner shown at top of the náborový list modal once
+       the client has signed remotely. The form below is disabled. */
+    .nabor-locked-banner {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      margin: 0.85rem 1.5rem 0;
+      padding: 0.85rem 1rem;
+      background: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%);
+      border: 1.5px solid #6EE7B7;
+      border-left: 4px solid #15803D;
+      border-radius: 10px;
+    }
+    .nlb-icon {
+      flex-shrink: 0;
+      font-size: 1.2rem;
+      width: 32px; height: 32px;
+      background: #15803D;
+      color: #fff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 6px rgba(21, 128, 61, 0.3);
+    }
+    .nlb-text { flex: 1; min-width: 0; }
+    .nlb-title {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #14532D;
+    }
+    .nlb-meta {
+      font-size: 0.74rem;
+      color: #166534;
+      margin-top: 2px;
+    }
+    /* When modal is locked, gray-out form fields visually too */
+    .nabor-locked .nabor-modal input:disabled,
+    .nabor-locked .nabor-modal select:disabled,
+    .nabor-locked .nabor-modal textarea:disabled {
+      background: #F8FAFC;
+      color: #64748B;
+      cursor: not-allowed;
+    }
+
     /* Signed-doc banner — shown on property card when client signed remotely */
     .signed-doc-banner {
       display: flex;

@@ -82,12 +82,12 @@ function showPage(id) {
   if (id === 'dokumenty') renderDocs();
   if (id === 'signatures') { if (typeof refreshRemoteSignatures === 'function') refreshRemoteSignatures(); }
   if (id === 'clients' && typeof renderClients === 'function') renderClients();
-  // When showing My Properties, also refresh remote sig statuses so verified
-  // (orange) chips can transition to done (green) automatically.
+  // When showing My Properties, force-refresh remote sig statuses so verified
+  // (orange) chips transition to done (green) the moment the client signs.
+  // Bypass the 15-second cache — the user is actively expecting fresh data.
   if (id === 'properties') {
-    if (typeof refreshRemoteSignatures === 'function') {
-      refreshRemoteSignatures();
-    }
+    _remoteSignLastFetch = 0;
+    if (typeof refreshRemoteSignatures === 'function') refreshRemoteSignatures();
   }
   window.scrollTo(0, 0);
 }
@@ -2408,6 +2408,20 @@ document.addEventListener('DOMContentLoaded', () => {
   if (document.getElementById('mm-date')) document.getElementById('mm-date').value = d;
 });
 
+// When the maklér comes back from their email/Gmail tab to SecPro, instantly
+// re-poll /api/sign/list so a fresh signature shows up without waiting for
+// the next page navigation.
+window.addEventListener('focus', () => {
+  if (typeof refreshRemoteSignatures !== 'function') return;
+  // Only refresh if there are properties pending a signature — keeps us
+  // from spamming the API on every tab switch.
+  const props = (typeof getProperties === 'function') ? getProperties() : [];
+  const hasPendingSig = props.some(p => p.nabor && p.nabor.remoteRequest && !p.nabor.remoteRequest.signedAt);
+  if (!hasPendingSig) return;
+  _remoteSignLastFetch = 0;
+  refreshRemoteSignatures();
+});
+
 // ==================== LEAD GENERATOR ====================
 let leadsData = [];
 
@@ -3283,8 +3297,10 @@ function getDealsRowHtml(p) {
     </button>`;
   }).join('');
 
-  // Signed-document banner — shown ONLY when the client really signed remotely.
+  // Signed-document card — shown ONLY when the client really signed remotely.
   // (Local seller-only signatures from agent's test draws are excluded.)
+  // Acts as a "completed certificate" — agent's primary view of the finished
+  // document on the property card.
   let signedBanner = '';
   if (isNaborClientSigned(p)) {
     const rr = p.nabor.remoteRequest || {};
@@ -3292,13 +3308,34 @@ function getDealsRowHtml(p) {
       ? new Date(rr.signedAt).toLocaleString('sk-SK', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
       : '';
     const signedBy = rr.signedByName || rr.signerName || '';
-    signedBanner = `<div class="signed-doc-banner" onclick="event.stopPropagation();openSignedNaborView('${p.id}');">
-      <span class="signed-doc-icon">✓</span>
-      <div class="signed-doc-text">
-        <div class="signed-doc-title">Klient podpísal náborový list</div>
-        <div class="signed-doc-sub">${signedBy ? esc(signedBy) + ' · ' : ''}${signedDate}</div>
+    const sigImg = rr.signedSignatureDataUrl
+      ? `<div class="signed-card-sig"><img src="${rr.signedSignatureDataUrl}" alt="Podpis" /></div>`
+      : '<div class="signed-card-sig signed-card-sig-loading">Načítavam podpis...</div>';
+    signedBanner = `<div class="signed-card">
+      <div class="signed-card-head">
+        <div class="signed-card-badge">
+          <span class="scb-icon">✓</span>
+          <span class="scb-label">Podpísaný náborový list</span>
+        </div>
+        <span class="signed-card-date">${signedDate}</span>
       </div>
-      <span class="signed-doc-action">📄 Zobraziť</span>
+      <div class="signed-card-body">
+        <div class="signed-card-info">
+          <div class="signed-card-info-label">Podpísal</div>
+          <div class="signed-card-info-value">${signedBy ? esc(signedBy) : '—'}</div>
+        </div>
+        ${sigImg}
+      </div>
+      <div class="signed-card-actions">
+        <button class="signed-card-btn signed-card-btn-view" onclick="event.stopPropagation();openSignedNaborView('${p.id}');">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          <span>Zobraziť</span>
+        </button>
+        <button class="signed-card-btn signed-card-btn-pdf" onclick="event.stopPropagation();downloadSignedNaborPDF('${p.id}');">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span>Stiahnuť PDF</span>
+        </button>
+      </div>
     </div>`;
   }
 
@@ -3316,6 +3353,15 @@ function openSignedNaborView(propId) {
   // remote request when present (see openNaborModal). The signature box for
   // the seller will show the signed image, and "Generovať PDF" embeds it.
   openNaborModal(propId);
+}
+
+// Open the modal silently and immediately generate the PDF for download.
+// Used by the "Stiahnuť PDF" button on the signed-doc card.
+function downloadSignedNaborPDF(propId) {
+  openNaborModal(propId);
+  setTimeout(() => {
+    if (typeof generateNaborPDF === 'function') generateNaborPDF();
+  }, 200);
 }
 
 // Working files for the currently open deal-editor session
@@ -4967,7 +5013,12 @@ function openNaborModal(propId) {
   if (!p) return;
 
   const type = p.type; // 'byt' or 'dom'
-  const hasSaved = !!(p.nabor && p.nabor.type === type && p.nabor.data);
+  // hasSaved = nabor exists with REAL field/chip data. An empty stub (legacy
+  // bug) is treated as "not saved" so the property pre-fill kicks in.
+  const _hasRealData = (d) =>
+    d && ((d.fields && Object.keys(d.fields).length > 0)
+       || (d.chips && Object.keys(d.chips).length > 0));
+  const hasSaved = !!(p.nabor && p.nabor.type === type && _hasRealData(p.nabor.data));
 
   document.getElementById('nabor-prop-id').value = propId;
   document.getElementById('nabor-type').value = type;
@@ -5062,6 +5113,12 @@ function openNaborModal(propId) {
 
   document.getElementById('naborModal').style.display = 'block';
   setTimeout(updateNaborPreview, 50);
+
+  // Lock the form into read-only mode if the client has already signed.
+  // The agent shouldn't be editing a finalised, signed document — only
+  // viewing or downloading the PDF.
+  _applyNaborLockState(p);
+
   // Show initial name previews under signature boxes
   if (typeof _refreshAllNaborSigNames === 'function') _refreshAllNaborSigNames();
   // Live-update the name previews when the relevant form fields change
@@ -5077,6 +5134,62 @@ function openNaborModal(propId) {
 function closeNaborModal() {
   document.getElementById('naborModal').style.display = 'none';
   _naborSigState = { seller: null, agent: null };
+  _applyNaborLockState(null); // reset lock state on close
+}
+
+// Switch the náborový list modal between editable and read-only mode.
+// Read-only mode kicks in once the client has signed remotely — at that
+// point the document is legally finalised and editing it would invalidate
+// the signed copy. The agent can only view / download the signed PDF.
+function _applyNaborLockState(p) {
+  const modal = document.getElementById('naborModal');
+  if (!modal) return;
+  const locked = !!(p && isNaborClientSigned(p));
+  modal.classList.toggle('nabor-locked', locked);
+
+  // Disable / re-enable every form input + chip in the visible form
+  modal.querySelectorAll('#nabor-form-byt input, #nabor-form-byt textarea, #nabor-form-byt select, #nabor-form-dom input, #nabor-form-dom textarea, #nabor-form-dom select').forEach(el => {
+    el.disabled = locked;
+  });
+  modal.querySelectorAll('.nabor-chip').forEach(el => {
+    el.style.pointerEvents = locked ? 'none' : '';
+    el.style.opacity = locked && !el.classList.contains('active') ? '0.5' : '';
+  });
+
+  // Toggle action buttons (signature buttons, save button, send-to-sign)
+  const saveBtn = modal.querySelector('.nabor-btn-save');
+  if (saveBtn) saveBtn.style.display = locked ? 'none' : '';
+  modal.querySelectorAll('[onclick*="openNaborSignature"], [onclick*="sendNaborForRemoteSign"], [onclick*="clearNaborSignature"]').forEach(btn => {
+    btn.style.display = locked ? 'none' : '';
+  });
+
+  // Show / hide the locked banner at the top of the modal
+  let banner = document.getElementById('nabor-locked-banner');
+  if (locked) {
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'nabor-locked-banner';
+      banner.className = 'nabor-locked-banner';
+      const header = modal.querySelector('.nabor-header') || modal.querySelector('.nabor-modal > div');
+      if (header && header.parentNode) header.parentNode.insertBefore(banner, header.nextSibling);
+    }
+    const rr = (p && p.nabor && p.nabor.remoteRequest) || {};
+    const dateStr = rr.signedAt ? new Date(rr.signedAt).toLocaleString('sk-SK', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+    const signer = rr.signedByName || rr.signerName || '';
+    banner.innerHTML =
+      '<div class="nlb-icon">🔒</div>' +
+      '<div class="nlb-text">' +
+        '<div class="nlb-title">Náborový list je podpísaný a uzamknutý</div>' +
+        '<div class="nlb-meta">' +
+          (signer ? 'Podpísal: <b>' + esc(signer) + '</b>' : '') +
+          (signer && dateStr ? ' · ' : '') +
+          (dateStr ? 'Dňa ' + dateStr : '') +
+        '</div>' +
+      '</div>';
+    banner.style.display = '';
+  } else if (banner) {
+    banner.style.display = 'none';
+  }
 }
 
 // ----- Náborák signatures -----
@@ -12603,7 +12716,7 @@ function closeRemoteSignLinkModal() {
 }
 
 // ── Quick send from Náborák ──
-function sendNaborForRemoteSign(role) {
+async function sendNaborForRemoteSign(role) {
   // Pull values from the active náborák form (byt or dom variant)
   const vlastnik = (document.getElementById('nb-vlastnik')?.value
                 || document.getElementById('nd-vlastnik1')?.value || '').trim();
@@ -12614,6 +12727,14 @@ function sendNaborForRemoteSign(role) {
   const ownerPhone = (document.getElementById('nb-tel-vlastnik')?.value
                   || document.getElementById('nd-tel-vlastnik')?.value || '').trim();
   const propertyId = document.getElementById('nabor-prop-id')?.value || null;
+
+  // Auto-save the current náborový list state so:
+  //  • the user doesn't lose what they typed if the modal closes
+  //  • _attachRemoteRequestToProperty has a real p.nabor record to attach to
+  //  • when the client signs, the signed PDF reflects the real form data
+  if (propertyId) {
+    try { await saveNabor(); } catch (e) { console.warn('Auto-save before send failed:', e); }
+  }
 
   // Open the unified composer directly — no intermediate "Nová žiadosť" form
   openEmailComposer({
@@ -13416,18 +13537,18 @@ async function _emailComposerPrepareForSend() {
 
 // Persist a remote-sign request on the property's nabor record.
 // Used to drive the deal-chip status (turns orange — "email sent, waiting").
+// Caller must ensure p.nabor exists (we don't create an empty stub here, as
+// that would wipe a future "Uložiť" snapshot — the user would re-open the
+// modal to find an empty form).
 function _attachRemoteRequestToProperty(propertyId, request) {
   const props = getProperties();
   const idx = props.findIndex(p => p.id === propertyId);
   if (idx === -1) return;
   if (!props[idx].nabor) {
-    // Initialise a minimal nabor record so the chip transitions correctly
-    props[idx].nabor = {
-      type: props[idx].type === 'dom' ? 'dom' : 'byt',
-      data: { fields: {}, chips: {} },
-      signatures: { seller: null, agent: null },
-      savedAt: new Date().toISOString(),
-    };
+    // Náborový list not saved yet — defer attaching; user will see the chip
+    // stay 'pending' until they save.
+    console.warn('[SecPro] Cannot attach remoteRequest — nabor not saved for', propertyId);
+    return;
   }
   props[idx].nabor.remoteRequest = request;
   saveProperties(props);
