@@ -12447,3 +12447,678 @@ function sendNaborForRemoteSign(role) {
   });
 }
 
+// ═══════════════════════════════════════════════════════════════
+//  EMAIL COMPOSER — prepare a ready-to-send email with signing link
+// ═══════════════════════════════════════════════════════════════
+
+// ── Gender detection from Slovak name ──
+// Reliable suffixes for Slovak women's surnames + small dictionary
+// of ambiguous first names. Returns 'F', 'M', or null (unknown).
+const _AMBIGUOUS_FEMALE_FIRST = new Set([
+  'andrea','bara','daniela','denisa','dominika','ela','emília','eva','gabriela',
+  'hana','iveta','jana','janka','júlia','julia','katarína','katarina','klára','klara',
+  'lenka','lucia','ľubica','lubica','magdaléna','magdalena','mária','maria','martina',
+  'michaela','monika','natália','natalia','nikola','petra','sandra','silvia','simona',
+  'soňa','sona','stela','tatiana','tereza','viera','viktória','viktoria','zuzana','zoe',
+  'alžbeta','alzbeta','alica','barbora','beáta','beata','dáša','dasa','dora','elena',
+  'erika','helena','irena','katka','kvetoslava','linda','marta','milena','natasha',
+  'natasa','nina','oľga','olga','renáta','renata','romana','ružena','ruzena','sára','sara',
+  'slávka','slavka','svetlana','táňa','tana','viola','vlasta','zita','žofia','zofia'
+]);
+const _AMBIGUOUS_MALE_FIRST = new Set([
+  'adam','adrián','adrian','aleš','ales','alexander','andrej','anton','arpád','arpad',
+  'boris','branislav','dalibor','daniel','david','dávid','denis','dominik','dušan','dusan',
+  'erik','filip','frantisek','františek','gabriel','gejza','imrich','ivan','jakub',
+  'ján','jan','jaroslav','jozef','juraj','karol','kristián','kristian','ladislav','lukáš',
+  'lukas','marek','marián','marian','martin','matej','matúš','matus','michal','milan',
+  'miloš','milos','miroslav','norbert','oliver','ondrej','pavol','peter','radoslav',
+  'rastislav','richard','robert','robo','roman','samuel','sebastián','sebastian','silvester',
+  'slavomír','slavomir','stanislav','stefan','štefan','tibor','tomáš','tomas','vladimír',
+  'vladimir','vincent','vladislav','zdeno','zoltán','zoltan'
+]);
+
+function detectGenderFromName(fullName) {
+  if (!fullName) return null;
+  const parts = String(fullName).trim().toLowerCase().split(/\s+/);
+  if (parts.length === 0) return null;
+
+  // 1) Last name with feminine Slovak suffix → very strong female signal
+  const last = parts[parts.length - 1];
+  if (/(ová|cká|ská|ňá|ská|žá|chá|řá)$/.test(last)) return 'F';
+  if (last.endsWith('ová')) return 'F';
+
+  // 2) Try first name dictionaries
+  const first = parts[0].replace(/[.,]/g, '');
+  if (_AMBIGUOUS_FEMALE_FIRST.has(first)) return 'F';
+  if (_AMBIGUOUS_MALE_FIRST.has(first)) return 'M';
+
+  // 3) Heuristic on first-name suffix (Slovak feminine endings)
+  if (/(a|ia|na|ka|la|ra|sa|ta|va|za|ša|ža)$/.test(first)) return 'F';
+
+  // 4) Default — assume male if surname doesn't have ová suffix
+  return 'M';
+}
+
+// Salutation helper — returns "pán" / "pani" or null
+function genderSalutation(g) {
+  if (g === 'F') return 'pani';
+  if (g === 'M') return 'pán';
+  return null;
+}
+
+// Formal honorific — gender-correct adjective + title
+function genderHonorific(g) {
+  if (g === 'F') return 'Vážená pani';
+  if (g === 'M') return 'Vážený pán';
+  return 'Vážený/á';
+}
+
+// Split full name into first / last (Slovak convention: "Krstné Priezvisko")
+function splitName(fullName) {
+  const parts = String(fullName || '').trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return { firstName: '', lastName: '' };
+  if (parts.length === 1) return { firstName: parts[0], lastName: '' };
+  return { firstName: parts[0], lastName: parts.slice(1).join(' ') };
+}
+
+// ── Built-in email templates: 4 doc types × 3 tonalities ──
+const EMAIL_TEMPLATES = {
+  nabor: {
+    label: 'Náborový list',
+    priatelsky: {
+      label: 'Priateľský',
+      subject: 'Náborový list k podpisu – {{property.address}}',
+      body:
+`Dobrý deň {{salutation}} {{client.lastName}},
+
+posielam Vám na elektronický podpis náborový list k nehnuteľnosti
+na adrese {{property.address}}.
+
+Odkaz Vás zavedie na zabezpečenú stránku SecPro, kde si môžete
+dokument prečítať a podpísať prstom alebo myšou. Žiadna registrácia
+nie je potrebná.
+
+👉 Otvoriť dokument na podpis:
+{{signing_link}}
+
+Odkaz je platný do {{expires_at}}.
+
+V prípade akýchkoľvek otázok ma neváhajte kontaktovať.
+
+S pozdravom,
+{{agent.signature}}`
+    },
+    formalny: {
+      label: 'Formálny',
+      subject: 'Náborový list na elektronický podpis – {{property.address}}',
+      body:
+`{{honorific}} {{client.lastName}},
+
+obraciam sa na Vás s prosbou o elektronický podpis náborového listu
+k nehnuteľnosti na adrese {{property.address}}.
+
+Pre podpis použite nasledujúci zabezpečený odkaz, ktorý Vás zavedie
+na stránku SecPro určenú na elektronické podpisovanie dokumentov:
+
+{{signing_link}}
+
+Platnosť odkazu: do {{expires_at}}.
+
+Som k dispozícii pre akékoľvek otázky alebo doplnenia.
+
+S úctou,
+{{agent.signature}}`
+    },
+    urgentny: {
+      label: 'Urgentný / pripomienka',
+      subject: 'Pripomienka: Náborový list čaká na Váš podpis – {{property.address}}',
+      body:
+`Dobrý deň {{salutation}} {{client.lastName}},
+
+dovoľte mi Vás zdvorilo upozorniť, že náborový list k nehnuteľnosti
+na adrese {{property.address}} ešte čaká na Váš elektronický podpis.
+
+👉 Podpísať teraz:
+{{signing_link}}
+
+Odkaz expiruje {{expires_at}} – po tomto čase budete potrebovať
+nový. Podpis trvá menej ako minútu.
+
+V prípade akýchkoľvek otázok ma neváhajte kontaktovať.
+
+S pozdravom,
+{{agent.signature}}`
+    }
+  },
+  sz: {
+    label: 'Sprostredkovateľská zmluva',
+    priatelsky: {
+      label: 'Priateľský',
+      subject: 'Sprostredkovateľská zmluva k podpisu – {{property.address}}',
+      body:
+`Dobrý deň {{salutation}} {{client.lastName}},
+
+posielam Vám na elektronický podpis sprostredkovateľskú zmluvu
+k nehnuteľnosti na adrese {{property.address}}.
+
+👉 Otvoriť dokument na podpis:
+{{signing_link}}
+
+Odkaz je platný do {{expires_at}}.
+
+V prípade otázok som k dispozícii.
+
+S pozdravom,
+{{agent.signature}}`
+    },
+    formalny: {
+      label: 'Formálny',
+      subject: 'Sprostredkovateľská zmluva – elektronický podpis',
+      body:
+`{{honorific}} {{client.lastName}},
+
+predkladám Vám na elektronický podpis sprostredkovateľskú zmluvu
+týkajúcu sa nehnuteľnosti na adrese {{property.address}}.
+
+Pre podpis prosím použite nasledujúci odkaz:
+{{signing_link}}
+
+Platnosť odkazu: do {{expires_at}}.
+
+S úctou,
+{{agent.signature}}`
+    },
+    urgentny: {
+      label: 'Urgentný',
+      subject: 'Pripomienka: Sprostredkovateľská zmluva – {{property.address}}',
+      body:
+`Dobrý deň {{salutation}} {{client.lastName}},
+
+sprostredkovateľská zmluva k nehnuteľnosti na adrese
+{{property.address}} ešte čaká na Váš podpis.
+
+👉 Podpísať: {{signing_link}}
+
+Odkaz expiruje {{expires_at}}.
+
+S pozdravom,
+{{agent.signature}}`
+    }
+  },
+  rezerv: {
+    label: 'Rezervačná zmluva',
+    priatelsky: {
+      label: 'Priateľský',
+      subject: 'Rezervačná zmluva – {{property.address}}',
+      body:
+`Dobrý deň {{salutation}} {{client.lastName}},
+
+posielam Vám rezervačnú zmluvu k nehnuteľnosti na adrese
+{{property.address}}. Po podpise zmluvy budete inštrukčne vyzvaní
+k úhrade rezervačného poplatku.
+
+👉 Podpísať zmluvu:
+{{signing_link}}
+
+Odkaz je platný do {{expires_at}}.
+
+V prípade otázok ma neváhajte kontaktovať.
+
+S pozdravom,
+{{agent.signature}}`
+    },
+    formalny: {
+      label: 'Formálny',
+      subject: 'Rezervačná zmluva na elektronický podpis – {{property.address}}',
+      body:
+`{{honorific}} {{client.lastName}},
+
+predkladám Vám na elektronický podpis rezervačnú zmluvu
+k nehnuteľnosti na adrese {{property.address}}.
+
+Pre podpis použite nasledujúci zabezpečený odkaz:
+{{signing_link}}
+
+Platnosť odkazu: do {{expires_at}}.
+
+Po obojstrannom podpise Vás budem informovať o ďalších krokoch
+k úhrade rezervačného poplatku.
+
+S úctou,
+{{agent.signature}}`
+    },
+    urgentny: {
+      label: 'Urgentný',
+      subject: 'URGENTNÉ: Rezervačná zmluva čaká na podpis',
+      body:
+`Dobrý deň {{salutation}} {{client.lastName}},
+
+rezervačná zmluva k nehnuteľnosti na adrese {{property.address}}
+ešte čaká na Váš elektronický podpis. Bez podpisu nemôžeme rezerváciu
+finalizovať a riskujeme stratu nehnuteľnosti pre iného záujemcu.
+
+👉 Podpísať teraz:
+{{signing_link}}
+
+Odkaz expiruje {{expires_at}}.
+
+S pozdravom,
+{{agent.signature}}`
+    }
+  },
+  kupna: {
+    label: 'Kúpna zmluva',
+    priatelsky: {
+      label: 'Priateľský',
+      subject: 'Kúpna zmluva – {{property.address}}',
+      body:
+`Dobrý deň {{salutation}} {{client.lastName}},
+
+posielam Vám na elektronický podpis kúpnu zmluvu k nehnuteľnosti
+na adrese {{property.address}}.
+
+👉 Otvoriť na podpis:
+{{signing_link}}
+
+Odkaz je platný do {{expires_at}}.
+
+S pozdravom,
+{{agent.signature}}`
+    },
+    formalny: {
+      label: 'Formálny',
+      subject: 'Kúpna zmluva na elektronický podpis – {{property.address}}',
+      body:
+`{{honorific}} {{client.lastName}},
+
+predkladám Vám na elektronický podpis kúpnu zmluvu
+k nehnuteľnosti na adrese {{property.address}}.
+
+Prosím podpíšte zmluvu prostredníctvom nasledujúceho zabezpečeného
+odkazu:
+
+{{signing_link}}
+
+Platnosť odkazu: do {{expires_at}}.
+
+S úctou,
+{{agent.signature}}`
+    },
+    urgentny: {
+      label: 'Urgentný',
+      subject: 'Pripomienka: Kúpna zmluva čaká na podpis',
+      body:
+`Dobrý deň {{salutation}} {{client.lastName}},
+
+kúpna zmluva k nehnuteľnosti na adrese {{property.address}}
+ešte čaká na Váš elektronický podpis.
+
+👉 Podpísať: {{signing_link}}
+
+Odkaz expiruje {{expires_at}}.
+
+S pozdravom,
+{{agent.signature}}`
+    }
+  },
+  faktura: {
+    label: 'Faktúra / Fakturácia',
+    priatelsky: {
+      label: 'Priateľský',
+      subject: 'Faktúra k úhrade – {{property.address}}',
+      body:
+`Dobrý deň {{salutation}} {{client.lastName}},
+
+posielam Vám faktúru k nehnuteľnosti na adrese {{property.address}}.
+
+V prípade otázok ma neváhajte kontaktovať.
+
+S pozdravom,
+{{agent.signature}}`
+    },
+    formalny: {
+      label: 'Formálny',
+      subject: 'Faktúra – {{property.address}}',
+      body:
+`{{honorific}} {{client.lastName}},
+
+zasielam Vám faktúru týkajúcu sa nehnuteľnosti na adrese
+{{property.address}}.
+
+S úctou,
+{{agent.signature}}`
+    },
+    urgentny: {
+      label: 'Urgentný / pripomienka úhrady',
+      subject: 'Pripomienka úhrady faktúry – {{property.address}}',
+      body:
+`Dobrý deň {{salutation}} {{client.lastName}},
+
+dovoľte mi Vás zdvorilo upozorniť, že faktúra k nehnuteľnosti
+na adrese {{property.address}} ešte čaká na úhradu.
+
+V prípade, že úhrada už prebehla, prosím ignorujte túto správu.
+
+S pozdravom,
+{{agent.signature}}`
+    }
+  }
+};
+
+// Build agent's plain-text signature from profile fields
+function buildAgentSignature() {
+  const p = (typeof getProfile === 'function') ? getProfile() : {};
+  const lines = [];
+  if (p.name) lines.push(p.name);
+  const titleLine = [p.title || '', p.company || ''].filter(Boolean).join(' | ');
+  if (titleLine) lines.push(titleLine);
+  if (p.phone) lines.push('📞 ' + p.phone);
+  if (p.email) lines.push('✉️ ' + p.email);
+  if (p.website) lines.push('🌐 ' + p.website.replace(/^https?:\/\//, ''));
+  return lines.join('\n');
+}
+
+// Check if profile has all the fields needed for a credible email signature.
+// Returns { ok, missing: [], optional: [] }
+function checkProfileCompleteness() {
+  const p = (typeof getProfile === 'function') ? getProfile() : {};
+  const requiredFields = [
+    { key: 'name',  label: 'Meno' },
+    { key: 'email', label: 'Email' },
+  ];
+  const recommendedFields = [
+    { key: 'phone',   label: 'Telefón' },
+    { key: 'title',   label: 'Pozícia (napr. Realitný maklér)' },
+    { key: 'company', label: 'Agentúra / firma' },
+  ];
+  const missing = requiredFields.filter(f => !p[f.key] || !String(p[f.key]).trim());
+  const optional = recommendedFields.filter(f => !p[f.key] || !String(p[f.key]).trim());
+  return { ok: missing.length === 0, missing, optional, profile: p };
+}
+
+// Replace {{tokens}} in a template
+function _renderTemplate(tpl, ctx) {
+  return tpl.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_, key) => {
+    const parts = key.split('.');
+    let v = ctx;
+    for (const p of parts) {
+      if (v == null) return '';
+      v = v[p];
+    }
+    return v == null ? '' : String(v);
+  });
+}
+
+// Module state for the open email composer
+let _emailComposerCtx = null;
+
+// Open the email composer for a remote-sign request that was just created.
+// opts: { signerName, signerEmail, documentRef, documentType, signUrl, expiresAt, propertyId? }
+function openEmailComposer(opts) {
+  // Profile completeness check
+  const check = checkProfileCompleteness();
+  if (!check.ok) {
+    _showProfileIncompleteWarning(check, () => openEmailComposer(opts));
+    return;
+  }
+
+  const { firstName, lastName } = splitName(opts.signerName || '');
+  const gender = detectGenderFromName(opts.signerName || '');
+  const expiresStr = opts.expiresAt
+    ? new Date(opts.expiresAt).toLocaleString('sk-SK', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : '—';
+  const profile = check.profile || {};
+
+  _emailComposerCtx = {
+    docType: opts.documentType || 'nabor',
+    tonality: 'priatelsky',
+    detectedGender: gender,    // 'M' | 'F' | null
+    overrideGender: null,      // user's manual override
+    propertyAddress: opts.documentRef ? opts.documentRef.replace(/^.+? – /, '') : '',
+    documentRef: opts.documentRef,
+    signUrl: opts.signUrl,
+    expiresAt: opts.expiresAt,
+    expiresStr,
+    client: {
+      firstName,
+      lastName: lastName || firstName,
+      fullName: opts.signerName,
+      email: opts.signerEmail || '',
+    },
+    agent: {
+      name: profile.name || '',
+      email: profile.email || '',
+      phone: profile.phone || '',
+      signature: buildAgentSignature(),
+    },
+  };
+
+  // Populate UI
+  _renderEmailComposerTonalityPills();
+  _renderEmailComposerGenderToggle();
+  _renderEmailComposerPreview();
+
+  document.getElementById('email-composer-to').value = opts.signerEmail || '';
+  document.getElementById('email-composer-modal').style.display = 'flex';
+}
+
+function closeEmailComposer() {
+  document.getElementById('email-composer-modal').style.display = 'none';
+  _emailComposerCtx = null;
+}
+
+function _showProfileIncompleteWarning(check, onContinue) {
+  const list = (arr, css) => arr.map(f => `<li style="${css}">${f.label}</li>`).join('');
+  const required = check.missing.length
+    ? `<div style="margin-bottom:0.5rem;"><b style="color:#B91C1C;">Chýbajúce povinné polia:</b><ul style="margin:0.3rem 0 0 1.2rem;">${list(check.missing, 'color:#B91C1C;')}</ul></div>`
+    : '';
+  const optional = check.optional.length
+    ? `<div><b style="color:#92400E;">Odporúčané polia (pre kompletný podpis):</b><ul style="margin:0.3rem 0 0 1.2rem;">${list(check.optional, 'color:#92400E;')}</ul></div>`
+    : '';
+  const html = (required + optional) || '<div>Profil je kompletný.</div>';
+
+  const overlay = document.createElement('div');
+  overlay.className = 'sec-confirm-overlay sec-confirm-visible';
+  overlay.innerHTML =
+    `<div class="sec-confirm-box" style="max-width:480px;">
+      <div class="sec-confirm-header sec-type-warning">
+        <div class="sec-confirm-icon"><svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+        <div class="sec-confirm-title">Neúplný profil maklera</div>
+      </div>
+      <div class="sec-confirm-body">
+        <div class="sec-confirm-message" style="text-align:left;">${html}</div>
+      </div>
+      <div class="sec-confirm-footer" style="gap:6px;">
+        <button class="sec-confirm-btn sec-confirm-cancel">Pokračovať aj tak</button>
+        <button class="sec-confirm-btn sec-confirm-ok sec-btn-warning">Doplniť profil</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  const okBtn = overlay.querySelector('.sec-confirm-ok');
+  const cancelBtn = overlay.querySelector('.sec-confirm-cancel');
+  okBtn.addEventListener('click', () => { overlay.remove(); if (typeof openProfileModal === 'function') openProfileModal(); });
+  cancelBtn.addEventListener('click', () => {
+    overlay.remove();
+    // Allow continuation even with incomplete profile (only if required fields missing, skip the warning gate)
+    // Force re-open by stubbing checkProfileCompleteness to ok
+    const orig = checkProfileCompleteness;
+    window.checkProfileCompleteness = () => ({ ok: true, missing: [], optional: [], profile: orig().profile });
+    onContinue();
+    window.checkProfileCompleteness = orig;
+  });
+}
+
+function _renderEmailComposerTonalityPills() {
+  const wrap = document.getElementById('email-composer-tonality');
+  if (!wrap) return;
+  const tpls = EMAIL_TEMPLATES[_emailComposerCtx.docType] || EMAIL_TEMPLATES.nabor;
+  const keys = ['priatelsky', 'formalny', 'urgentny'];
+  wrap.innerHTML = keys.map(k => {
+    const tpl = tpls[k];
+    const active = _emailComposerCtx.tonality === k;
+    return `<button class="email-tonality-pill ${active ? 'active' : ''}" onclick="setEmailComposerTonality('${k}')">${tpl.label}</button>`;
+  }).join('');
+}
+
+function setEmailComposerTonality(t) {
+  if (!_emailComposerCtx) return;
+  _emailComposerCtx.tonality = t;
+  _renderEmailComposerTonalityPills();
+  _renderEmailComposerPreview();
+}
+
+function _renderEmailComposerGenderToggle() {
+  const wrap = document.getElementById('email-composer-gender');
+  if (!wrap) return;
+  const eff = _emailComposerCtx.overrideGender || _emailComposerCtx.detectedGender;
+  const detectedLabel = _emailComposerCtx.detectedGender
+    ? (_emailComposerCtx.detectedGender === 'F' ? 'pani' : 'pán')
+    : 'neznáme';
+  wrap.innerHTML = `
+    <span style="font-size:0.78rem;color:var(--text-light);">Oslovenie:</span>
+    <button class="email-gender-pill ${eff === 'M' ? 'active' : ''}" onclick="setEmailComposerGender('M')">pán</button>
+    <button class="email-gender-pill ${eff === 'F' ? 'active' : ''}" onclick="setEmailComposerGender('F')">pani</button>
+    <span style="font-size:0.7rem;color:var(--text-light);font-style:italic;">(detekované: ${detectedLabel})</span>
+  `;
+}
+
+function setEmailComposerGender(g) {
+  if (!_emailComposerCtx) return;
+  _emailComposerCtx.overrideGender = g;
+  _renderEmailComposerGenderToggle();
+  _renderEmailComposerPreview();
+}
+
+function _renderEmailComposerPreview() {
+  if (!_emailComposerCtx) return;
+  const ctx = _emailComposerCtx;
+  const tpls = EMAIL_TEMPLATES[ctx.docType] || EMAIL_TEMPLATES.nabor;
+  const tpl = tpls[ctx.tonality] || tpls.priatelsky;
+
+  const eff = ctx.overrideGender || ctx.detectedGender;
+  const salutation = genderSalutation(eff) || '';
+  const honorific = genderHonorific(eff);
+
+  const renderCtx = {
+    salutation,
+    honorific,
+    client: ctx.client,
+    property: { address: ctx.propertyAddress },
+    signing_link: ctx.signUrl,
+    expires_at: ctx.expiresStr,
+    agent: { signature: ctx.agent.signature },
+  };
+
+  const subj = _renderTemplate(tpl.subject, renderCtx);
+  const body = _renderTemplate(tpl.body, renderCtx);
+
+  document.getElementById('email-composer-subject').value = subj;
+  document.getElementById('email-composer-body').value = body;
+}
+
+// Build mailto: URL — used as fallback for "Bežný email klient"
+function _buildMailto() {
+  const to = document.getElementById('email-composer-to').value;
+  const subj = document.getElementById('email-composer-subject').value;
+  const body = document.getElementById('email-composer-body').value;
+  return 'mailto:' + encodeURIComponent(to)
+    + '?subject=' + encodeURIComponent(subj)
+    + '&body=' + encodeURIComponent(body);
+}
+
+function emailComposerOpenInGmail() {
+  const to = document.getElementById('email-composer-to').value;
+  const subj = document.getElementById('email-composer-subject').value;
+  const body = document.getElementById('email-composer-body').value;
+  const url = 'https://mail.google.com/mail/?view=cm&fs=1'
+    + '&to=' + encodeURIComponent(to)
+    + '&su=' + encodeURIComponent(subj)
+    + '&body=' + encodeURIComponent(body);
+  window.open(url, '_blank');
+  _rememberEmailSendChannel('gmail');
+}
+function emailComposerOpenInOutlook() {
+  const to = document.getElementById('email-composer-to').value;
+  const subj = document.getElementById('email-composer-subject').value;
+  const body = document.getElementById('email-composer-body').value;
+  const url = 'https://outlook.live.com/mail/0/deeplink/compose?'
+    + 'to=' + encodeURIComponent(to)
+    + '&subject=' + encodeURIComponent(subj)
+    + '&body=' + encodeURIComponent(body);
+  window.open(url, '_blank');
+  _rememberEmailSendChannel('outlook');
+}
+function emailComposerOpenInMailto() {
+  window.location.href = _buildMailto();
+  _rememberEmailSendChannel('mailto');
+}
+function emailComposerOpenInWhatsApp() {
+  if (!_emailComposerCtx) return;
+  const subj = document.getElementById('email-composer-subject').value;
+  const body = document.getElementById('email-composer-body').value;
+  const phone = (_emailComposerCtx.client && _emailComposerCtx.client.phone) || '';
+  // WhatsApp short version — focus on the link
+  const text = subj + '\n\n' + body;
+  const url = phone
+    ? 'https://wa.me/' + encodeURIComponent(phone.replace(/\s/g, '')) + '?text=' + encodeURIComponent(text)
+    : 'https://wa.me/?text=' + encodeURIComponent(text);
+  window.open(url, '_blank');
+  _rememberEmailSendChannel('whatsapp');
+}
+function emailComposerCopy() {
+  const to = document.getElementById('email-composer-to').value;
+  const subj = document.getElementById('email-composer-subject').value;
+  const body = document.getElementById('email-composer-body').value;
+  const text = (to ? 'Komu: ' + to + '\n' : '') + 'Predmet: ' + subj + '\n\n' + body;
+  if (typeof copyText === 'function') copyText(text);
+  _rememberEmailSendChannel('copy');
+}
+function _rememberEmailSendChannel(ch) {
+  try { localStorage.setItem('secpro_pref_email_channel', ch); } catch (e) {}
+}
+function _getPreferredEmailChannel() {
+  try { return localStorage.getItem('secpro_pref_email_channel'); } catch (e) { return null; }
+}
+
+// Bridge — when user finished creating a sign request, click "📧 Pripraviť email"
+// in the link modal to open the composer using the freshly-prepared link.
+function openEmailComposerFromLinkModal() {
+  const signUrl = document.getElementById('rs-link-url').value;
+  if (!signUrl) return;
+
+  // Pull the data we just submitted so we know the doc type, signer name etc.
+  // The form values are still in the (now-hidden) creation modal.
+  const docType = document.getElementById('rs-doc-type')?.value || 'nabor';
+  const docDetail = (document.getElementById('rs-doc-detail')?.value || '').trim();
+  const signerName = (document.getElementById('rs-signer-name')?.value || '').trim();
+  const signerEmail = (document.getElementById('rs-signer-email')?.value || '').trim();
+  // Try to pull email from the property if linked (e.g. nabor → owner email)
+  let resolvedEmail = signerEmail;
+  if (!resolvedEmail) {
+    resolvedEmail = (document.getElementById('nb-email-vlastnik')?.value
+                  || document.getElementById('nd-email-vlastnik')?.value || '').trim();
+  }
+  // Parse expiry from the rendered "Platnosť do: ..." string
+  const expiresRaw = document.getElementById('rs-link-expires')?.textContent || '';
+  // Compute expires ISO from select if available
+  const hours = parseInt(document.getElementById('rs-expires-select')?.value || '48');
+  const expiresAt = new Date(Date.now() + hours * 3600 * 1000).toISOString();
+
+  // Build doc reference for email subject (auto from defaults)
+  const docDef = (typeof RS_DOC_DEFAULTS !== 'undefined' && RS_DOC_DEFAULTS[docType])
+    ? RS_DOC_DEFAULTS[docType] : { prefix: 'Dokument' };
+  const documentRef = docDetail ? docDef.prefix + ' – ' + docDetail : docDef.prefix;
+
+  // Close the link modal and open the email composer
+  closeRemoteSignLinkModal();
+  openEmailComposer({
+    documentType: docType,
+    documentRef,
+    signerName,
+    signerEmail: resolvedEmail,
+    signUrl,
+    expiresAt,
+  });
+}
+

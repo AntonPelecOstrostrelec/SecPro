@@ -30,8 +30,10 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: 'Chýba documentType, documentRef alebo signerName' });
   }
 
-  // Generate unique token
-  const token = crypto.randomBytes(24).toString('hex'); // 48 chars
+  // Generate a short URL-safe token (~16 chars, ~95 bits of entropy).
+  // Use base64url so the link looks cleaner: /podpis/Nx7Qr2pK8vM3aBcD
+  const token = crypto.randomBytes(12).toString('base64')
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
   const expiresIn = Math.min((expiresInHours || 48), 168) * 3600; // max 7 days
   const now = new Date().toISOString();
   const expiresAt = new Date(Date.now() + expiresIn * 1000).toISOString();
@@ -73,7 +75,7 @@ module.exports = async (req, res) => {
   // Build the signing URL
   const host = req.headers['x-forwarded-host'] || req.headers.host || 'secpro-app.vercel.app';
   const protocol = host.includes('localhost') ? 'http' : 'https';
-  const signUrl = `${protocol}://${host}/sign.html?token=${token}`;
+  const signUrl = `${protocol}://${host}/podpis/${token}`;
 
   return res.status(200).json({
     ok: true,

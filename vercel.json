@@ -1,6 +1,9 @@
 {
   "framework": null,
   "outputDirectory": "public",
+  "rewrites": [
+    { "source": "/podpis/:token", "destination": "/sign.html?token=:token" }
+  ],
   "headers": [
     {
       "source": "/(.*).html",

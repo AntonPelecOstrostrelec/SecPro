@@ -2586,13 +2586,72 @@
       <div style="background:#fff;border-radius:16px;max-width:480px;margin:auto;box-shadow:0 12px 40px rgba(0,0,0,.15);text-align:center;padding:2rem;">
         <div style="font-size:3rem;margin-bottom:1rem;">🔗</div>
         <h3 style="margin:0 0 0.5rem;font-size:1.1rem;color:var(--dark);">Link na podpis je pripravený!</h3>
-        <p style="font-size:0.82rem;color:var(--text-light);margin-bottom:1rem;">Skopírujte link a pošlite ho klientovi cez SMS, email alebo WhatsApp.</p>
+        <p style="font-size:0.82rem;color:var(--text-light);margin-bottom:1rem;">Pripravte hotový email klientovi alebo si link skopírujte.</p>
         <input type="text" id="rs-link-url" class="form-input" readonly style="text-align:center;font-size:0.82rem;margin-bottom:0.75rem;background:#f8f9fa;cursor:pointer;" onclick="this.select()">
         <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
-          <button class="action-btn" onclick="copyRemoteSignLink()" id="rs-copy-btn" style="font-size:0.82rem;padding:8px 20px;">Kopírovať link</button>
+          <button class="action-btn" onclick="openEmailComposerFromLinkModal()" style="font-size:0.82rem;padding:8px 20px;">📧 Pripraviť email</button>
+          <button class="action-btn secondary" onclick="copyRemoteSignLink()" id="rs-copy-btn" style="font-size:0.82rem;padding:8px 20px;">Kopírovať link</button>
           <button class="action-btn secondary" onclick="closeRemoteSignLinkModal()" style="font-size:0.82rem;padding:8px 20px;">Zavrieť</button>
         </div>
         <p style="font-size:0.75rem;color:var(--text-light);margin-top:1rem;" id="rs-link-expires"></p>
+      </div>
+    </div>
+
+    <!-- EMAIL COMPOSER MODAL -->
+    <div id="email-composer-modal" style="display:none;position:fixed;inset:0;z-index:16000;background:rgba(0,0,0,.5);align-items:flex-start;justify-content:center;padding:1.5rem 1rem;overflow-y:auto;">
+      <div style="background:#fff;border-radius:14px;max-width:680px;width:100%;box-shadow:0 12px 40px rgba(0,0,0,.18);overflow:hidden;">
+        <div style="background:linear-gradient(135deg,#0b2a3c,#1a5276);padding:1rem 1.25rem;color:#fff;display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <h3 style="margin:0;font-size:1.05rem;">📧 Pripraviť email klientovi</h3>
+            <p style="margin:2px 0 0;font-size:0.78rem;opacity:.85;">Predmet aj telo sa pripravia automaticky z Vášho profilu.</p>
+          </div>
+          <button onclick="closeEmailComposer()" style="background:none;border:none;color:#fff;cursor:pointer;font-size:1.5rem;line-height:1;">&times;</button>
+        </div>
+        <div style="padding:1.1rem 1.25rem;">
+          <!-- Tonality pills -->
+          <div style="margin-bottom:0.6rem;">
+            <label class="form-label" style="margin-bottom:0.35rem;">Šablóna / tonalita</label>
+            <div id="email-composer-tonality" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+          </div>
+
+          <!-- Gender toggle -->
+          <div id="email-composer-gender" style="display:flex;align-items:center;gap:8px;margin-bottom:0.85rem;flex-wrap:wrap;"></div>
+
+          <!-- Recipient -->
+          <label class="form-label">Komu</label>
+          <input type="email" id="email-composer-to" class="form-input" placeholder="email@klienta.sk" style="margin-bottom:0.65rem;">
+
+          <!-- Subject -->
+          <label class="form-label">Predmet</label>
+          <input type="text" id="email-composer-subject" class="form-input" style="margin-bottom:0.65rem;">
+
+          <!-- Body -->
+          <label class="form-label">Telo emailu</label>
+          <textarea id="email-composer-body" class="form-input" rows="11" style="font-family:inherit;line-height:1.55;resize:vertical;"></textarea>
+
+          <p style="font-size:0.72rem;color:var(--text-light);margin-top:0.5rem;font-style:italic;">
+            💡 Telo je upraviteľné. Po kliknutí na tlačidlo sa otvorí Váš email s predvyplnenými údajmi — stačí potvrdiť odoslanie.
+          </p>
+
+          <!-- Send buttons -->
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:0.85rem;">
+            <button class="email-send-btn email-send-gmail" onclick="emailComposerOpenInGmail()" title="Otvoriť v Gmail">
+              <span>📧 Gmail</span>
+            </button>
+            <button class="email-send-btn email-send-outlook" onclick="emailComposerOpenInOutlook()" title="Otvoriť v Outlook">
+              <span>📧 Outlook</span>
+            </button>
+            <button class="email-send-btn email-send-mailto" onclick="emailComposerOpenInMailto()" title="Bežný email klient (Apple Mail / Thunderbird)">
+              <span>✉️ Bežný klient</span>
+            </button>
+            <button class="email-send-btn email-send-whatsapp" onclick="emailComposerOpenInWhatsApp()" title="Poslať cez WhatsApp">
+              <span>📱 WhatsApp</span>
+            </button>
+            <button class="email-send-btn email-send-copy" onclick="emailComposerCopy()" title="Skopírovať do schránky">
+              <span>📋 Skopírovať</span>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
