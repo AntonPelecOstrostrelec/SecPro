@@ -5138,86 +5138,117 @@ function closeNaborModal() {
 }
 
 // Switch the náborový list modal between editable and read-only mode.
-// Read-only mode kicks in once the client has signed remotely — the document
-// is legally finalised and editing it would invalidate the signed copy.
 //
-// In locked mode we don't show the form / preview / signature panels at all
-// (per user feedback: "stačí, keď sa tam zobrazí, len tá horná lišta") —
-// instead we render a clean centered "✓ Podpísaný náborový list" view with
-// signer info + Stiahnuť PDF action.
+// In locked mode (client has signed remotely) the form-side is hidden but the
+// preview-side stays visible — at full width — so the agent can browse the
+// entire signed document. A green PODPÍSANÝ ribbon is rendered on top, and
+// the signature image is appended at the bottom of the preview content.
 function _applyNaborLockState(p) {
   const modal = document.getElementById('naborModal');
   if (!modal) return;
   const locked = !!(p && isNaborClientSigned(p));
   modal.classList.toggle('nabor-locked', locked);
 
-  // Hide / show the editable parts of the modal
-  const splitPane = modal.querySelector('.nabor-split');
+  // Hide form-side (the editable column); preview-side takes full width
+  // because flexbox redistributes when the sibling has display:none.
+  const formSide = modal.querySelector('.nabor-form-side');
   const sigBlock = document.getElementById('nabor-sig-block');
-  if (splitPane) splitPane.style.display = locked ? 'none' : '';
+  if (formSide) formSide.style.display = locked ? 'none' : '';
   if (sigBlock) sigBlock.style.display = locked ? 'none' : '';
 
-  // Hide / show footer buttons appropriately
+  // Save button hidden in locked mode (cannot save a finalised document)
   const saveBtn = modal.querySelector('.nabor-btn-save');
   if (saveBtn) saveBtn.style.display = locked ? 'none' : '';
 
-  // Update the PDF button label depending on lock state
+  // PDF button: "Generovať PDF" → "Stiahnuť PDF" once finalised
   const pdfBtn = modal.querySelector('.nabor-btn-pdf');
   if (pdfBtn) {
-    const labelSpan = pdfBtn.querySelector('span > span:last-child') || pdfBtn.querySelector('span');
-    // Just rewrite full inner HTML — keep the icon, change the text
     pdfBtn.innerHTML = locked
       ? '<span style="display:inline-flex;align-items:center;gap:0.4rem;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Stiahnuť PDF</span>'
       : '<span style="display:inline-flex;align-items:center;gap:0.4rem;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Generovať PDF</span>';
   }
 
-  // Render the big "Podpísaný náborový list" signed-view inside the modal body
-  let signedView = document.getElementById('nabor-signed-view');
-  if (locked) {
-    if (!signedView) {
-      signedView = document.createElement('div');
-      signedView.id = 'nabor-signed-view';
-      signedView.className = 'nabor-signed-view';
-      // Insert before the split pane (which is now hidden) so it sits in the
-      // same position the form normally occupies.
-      if (splitPane && splitPane.parentNode) {
-        splitPane.parentNode.insertBefore(signedView, splitPane);
-      }
+  // Replace the small "Náhľad dokumentu" header with a big green PODPÍSANÝ
+  // ribbon while locked — same position, much more presence.
+  const previewHeader = modal.querySelector('.nabor-preview-header');
+  if (previewHeader) previewHeader.style.display = locked ? 'none' : '';
+
+  let ribbon = document.getElementById('nabor-locked-ribbon');
+  const previewSide = modal.querySelector('.nabor-preview-side');
+  if (locked && previewSide) {
+    if (!ribbon) {
+      ribbon = document.createElement('div');
+      ribbon.id = 'nabor-locked-ribbon';
+      ribbon.className = 'nabor-locked-ribbon';
+      previewSide.insertBefore(ribbon, previewSide.firstChild);
     }
     const rr = (p && p.nabor && p.nabor.remoteRequest) || {};
     const dateStr = rr.signedAt
       ? new Date(rr.signedAt).toLocaleString('sk-SK', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
       : '';
     const signer = rr.signedByName || rr.signerName || '';
-    const sigImg = rr.signedSignatureDataUrl
-      ? `<div class="nsv-sig"><img src="${rr.signedSignatureDataUrl}" alt="Podpis"/></div>`
-      : '';
-    const addressLine = (p && p.address) ? esc((p.address || '') + (p.city ? ', ' + p.city : '')) : '';
-    signedView.innerHTML =
-      '<div class="nsv-head">' +
-        '<div class="nsv-badge">' +
-          '<span class="nsv-check">✓</span>' +
-          '<span>PODPÍSANÝ NÁBOROVÝ LIST</span>' +
-        '</div>' +
-        (dateStr ? '<div class="nsv-date">' + esc(dateStr) + '</div>' : '') +
+    ribbon.innerHTML =
+      '<div class="nlr-badge">' +
+        '<span class="nlr-check">✓</span>' +
+        '<span>PODPÍSANÝ NÁBOROVÝ LIST</span>' +
       '</div>' +
-      '<div class="nsv-body">' +
-        (addressLine ? '<div class="nsv-row"><span class="nsv-label">Nehnuteľnosť</span><span class="nsv-value">' + addressLine + '</span></div>' : '') +
-        (signer ? '<div class="nsv-row"><span class="nsv-label">Podpísal</span><span class="nsv-value">' + esc(signer) + '</span></div>' : '') +
-        sigImg +
-      '</div>' +
-      '<div class="nsv-note">' +
-        '🔒 Tento dokument je podpísaný klientom a je uzamknutý. ' +
-        'Pre archiváciu si stiahnite finálne PDF.' +
+      '<div class="nlr-meta">' +
+        (signer ? '<span class="nlr-signer">' + esc(signer) + '</span>' : '') +
+        (signer && dateStr ? '<span class="nlr-sep">·</span>' : '') +
+        (dateStr ? '<span class="nlr-date">' + esc(dateStr) + '</span>' : '') +
       '</div>';
-    signedView.style.display = '';
-  } else if (signedView) {
-    signedView.style.display = 'none';
+    ribbon.style.display = '';
+  } else if (ribbon) {
+    ribbon.style.display = 'none';
   }
 
-  // Hide the small locked banner on lock — the signed-view above conveys it
-  const banner = document.getElementById('nabor-locked-banner');
-  if (banner) banner.style.display = 'none';
+  // Inject the signature image at the bottom of the rendered preview content.
+  // The preview is regenerated by _doNaborPreview() — we wait a tick to make
+  // sure that has run before appending.
+  if (locked) {
+    setTimeout(() => _appendSignatureToPreview(p), 120);
+  } else {
+    // Remove signature-block if it was injected previously
+    const block = document.querySelector('#naborPreviewContent .np-signature-block');
+    if (block) block.remove();
+  }
+
+  // Old signed-view + locked banner are no longer used
+  const oldSignedView = document.getElementById('nabor-signed-view');
+  if (oldSignedView) oldSignedView.style.display = 'none';
+  const oldBanner = document.getElementById('nabor-locked-banner');
+  if (oldBanner) oldBanner.style.display = 'none';
+}
+
+// Append a signature panel inside the rendered náborák preview (#naborPreviewContent)
+// so that the agent sees the actual signed document, not just a summary.
+function _appendSignatureToPreview(p) {
+  const content = document.getElementById('naborPreviewContent');
+  if (!content) return;
+  const rr = p && p.nabor && p.nabor.remoteRequest;
+  if (!rr || !rr.signedSignatureDataUrl) return;
+
+  // Remove any previous block so re-renders don't duplicate
+  const existing = content.querySelector('.np-signature-block');
+  if (existing) existing.remove();
+
+  const block = document.createElement('div');
+  block.className = 'np-signature-block';
+  const dateStr = rr.signedAt
+    ? new Date(rr.signedAt).toLocaleString('sk-SK', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : '';
+  const signer = rr.signedByName || rr.signerName || '';
+  block.innerHTML =
+    '<div class="np-sig-title">PODPISY</div>' +
+    '<div class="np-sig-row">' +
+      '<div class="np-sig-col">' +
+        '<img src="' + rr.signedSignatureDataUrl + '" class="np-sig-img" alt="Podpis predávajúceho"/>' +
+        '<div class="np-sig-line"></div>' +
+        '<div class="np-sig-name">' + (signer ? esc(signer) : '') + '</div>' +
+        '<div class="np-sig-role">Predávajúci · ' + esc(dateStr) + '</div>' +
+      '</div>' +
+    '</div>';
+  content.appendChild(block);
 }
 
 // ----- Náborák signatures -----
