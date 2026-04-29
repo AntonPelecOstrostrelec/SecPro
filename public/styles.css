@@ -1447,8 +1447,37 @@
       box-shadow: 0 4px 10px rgba(20, 83, 45, 0.3);
     }
 
-    /* Green PODPÍSANÝ ribbon — replaces the "Náhľad dokumentu" header on
-       top of the preview side when the náborový list is locked. */
+    /* Native-PDF viewer shown in locked-mode náborový list modal.
+       The actual PDF (same one that downloads) is embedded in an iframe
+       so the agent sees exactly what would be printed, with all sections,
+       embedded signatures, and SecPro's footer line. */
+    .nabor-pdf-viewer {
+      display: flex;
+      flex-direction: column;
+      background: #fff;
+      min-height: 0;
+    }
+    .nabor-pdf-frame {
+      flex: 1;
+      width: 100%;
+      height: calc(100vh - 200px);
+      min-height: 500px;
+      border: none;
+      background: #525659; /* match Chrome's PDF viewer chrome */
+    }
+    .nabor-pdf-loading {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 320px;
+      color: #64748B;
+      font-size: 0.9rem;
+      font-style: italic;
+      background: linear-gradient(135deg, #FAFBFC 0%, #F5F7FA 100%);
+    }
+
+    /* Green PODPÍSANÝ ribbon — used at the top of the locked PDF viewer */
     .nabor-locked-ribbon {
       display: flex;
       align-items: center;

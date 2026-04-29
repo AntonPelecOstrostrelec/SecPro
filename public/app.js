@@ -3351,48 +3351,8 @@ function getDealsRowHtml(p) {
   // Note: previously a row of 5 always-visible status chips lived here.
   // Replaced with the card list above + a [+] add-menu in the header so the
   // section only shows what the agent has actually started working on.
-
-  // Signed-document card — shown ONLY when the client really signed remotely.
-  // (Local seller-only signatures from agent's test draws are excluded.)
-  // Acts as a "completed certificate" — agent's primary view of the finished
-  // document on the property card.
-  let signedBanner = '';
-  if (isNaborClientSigned(p)) {
-    const rr = p.nabor.remoteRequest || {};
-    const signedDate = rr.signedAt
-      ? new Date(rr.signedAt).toLocaleString('sk-SK', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-      : '';
-    const signedBy = rr.signedByName || rr.signerName || '';
-    const sigImg = rr.signedSignatureDataUrl
-      ? `<div class="signed-card-sig"><img src="${rr.signedSignatureDataUrl}" alt="Podpis" /></div>`
-      : '<div class="signed-card-sig signed-card-sig-loading">Načítavam podpis...</div>';
-    signedBanner = `<div class="signed-card">
-      <div class="signed-card-head">
-        <div class="signed-card-badge">
-          <span class="scb-icon">✓</span>
-          <span class="scb-label">Podpísaný náborový list</span>
-        </div>
-        <span class="signed-card-date">${signedDate}</span>
-      </div>
-      <div class="signed-card-body">
-        <div class="signed-card-info">
-          <div class="signed-card-info-label">Podpísal</div>
-          <div class="signed-card-info-value">${signedBy ? esc(signedBy) : '—'}</div>
-        </div>
-        ${sigImg}
-      </div>
-      <div class="signed-card-actions">
-        <button class="signed-card-btn signed-card-btn-view" onclick="event.stopPropagation();openSignedNaborView('${p.id}');">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-          <span>Zobraziť</span>
-        </button>
-        <button class="signed-card-btn signed-card-btn-pdf" onclick="event.stopPropagation();downloadSignedNaborPDF('${p.id}');">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          <span>Stiahnuť PDF</span>
-        </button>
-      </div>
-    </div>`;
-  }
+  // The "signed" certificate card was also removed — the green deal-card-row
+  // is enough indication. Click it to open the locked PDF view.
 
   return `<div class="deal-row">
     <div class="deal-row-head">
@@ -3405,7 +3365,6 @@ function getDealsRowHtml(p) {
       ${createdCards}
       ${emptyState}
     </div>
-    ${signedBanner}
   </div>`;
 }
 
@@ -5283,21 +5242,20 @@ function closeNaborModal() {
 
 // Switch the náborový list modal between editable and read-only mode.
 //
-// In locked mode (client has signed remotely) the form-side is hidden but the
-// preview-side stays visible — at full width — so the agent can browse the
-// entire signed document. A green PODPÍSANÝ ribbon is rendered on top, and
-// the signature image is appended at the bottom of the preview content.
+// In locked mode (client has signed) we replace the entire body with a real
+// PDF render — same one that downloads — embedded as an iframe. The agent
+// sees exactly what the printed document will look like, including all
+// sections and embedded signatures.
 function _applyNaborLockState(p) {
   const modal = document.getElementById('naborModal');
   if (!modal) return;
   const locked = !!(p && isNaborClientSigned(p));
   modal.classList.toggle('nabor-locked', locked);
 
-  // Hide form-side (the editable column); preview-side takes full width
-  // because flexbox redistributes when the sibling has display:none.
-  const formSide = modal.querySelector('.nabor-form-side');
+  // Hide both columns of the editing UI when locked
+  const splitPane = modal.querySelector('.nabor-split');
   const sigBlock = document.getElementById('nabor-sig-block');
-  if (formSide) formSide.style.display = locked ? 'none' : '';
+  if (splitPane) splitPane.style.display = locked ? 'none' : '';
   if (sigBlock) sigBlock.style.display = locked ? 'none' : '';
 
   // Save button hidden in locked mode (cannot save a finalised document)
@@ -5312,56 +5270,77 @@ function _applyNaborLockState(p) {
       : '<span style="display:inline-flex;align-items:center;gap:0.4rem;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Generovať PDF</span>';
   }
 
-  // Replace the small "Náhľad dokumentu" header with a big green PODPÍSANÝ
-  // ribbon while locked — same position, much more presence.
-  const previewHeader = modal.querySelector('.nabor-preview-header');
-  if (previewHeader) previewHeader.style.display = locked ? 'none' : '';
-
-  let ribbon = document.getElementById('nabor-locked-ribbon');
-  const previewSide = modal.querySelector('.nabor-preview-side');
-  if (locked && previewSide) {
-    if (!ribbon) {
-      ribbon = document.createElement('div');
-      ribbon.id = 'nabor-locked-ribbon';
-      ribbon.className = 'nabor-locked-ribbon';
-      previewSide.insertBefore(ribbon, previewSide.firstChild);
+  // Show / hide the PDF viewer
+  let viewer = document.getElementById('nabor-pdf-viewer');
+  if (locked) {
+    if (!viewer) {
+      viewer = document.createElement('div');
+      viewer.id = 'nabor-pdf-viewer';
+      viewer.className = 'nabor-pdf-viewer';
+      // Insert before the signature block (which is hidden anyway), so it
+      // sits in the same body region the form normally occupies.
+      const anchor = sigBlock || splitPane;
+      if (anchor && anchor.parentNode) {
+        anchor.parentNode.insertBefore(viewer, anchor);
+      }
     }
     const rr = (p && p.nabor && p.nabor.remoteRequest) || {};
     const dateStr = rr.signedAt
       ? new Date(rr.signedAt).toLocaleString('sk-SK', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
       : '';
     const signer = rr.signedByName || rr.signerName || '';
-    ribbon.innerHTML =
-      '<div class="nlr-badge">' +
-        '<span class="nlr-check">✓</span>' +
-        '<span>PODPÍSANÝ NÁBOROVÝ LIST</span>' +
+
+    // Render the ribbon + spinner placeholder first; the PDF generation can
+    // take a moment if there are many embedded images.
+    viewer.innerHTML =
+      '<div class="nabor-locked-ribbon">' +
+        '<div class="nlr-badge"><span class="nlr-check">✓</span><span>PODPÍSANÝ NÁBOROVÝ LIST</span></div>' +
+        '<div class="nlr-meta">' +
+          (signer ? '<span class="nlr-signer">' + esc(signer) + '</span>' : '') +
+          (signer && dateStr ? '<span class="nlr-sep">·</span>' : '') +
+          (dateStr ? '<span class="nlr-date">' + esc(dateStr) + '</span>' : '') +
+        '</div>' +
       '</div>' +
-      '<div class="nlr-meta">' +
-        (signer ? '<span class="nlr-signer">' + esc(signer) + '</span>' : '') +
-        (signer && dateStr ? '<span class="nlr-sep">·</span>' : '') +
-        (dateStr ? '<span class="nlr-date">' + esc(dateStr) + '</span>' : '') +
-      '</div>';
-    ribbon.style.display = '';
-  } else if (ribbon) {
-    ribbon.style.display = 'none';
+      '<div class="nabor-pdf-loading">Načítavam PDF…</div>';
+    viewer.style.display = '';
+
+    // Generate the PDF asynchronously (next tick) so the spinner can paint
+    setTimeout(() => {
+      try {
+        const dataUri = generateNaborPDF({ mode: 'datauri' });
+        // Replace the loading text with the iframe
+        const loading = viewer.querySelector('.nabor-pdf-loading');
+        if (loading) loading.remove();
+        const iframe = document.createElement('iframe');
+        iframe.className = 'nabor-pdf-frame';
+        iframe.src = dataUri;
+        iframe.title = 'Podpísaný náborový list';
+        viewer.appendChild(iframe);
+      } catch (e) {
+        console.error('[SecPro] Failed to render PDF', e);
+        const loading = viewer.querySelector('.nabor-pdf-loading');
+        if (loading) loading.textContent = 'PDF sa nepodarilo vygenerovať. Skúste tlačidlo "Stiahnuť PDF".';
+      }
+    }, 50);
+  } else if (viewer) {
+    viewer.style.display = 'none';
+    viewer.innerHTML = '';   // free the iframe + data URI
   }
 
-  // Inject the signature image at the bottom of the rendered preview content.
-  // The preview is regenerated by _doNaborPreview() — we wait a tick to make
-  // sure that has run before appending.
-  if (locked) {
-    setTimeout(() => _appendSignatureToPreview(p), 120);
-  } else {
-    // Remove signature-block if it was injected previously
-    const block = document.querySelector('#naborPreviewContent .np-signature-block');
-    if (block) block.remove();
+  // Old preview-injection + ribbon helpers are no longer needed — clean them up
+  const oldRibbon = document.getElementById('nabor-locked-ribbon');
+  if (oldRibbon && oldRibbon.parentElement && oldRibbon.parentElement.classList.contains('nabor-preview-side')) {
+    oldRibbon.remove();
   }
-
-  // Old signed-view + locked banner are no longer used
   const oldSignedView = document.getElementById('nabor-signed-view');
   if (oldSignedView) oldSignedView.style.display = 'none';
   const oldBanner = document.getElementById('nabor-locked-banner');
   if (oldBanner) oldBanner.style.display = 'none';
+  // Restore the small "Náhľad dokumentu" header in case it was hidden by an
+  // earlier locked-state pass (we don't show the HTML preview anymore but
+  // it should reappear correctly when modal is reopened in unlocked mode).
+  const previewHeader = modal.querySelector('.nabor-preview-header');
+  if (previewHeader) previewHeader.style.display = '';
 }
 
 // Append a signature panel inside the rendered náborák preview (#naborPreviewContent)
@@ -5510,7 +5489,13 @@ function sk(str) {
   return str.replace(/[\u010c\u010d\u010e\u010f\u011b\u013a\u0139\u013d\u013e\u0147\u0148\u0154\u0155\u0164\u0165\u20ac\u2022\u2605]/g, ch => _diaMap[ch] || ch);
 }
 
-function generateNaborPDF() {
+// generateNaborPDF(opts) — opts.mode controls what happens with the result:
+//   'download' (default) → triggers browser download (existing behaviour)
+//   'datauri'            → returns the PDF as a data URI string (for iframe)
+//   'blob'               → returns a Blob (for object URLs)
+function generateNaborPDF(opts) {
+  opts = opts || {};
+  const mode = opts.mode || 'download';
   const type = document.getElementById('nabor-type').value;
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF('p', 'mm', 'a4');
@@ -5847,6 +5832,8 @@ function generateNaborPDF() {
   doc.text(sk('Vygenerované v SecPro') + ' | ' + new Date().toLocaleDateString('sk-SK'), pw / 2, y, { align: 'center' });
 
   const filename = type === 'byt' ? 'Naborovy_list_BYT.pdf' : 'Naborovy_list_DOM.pdf';
+  if (mode === 'datauri') return doc.output('datauristring');
+  if (mode === 'blob')    return doc.output('blob');
   doc.save(filename);
 }
 
