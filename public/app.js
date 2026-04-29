@@ -6594,7 +6594,10 @@ function renderProperties() {
       <div class="prop-card-footer">
         <span class="prop-card-date">${dateStr}</span>
         <div class="prop-card-actions">
-          ${(p.type === 'byt' || p.type === 'dom') ? `<button onclick="openNaborModal('${p.id}')" class="pca-btn ${p.nabor ? 'pca-nabor-done' : ''}" style="${p.nabor ? 'color:#065F46;background:#D1FAE5;border-color:#A7F3D0;' : 'color:#0B2A3C;'}" title="${p.nabor ? 'Upraviť náborový list ✓' : 'Náborový list'}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${p.nabor ? '<polyline points="20 6 9 17 4 12"/>' : '<path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>'}</svg></button>` : ''}
+          <!-- Náborový list icon button removed — the new "Dokumentácia obchodu"
+               section already has [+] add-menu and a card list, which made this
+               redundant. -->
+
           ${viewCount ? `<button onclick="openProtocolModal('${p.id}')" class="pca-btn" style="color:#1A7A8A;" title="Protokol s podpisom"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button>` : ''}
           ${viewCount ? `<button onclick="generateViewingDocument('${p.id}')" class="pca-btn pca-doc" title="Zápisnica PDF"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></button>` : ''}
           ${p.url ? `<a href="${p.url}" target="_blank" class="pca-btn pca-link" title="Inzerát"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>` : ''}
