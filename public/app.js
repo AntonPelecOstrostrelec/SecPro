@@ -3292,16 +3292,13 @@ function getDealsRowHtml(p) {
       ? new Date(rr.signedAt).toLocaleString('sk-SK', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
       : '';
     const signedBy = rr.signedByName || rr.signerName || '';
-    signedBanner = `<div class="signed-doc-banner" onclick="event.stopPropagation();openSignedNaborView('${p.id}');" role="button" tabindex="0">
-      <div class="sdb-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
-      <div class="sdb-text">
-        <div class="sdb-title">Klient podpísal náborový list</div>
-        <div class="sdb-meta">${signedBy ? esc(signedBy) : ''}${signedBy && signedDate ? ' · ' : ''}${signedDate}</div>
+    signedBanner = `<div class="signed-doc-banner" onclick="event.stopPropagation();openSignedNaborView('${p.id}');">
+      <span class="signed-doc-icon">✓</span>
+      <div class="signed-doc-text">
+        <div class="signed-doc-title">Klient podpísal náborový list</div>
+        <div class="signed-doc-sub">${signedBy ? esc(signedBy) + ' · ' : ''}${signedDate}</div>
       </div>
-      <div class="sdb-action">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-        <span>Otvoriť</span>
-      </div>
+      <span class="signed-doc-action">📄 Zobraziť</span>
     </div>`;
   }
 
