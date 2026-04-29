@@ -3160,7 +3160,7 @@ const PROP_PIPELINE_KEYS = PROP_PIPELINE.map(s => s.key);
 // 5-stage transaction lifecycle with traffic-light status.
 // Náborák status is auto-derived from p.nabor; the rest is manual.
 const DEAL_TYPES = [
-  { key: 'nabor',   abbr: 'Náborák',  label: 'Náborový list',           paymentApplicable: false },
+  { key: 'nabor',   abbr: 'Nábor. list', label: 'Náborový list',         paymentApplicable: false },
   { key: 'sz',      abbr: 'SZ',       label: 'Sprostredkovateľská zmluva', paymentApplicable: false, hasSubtype: true },
   { key: 'rezerv',  abbr: 'Rezerv.',  label: 'Rezervačná zmluva',       paymentApplicable: true },
   { key: 'kupna',   abbr: 'Kúpna',    label: 'Kúpna zmluva',            paymentApplicable: true },
@@ -3295,7 +3295,7 @@ function getDealsRowHtml(p) {
     signedBanner = `<div class="signed-doc-banner" onclick="event.stopPropagation();openSignedNaborView('${p.id}');" role="button" tabindex="0">
       <div class="sdb-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
       <div class="sdb-text">
-        <div class="sdb-title">Klient podpísal náborák</div>
+        <div class="sdb-title">Klient podpísal náborový list</div>
         <div class="sdb-meta">${signedBy ? esc(signedBy) : ''}${signedBy && signedDate ? ' · ' : ''}${signedDate}</div>
       </div>
       <div class="sdb-action">
@@ -4987,7 +4987,7 @@ function openNaborModal(propId) {
   if (savedInfo) {
     if (hasSaved) {
       const dt = new Date(p.nabor.savedAt);
-      savedInfo.innerHTML = '<span style="color:#065F46;">✓ Uložený náborák</span> – posledná zmena: <b>' +
+      savedInfo.innerHTML = '<span style="color:#065F46;">✓ Uložený náborový list</span> – posledná zmena: <b>' +
         dt.toLocaleString('sk-SK') + '</b>';
       savedInfo.style.display = '';
     } else {
@@ -6294,7 +6294,7 @@ function renderProperties() {
       <div class="prop-card-footer">
         <span class="prop-card-date">${dateStr}</span>
         <div class="prop-card-actions">
-          ${(p.type === 'byt' || p.type === 'dom') ? `<button onclick="openNaborModal('${p.id}')" class="pca-btn ${p.nabor ? 'pca-nabor-done' : ''}" style="${p.nabor ? 'color:#065F46;background:#D1FAE5;border-color:#A7F3D0;' : 'color:#0B2A3C;'}" title="${p.nabor ? 'Upraviť náborák ✓' : 'Náborový list'}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${p.nabor ? '<polyline points="20 6 9 17 4 12"/>' : '<path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>'}</svg></button>` : ''}
+          ${(p.type === 'byt' || p.type === 'dom') ? `<button onclick="openNaborModal('${p.id}')" class="pca-btn ${p.nabor ? 'pca-nabor-done' : ''}" style="${p.nabor ? 'color:#065F46;background:#D1FAE5;border-color:#A7F3D0;' : 'color:#0B2A3C;'}" title="${p.nabor ? 'Upraviť náborový list ✓' : 'Náborový list'}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${p.nabor ? '<polyline points="20 6 9 17 4 12"/>' : '<path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>'}</svg></button>` : ''}
           ${viewCount ? `<button onclick="openProtocolModal('${p.id}')" class="pca-btn" style="color:#1A7A8A;" title="Protokol s podpisom"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button>` : ''}
           ${viewCount ? `<button onclick="generateViewingDocument('${p.id}')" class="pca-btn pca-doc" title="Zápisnica PDF"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></button>` : ''}
           ${p.url ? `<a href="${p.url}" target="_blank" class="pca-btn pca-link" title="Inzerát"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>` : ''}
@@ -8482,7 +8482,7 @@ function _refreshProfileSignaturePreview() {
     box.innerHTML = `<img src="${sig}" alt="Podpis" />`;
     if (removeBtn) removeBtn.style.display = '';
   } else {
-    box.innerHTML = '<div class="profile-sig-empty">Zatiaľ nemáte uložený podpis. Po nakreslení sa bude automaticky používať v dokumentoch, AML a náboráku.</div>';
+    box.innerHTML = '<div class="profile-sig-empty">Zatiaľ nemáte uložený podpis. Po nakreslení sa bude automaticky používať v dokumentoch, AML a náborovom liste.</div>';
     if (removeBtn) removeBtn.style.display = 'none';
   }
 }
@@ -8491,7 +8491,7 @@ function openProfileSignaturePad() {
   const name = document.getElementById('profile-name').value.trim() || 'Maklér';
   openSignaturePad({
     title: 'Môj podpis do profilu',
-    subtitle: 'Tento podpis sa použije v dokumentoch, AML a náboráku',
+    subtitle: 'Tento podpis sa použije v dokumentoch, AML a náborovom liste',
     signerName: name,
     signerRole: 'Maklér',
     documentType: 'profile',
