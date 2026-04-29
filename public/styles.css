@@ -1311,8 +1311,103 @@
       box-shadow: 0 4px 10px rgba(20, 83, 45, 0.3);
     }
 
-    /* Locked-state banner shown at top of the náborový list modal once
-       the client has signed remotely. The form below is disabled. */
+    /* When náborový list is locked (client has signed), we hide the form
+       and signature panels entirely and show this clean centered "signed"
+       certificate-style view in their place. */
+    .nabor-signed-view {
+      margin: 1.5rem;
+      background: #fff;
+      border: 1.5px solid #BBF7D0;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 4px 16px rgba(34, 197, 94, 0.10);
+    }
+    .nsv-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 1.25rem;
+      background: linear-gradient(135deg, #15803D 0%, #166534 100%);
+      color: #fff;
+    }
+    .nsv-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      font-size: 0.92rem;
+      font-weight: 700;
+      letter-spacing: 0.6px;
+    }
+    .nsv-check {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 1rem;
+    }
+    .nsv-date {
+      font-size: 0.78rem;
+      opacity: 0.92;
+      font-variant-numeric: tabular-nums;
+    }
+    .nsv-body {
+      padding: 1.5rem;
+      background: linear-gradient(180deg, #F0FDF4 0%, #FFFFFF 100%);
+    }
+    .nsv-row {
+      display: flex;
+      gap: 1rem;
+      padding: 0.65rem 0;
+      border-bottom: 1px solid #E5E9F0;
+    }
+    .nsv-row:last-of-type { border-bottom: none; }
+    .nsv-label {
+      flex-shrink: 0;
+      width: 130px;
+      font-size: 0.74rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      color: #166534;
+    }
+    .nsv-value {
+      flex: 1;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #14532D;
+      word-break: break-word;
+    }
+    .nsv-sig {
+      margin-top: 1rem;
+      padding: 0.85rem;
+      background: #fff;
+      border: 1px solid #BBF7D0;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 90px;
+    }
+    .nsv-sig img {
+      max-width: 100%;
+      max-height: 110px;
+      object-fit: contain;
+    }
+    .nsv-note {
+      padding: 0.85rem 1.25rem;
+      background: #FAFBFC;
+      border-top: 1px solid #E5E9F0;
+      font-size: 0.78rem;
+      color: #64748B;
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    /* Locked-state banner — kept around for backward compat but no longer
+       rendered (the signed-view above replaces it). */
     .nabor-locked-banner {
       display: flex;
       align-items: center;

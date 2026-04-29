@@ -5138,58 +5138,86 @@ function closeNaborModal() {
 }
 
 // Switch the náborový list modal between editable and read-only mode.
-// Read-only mode kicks in once the client has signed remotely — at that
-// point the document is legally finalised and editing it would invalidate
-// the signed copy. The agent can only view / download the signed PDF.
+// Read-only mode kicks in once the client has signed remotely — the document
+// is legally finalised and editing it would invalidate the signed copy.
+//
+// In locked mode we don't show the form / preview / signature panels at all
+// (per user feedback: "stačí, keď sa tam zobrazí, len tá horná lišta") —
+// instead we render a clean centered "✓ Podpísaný náborový list" view with
+// signer info + Stiahnuť PDF action.
 function _applyNaborLockState(p) {
   const modal = document.getElementById('naborModal');
   if (!modal) return;
   const locked = !!(p && isNaborClientSigned(p));
   modal.classList.toggle('nabor-locked', locked);
 
-  // Disable / re-enable every form input + chip in the visible form
-  modal.querySelectorAll('#nabor-form-byt input, #nabor-form-byt textarea, #nabor-form-byt select, #nabor-form-dom input, #nabor-form-dom textarea, #nabor-form-dom select').forEach(el => {
-    el.disabled = locked;
-  });
-  modal.querySelectorAll('.nabor-chip').forEach(el => {
-    el.style.pointerEvents = locked ? 'none' : '';
-    el.style.opacity = locked && !el.classList.contains('active') ? '0.5' : '';
-  });
+  // Hide / show the editable parts of the modal
+  const splitPane = modal.querySelector('.nabor-split');
+  const sigBlock = document.getElementById('nabor-sig-block');
+  if (splitPane) splitPane.style.display = locked ? 'none' : '';
+  if (sigBlock) sigBlock.style.display = locked ? 'none' : '';
 
-  // Toggle action buttons (signature buttons, save button, send-to-sign)
+  // Hide / show footer buttons appropriately
   const saveBtn = modal.querySelector('.nabor-btn-save');
   if (saveBtn) saveBtn.style.display = locked ? 'none' : '';
-  modal.querySelectorAll('[onclick*="openNaborSignature"], [onclick*="sendNaborForRemoteSign"], [onclick*="clearNaborSignature"]').forEach(btn => {
-    btn.style.display = locked ? 'none' : '';
-  });
 
-  // Show / hide the locked banner at the top of the modal
-  let banner = document.getElementById('nabor-locked-banner');
+  // Update the PDF button label depending on lock state
+  const pdfBtn = modal.querySelector('.nabor-btn-pdf');
+  if (pdfBtn) {
+    const labelSpan = pdfBtn.querySelector('span > span:last-child') || pdfBtn.querySelector('span');
+    // Just rewrite full inner HTML — keep the icon, change the text
+    pdfBtn.innerHTML = locked
+      ? '<span style="display:inline-flex;align-items:center;gap:0.4rem;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Stiahnuť PDF</span>'
+      : '<span style="display:inline-flex;align-items:center;gap:0.4rem;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Generovať PDF</span>';
+  }
+
+  // Render the big "Podpísaný náborový list" signed-view inside the modal body
+  let signedView = document.getElementById('nabor-signed-view');
   if (locked) {
-    if (!banner) {
-      banner = document.createElement('div');
-      banner.id = 'nabor-locked-banner';
-      banner.className = 'nabor-locked-banner';
-      const header = modal.querySelector('.nabor-header') || modal.querySelector('.nabor-modal > div');
-      if (header && header.parentNode) header.parentNode.insertBefore(banner, header.nextSibling);
+    if (!signedView) {
+      signedView = document.createElement('div');
+      signedView.id = 'nabor-signed-view';
+      signedView.className = 'nabor-signed-view';
+      // Insert before the split pane (which is now hidden) so it sits in the
+      // same position the form normally occupies.
+      if (splitPane && splitPane.parentNode) {
+        splitPane.parentNode.insertBefore(signedView, splitPane);
+      }
     }
     const rr = (p && p.nabor && p.nabor.remoteRequest) || {};
-    const dateStr = rr.signedAt ? new Date(rr.signedAt).toLocaleString('sk-SK', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+    const dateStr = rr.signedAt
+      ? new Date(rr.signedAt).toLocaleString('sk-SK', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+      : '';
     const signer = rr.signedByName || rr.signerName || '';
-    banner.innerHTML =
-      '<div class="nlb-icon">🔒</div>' +
-      '<div class="nlb-text">' +
-        '<div class="nlb-title">Náborový list je podpísaný a uzamknutý</div>' +
-        '<div class="nlb-meta">' +
-          (signer ? 'Podpísal: <b>' + esc(signer) + '</b>' : '') +
-          (signer && dateStr ? ' · ' : '') +
-          (dateStr ? 'Dňa ' + dateStr : '') +
+    const sigImg = rr.signedSignatureDataUrl
+      ? `<div class="nsv-sig"><img src="${rr.signedSignatureDataUrl}" alt="Podpis"/></div>`
+      : '';
+    const addressLine = (p && p.address) ? esc((p.address || '') + (p.city ? ', ' + p.city : '')) : '';
+    signedView.innerHTML =
+      '<div class="nsv-head">' +
+        '<div class="nsv-badge">' +
+          '<span class="nsv-check">✓</span>' +
+          '<span>PODPÍSANÝ NÁBOROVÝ LIST</span>' +
         '</div>' +
+        (dateStr ? '<div class="nsv-date">' + esc(dateStr) + '</div>' : '') +
+      '</div>' +
+      '<div class="nsv-body">' +
+        (addressLine ? '<div class="nsv-row"><span class="nsv-label">Nehnuteľnosť</span><span class="nsv-value">' + addressLine + '</span></div>' : '') +
+        (signer ? '<div class="nsv-row"><span class="nsv-label">Podpísal</span><span class="nsv-value">' + esc(signer) + '</span></div>' : '') +
+        sigImg +
+      '</div>' +
+      '<div class="nsv-note">' +
+        '🔒 Tento dokument je podpísaný klientom a je uzamknutý. ' +
+        'Pre archiváciu si stiahnite finálne PDF.' +
       '</div>';
-    banner.style.display = '';
-  } else if (banner) {
-    banner.style.display = 'none';
+    signedView.style.display = '';
+  } else if (signedView) {
+    signedView.style.display = 'none';
   }
+
+  // Hide the small locked banner on lock — the signed-view above conveys it
+  const banner = document.getElementById('nabor-locked-banner');
+  if (banner) banner.style.display = 'none';
 }
 
 // ----- Náborák signatures -----
