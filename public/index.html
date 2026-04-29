@@ -2648,8 +2648,15 @@
               <span>📱 WhatsApp</span>
             </button>
             <button class="email-send-btn email-send-copy" onclick="emailComposerCopy()" title="Skopírovať do schránky">
-              <span>📋 Skopírovať</span>
+              <span>📋 Skopírovať email</span>
             </button>
+          </div>
+
+          <!-- Fallback: iba skopírovať samotný odkaz -->
+          <div style="margin-top:0.6rem;text-align:center;">
+            <a href="javascript:void(0)" onclick="emailComposerCopySigningLinkOnly()" style="font-size:0.75rem;color:var(--text-light);text-decoration:underline;">
+              alebo iba skopírovať odkaz na podpis (bez emailu)
+            </a>
           </div>
         </div>
       </div>
@@ -3323,7 +3330,7 @@
                 <div id="nabor-sig-seller-meta" style="display:none;font-size:0.7rem;color:var(--text-light);margin-top:0.3rem;"></div>
                 <div style="display:flex;gap:0.4rem;margin-top:0.4rem;flex-wrap:wrap;">
                   <button type="button" class="btn btn-primary" style="font-size:0.72rem;padding:0.4rem 0.65rem;" onclick="openNaborSignature('seller')">Podpísať</button>
-                  <button type="button" class="btn" style="font-size:0.72rem;padding:0.4rem 0.65rem;background:#EFF6FF;color:#2563EB;" onclick="sendNaborForRemoteSign('seller')">Poslať link</button>
+                  <button type="button" class="btn" style="font-size:0.72rem;padding:0.4rem 0.65rem;background:#EFF6FF;color:#2563EB;" onclick="sendNaborForRemoteSign('seller')">📧 Poslať na podpis</button>
                   <button type="button" class="btn" id="nabor-sig-seller-clear" style="display:none;background:#FEE2E2;color:#B91C1C;font-size:0.72rem;padding:0.4rem 0.65rem;" onclick="clearNaborSignature('seller')">Odstrániť</button>
                 </div>
               </div>

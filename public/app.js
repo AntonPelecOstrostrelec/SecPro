@@ -12354,15 +12354,15 @@ function openRemoteSignModal(presets) {
   document.getElementById('rs-doc-detail').value = p.docDetail || '';
   document.getElementById('rs-signer-name').value = p.signerName || '';
   document.getElementById('rs-signer-role').value = p.signerRole || '';
-  document.getElementById('rs-signer-email').value = '';
-  document.getElementById('rs-signer-phone').value = '';
+  document.getElementById('rs-signer-email').value = p.signerEmail || '';
+  document.getElementById('rs-signer-phone').value = p.signerPhone || '';
   document.getElementById('rs-message').value = '';
   const msgText = document.getElementById('rs-message-text');
   if (msgText) msgText.value = p.message || '';
   const expSel = document.getElementById('rs-expires-select');
   if (expSel) expSel.value = '48';
   document.getElementById('rs-submit-btn').disabled = false;
-  document.getElementById('rs-submit-btn').textContent = 'Získať link na podpis';
+  document.getElementById('rs-submit-btn').textContent = 'Pokračovať na email →';
   document.getElementById('remote-sign-modal').style.display = 'block';
   if (!p.signerRole) updateRsDefaults();
 }
@@ -12403,21 +12403,34 @@ async function submitRemoteSignRequest() {
     });
     const data = await r.json();
     if (data.ok) {
-      closeRemoteSignModal();
+      // Stash the URL on the (now-hidden) link modal — for the secondary "copy link only" flow
       document.getElementById('rs-link-url').value = data.signUrl;
       document.getElementById('rs-link-expires').textContent = 'Platnosť do: ' + new Date(data.expiresAt).toLocaleString('sk-SK');
-      document.getElementById('remote-sign-link-modal').style.display = 'block';
+
+      closeRemoteSignModal();
       _remoteSignCache = null;
       refreshRemoteSignatures();
+
+      // Skip the intermediate "Link pripravený!" modal — go straight to email composer.
+      // The user can still fall back to "iba skopírovať odkaz" from inside the composer.
+      openEmailComposer({
+        documentType: docType,
+        documentRef: docRef,
+        signerName,
+        signerEmail: document.getElementById('rs-signer-email')?.value?.trim() || '',
+        signerPhone: document.getElementById('rs-signer-phone')?.value?.trim() || '',
+        signUrl: data.signUrl,
+        expiresAt: data.expiresAt,
+      });
     } else {
       showToast(data.error || 'Chyba pri vytváraní', 'error');
       btn.disabled = false;
-      btn.textContent = 'Získať link na podpis';
+      btn.textContent = 'Pokračovať na email →';
     }
   } catch (e) {
     showToast('Chyba pripojenia k serveru', 'error');
     btn.disabled = false;
-    btn.textContent = 'Získať link na podpis';
+    btn.textContent = 'Pokračovať na email →';
   }
 }
 
@@ -12435,15 +12448,23 @@ function closeRemoteSignLinkModal() {
 
 // ── Quick send from Náborák ──
 function sendNaborForRemoteSign(role) {
-  const vlastnik = document.getElementById('nb-vlastnik')?.value?.trim() || '';
-  const address = (document.getElementById('nb-ulica')?.value || '').trim()
-    + (document.getElementById('nb-mesto')?.value ? ', ' + document.getElementById('nb-mesto').value.trim() : '');
+  // Pull values from the active náborák form (byt or dom variant)
+  const vlastnik = (document.getElementById('nb-vlastnik')?.value
+                || document.getElementById('nd-vlastnik1')?.value || '').trim();
+  const address = (document.getElementById('nb-adresa')?.value
+               || document.getElementById('nd-adresa')?.value || '').trim();
+  const ownerEmail = (document.getElementById('nb-email-vlastnik')?.value
+                  || document.getElementById('nd-email-vlastnik')?.value || '').trim();
+  const ownerPhone = (document.getElementById('nb-tel-vlastnik')?.value
+                  || document.getElementById('nd-tel-vlastnik')?.value || '').trim();
 
   openRemoteSignModal({
     documentType: 'nabor',
     docDetail: address,
     signerName: role === 'seller' ? vlastnik : (getProfile()?.name || ''),
     signerRole: role === 'seller' ? 'Predávajúci' : 'Maklér',
+    signerEmail: role === 'seller' ? ownerEmail : (getProfile()?.email || ''),
+    signerPhone: role === 'seller' ? ownerPhone : (getProfile()?.phone || ''),
   });
 }
 
@@ -12884,6 +12905,7 @@ function openEmailComposer(opts) {
       lastName: lastName || firstName,
       fullName: opts.signerName,
       email: opts.signerEmail || '',
+      phone: opts.signerPhone || '',
     },
     agent: {
       name: profile.name || '',
@@ -13074,6 +13096,14 @@ function emailComposerCopy() {
   if (typeof copyText === 'function') copyText(text);
   _rememberEmailSendChannel('copy');
 }
+// Fallback — skopírovať iba samotný odkaz (bez celého emailu)
+function emailComposerCopySigningLinkOnly() {
+  if (!_emailComposerCtx) return;
+  const url = _emailComposerCtx.signUrl;
+  if (typeof copyText === 'function') copyText(url);
+  showToast('Odkaz skopírovaný do schránky ✓', 'success');
+}
+
 function _rememberEmailSendChannel(ch) {
   try { localStorage.setItem('secpro_pref_email_channel', ch); } catch (e) {}
 }
