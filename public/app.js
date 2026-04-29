@@ -3183,37 +3183,54 @@ const DEAL_STATUS_KEYS = ['not_started', 'pending', 'verified', 'done'];
 // Get deal status for a given property + deal type.
 // For 'nabor' the status is derived through the lifecycle:
 //   1. not_started — žiadny náborák uložený
-//   2. pending     — náborák uložený (rozpracovaný), nie je odoslaný ani podpísaný
-//   3. verified    — email odoslaný klientovi, čaká sa na podpis
-//   4. done        — podpísané (lokálne alebo cez vzdialený podpis)
+//   2. pending     — náborák uložený, čaká na odoslanie alebo dopodpísanie
+//   3. verified    — email odoslaný klientovi, čaká sa na jeho podpis
+//   4. done        — klient skutočne podpísal (vzdialene alebo osobne v modáli)
+//
+// Strict "done" criteria — to avoid false positives:
+//   • REMOTE signing: remoteRequest.signedAt is set, or matching token in
+//     /api/sign/list reports status='signed'
+//   • IN-PERSON signing: BOTH seller AND agent local signatures present
+//     (a single seller-only signature is treated as test/incomplete)
 function getDealStatus(p, key) {
   if (key === 'nabor') {
     if (!p || !p.nabor) return 'not_started';
 
-    // Local signatures take precedence (signed in the modal)
-    const sigs = p.nabor.signatures || {};
-    if (sigs.seller || sigs.agent) return 'done';
-
-    // Remote signed-status — check if our remote request has been signed
+    // 1) Remote-signed wins
     const rr = p.nabor.remoteRequest;
-    if (rr) {
-      // If we already cached the remote signed-status on the property, use it
-      if (rr.signedAt) return 'done';
-      // Otherwise, look up the cached remote-signatures index (from /api/sign/list)
-      if (Array.isArray(_remoteSignCache)) {
-        const match = _remoteSignCache.find(s => s.token === rr.token);
-        if (match && match.status === 'signed') return 'done';
-      }
-      // Email was sent → verified state (orange — waiting on client)
-      if (rr.sentAt) return 'verified';
-      // Request created but no send button clicked yet → still pending
-      return 'pending';
+    if (rr && rr.signedAt) return 'done';
+    if (rr && rr.token && Array.isArray(_remoteSignCache)) {
+      const match = _remoteSignCache.find(s => s.token === rr.token);
+      if (match && match.status === 'signed') return 'done';
     }
+
+    // 2) In-person signing — both parties signed locally in the modal
+    const sigs = p.nabor.signatures || {};
+    if (sigs.seller && sigs.agent) return 'done';
+
+    // 3) Email was sent — waiting for client to sign remotely
+    if (rr && rr.sentAt) return 'verified';
+
+    // 4) Saved náborák, not yet sent / fully signed
     return 'pending';
   }
   if (!p || !p.deals || !p.deals[key]) return 'not_started';
   const s = p.deals[key].status;
   return DEAL_STATUS_KEYS.includes(s) ? s : 'not_started';
+}
+
+// True only when the CLIENT (predávajúci) has actually signed remotely.
+// Used to gate the "podpísané — stiahnuť PDF" banner so it doesn't appear
+// just because the agent test-drew a signature in the modal.
+function isNaborClientSigned(p) {
+  if (!p || !p.nabor) return false;
+  const rr = p.nabor.remoteRequest;
+  if (rr && rr.signedAt) return true;
+  if (rr && rr.token && Array.isArray(_remoteSignCache)) {
+    const match = _remoteSignCache.find(s => s.token === rr.token);
+    if (match && match.status === 'signed') return true;
+  }
+  return false;
 }
 
 function getDealRecord(p, key) {
@@ -3266,21 +3283,25 @@ function getDealsRowHtml(p) {
     </button>`;
   }).join('');
 
-  // Signed-document banner — shown once the náborák is signed remotely.
-  // Pripravené na archiváciu — klient klikne, otvorí sa modal s podpisom + PDF download.
+  // Signed-document banner — shown ONLY when the client really signed remotely.
+  // (Local seller-only signatures from agent's test draws are excluded.)
   let signedBanner = '';
-  const naborStatus = getDealStatus(p, 'nabor');
-  if (naborStatus === 'done') {
-    const rr = p.nabor && p.nabor.remoteRequest;
-    const signedDate = rr && rr.signedAt ? new Date(rr.signedAt).toLocaleString('sk-SK', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
-    const signedBy = (rr && rr.signedByName) || (p.nabor && p.nabor.signatures && p.nabor.signatures.seller && p.nabor.signatures.seller.signerName) || '';
-    signedBanner = `<div class="signed-doc-banner" onclick="event.stopPropagation();openSignedNaborView('${p.id}');">
-      <span class="signed-doc-icon">✓</span>
-      <div class="signed-doc-text">
-        <div class="signed-doc-title">Náborák podpísaný — pripravené na archiváciu</div>
-        <div class="signed-doc-sub">${signedBy ? esc(signedBy) + ' · ' : ''}${signedDate}</div>
+  if (isNaborClientSigned(p)) {
+    const rr = p.nabor.remoteRequest || {};
+    const signedDate = rr.signedAt
+      ? new Date(rr.signedAt).toLocaleString('sk-SK', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+      : '';
+    const signedBy = rr.signedByName || rr.signerName || '';
+    signedBanner = `<div class="signed-doc-banner" onclick="event.stopPropagation();openSignedNaborView('${p.id}');" role="button" tabindex="0">
+      <div class="sdb-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+      <div class="sdb-text">
+        <div class="sdb-title">Klient podpísal náborák</div>
+        <div class="sdb-meta">${signedBy ? esc(signedBy) : ''}${signedBy && signedDate ? ' · ' : ''}${signedDate}</div>
       </div>
-      <span class="signed-doc-action">📄 Zobraziť</span>
+      <div class="sdb-action">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <span>Otvoriť</span>
+      </div>
     </div>`;
   }
 
