@@ -12458,11 +12458,11 @@ function sendNaborForRemoteSign(role) {
   const ownerPhone = (document.getElementById('nb-tel-vlastnik')?.value
                   || document.getElementById('nd-tel-vlastnik')?.value || '').trim();
 
-  openRemoteSignModal({
+  // Open the unified composer directly — no intermediate "Nová žiadosť" form
+  openEmailComposer({
     documentType: 'nabor',
     docDetail: address,
     signerName: role === 'seller' ? vlastnik : (getProfile()?.name || ''),
-    signerRole: role === 'seller' ? 'Predávajúci' : 'Maklér',
     signerEmail: role === 'seller' ? ownerEmail : (getProfile()?.email || ''),
     signerPhone: role === 'seller' ? ownerPhone : (getProfile()?.phone || ''),
   });
@@ -12875,7 +12875,12 @@ let _emailComposerCtx = null;
 
 // Open the email composer for a remote-sign request that was just created.
 // opts: { signerName, signerEmail, documentRef, documentType, signUrl, expiresAt, propertyId? }
+// Sentinel placeholder URL used while the user is editing — replaced with the
+// real signing URL right before opening Gmail/Outlook/etc.
+const _EC_PLACEHOLDER_URL = 'https://secpro-app.vercel.app/podpis/[odkaz-sa-vygeneruje-pri-odoslaní]';
+
 function openEmailComposer(opts) {
+  opts = opts || {};
   // Profile completeness check
   const check = checkProfileCompleteness();
   if (!check.ok) {
@@ -12883,30 +12888,17 @@ function openEmailComposer(opts) {
     return;
   }
 
-  const { firstName, lastName } = splitName(opts.signerName || '');
-  const gender = detectGenderFromName(opts.signerName || '');
-  const expiresStr = opts.expiresAt
-    ? new Date(opts.expiresAt).toLocaleString('sk-SK', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-    : '—';
   const profile = check.profile || {};
 
   _emailComposerCtx = {
     docType: opts.documentType || 'nabor',
+    docDetail: opts.docDetail || (opts.documentRef ? opts.documentRef.replace(/^.+? – /, '') : ''),
     tonality: 'priatelsky',
-    detectedGender: gender,    // 'M' | 'F' | null
-    overrideGender: null,      // user's manual override
-    propertyAddress: opts.documentRef ? opts.documentRef.replace(/^.+? – /, '') : '',
-    documentRef: opts.documentRef,
-    signUrl: opts.signUrl,
-    expiresAt: opts.expiresAt,
-    expiresStr,
-    client: {
-      firstName,
-      lastName: lastName || firstName,
-      fullName: opts.signerName,
-      email: opts.signerEmail || '',
-      phone: opts.signerPhone || '',
-    },
+    detectedGender: detectGenderFromName(opts.signerName || ''),
+    overrideGender: null,
+    expiresInHours: opts.expiresInHours || 48,
+    signUrl: _EC_PLACEHOLDER_URL,    // placeholder until send click
+    realLinkCreated: false,
     agent: {
       name: profile.name || '',
       email: profile.email || '',
@@ -12915,18 +12907,46 @@ function openEmailComposer(opts) {
     },
   };
 
-  // Populate UI
+  // Populate the document + client form fields
+  document.getElementById('ec-doc-type').value = _emailComposerCtx.docType;
+  document.getElementById('ec-doc-detail').value = _emailComposerCtx.docDetail;
+  document.getElementById('ec-client-name').value = opts.signerName || '';
+  document.getElementById('ec-client-email').value = opts.signerEmail || '';
+  document.getElementById('ec-client-phone').value = opts.signerPhone || '';
+  document.getElementById('ec-expires').value = String(_emailComposerCtx.expiresInHours);
+  document.getElementById('ec-loading').style.display = 'none';
+
+  // Populate tonality + gender + email body
   _renderEmailComposerTonalityPills();
   _renderEmailComposerGenderToggle();
   _renderEmailComposerPreview();
 
-  document.getElementById('email-composer-to').value = opts.signerEmail || '';
   document.getElementById('email-composer-modal').style.display = 'flex';
 }
 
 function closeEmailComposer() {
   document.getElementById('email-composer-modal').style.display = 'none';
   _emailComposerCtx = null;
+}
+
+// Called when the user changes the document type or address — re-render the body
+function emailComposerOnDocChange() {
+  if (!_emailComposerCtx) return;
+  _emailComposerCtx.docType = document.getElementById('ec-doc-type').value;
+  _emailComposerCtx.docDetail = document.getElementById('ec-doc-detail').value.trim();
+  _renderEmailComposerTonalityPills();    // tonality labels can vary by doc type
+  _renderEmailComposerPreview();
+}
+
+// Called when the user changes the client name — re-detect gender + re-render
+function emailComposerOnClientChange() {
+  if (!_emailComposerCtx) return;
+  const name = document.getElementById('ec-client-name').value.trim();
+  _emailComposerCtx.detectedGender = detectGenderFromName(name);
+  // Reset manual override only if the new name has a clear detection
+  if (_emailComposerCtx.detectedGender) _emailComposerCtx.overrideGender = null;
+  _renderEmailComposerGenderToggle();
+  _renderEmailComposerPreview();
 }
 
 function _showProfileIncompleteWarning(check, onContinue) {
@@ -13022,13 +13042,26 @@ function _renderEmailComposerPreview() {
   const salutation = genderSalutation(eff) || '';
   const honorific = genderHonorific(eff);
 
+  // Pull live values from the form (so changes to name/address update the body)
+  const fullName = document.getElementById('ec-client-name')?.value.trim() || '';
+  const { firstName, lastName } = splitName(fullName);
+  const docDetail = document.getElementById('ec-doc-detail')?.value.trim() || '';
+  const expiresHours = parseInt(document.getElementById('ec-expires')?.value || '48');
+  const expiresStr = new Date(Date.now() + expiresHours * 3600 * 1000).toLocaleString('sk-SK', {
+    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+  });
+
   const renderCtx = {
     salutation,
     honorific,
-    client: ctx.client,
-    property: { address: ctx.propertyAddress },
-    signing_link: ctx.signUrl,
-    expires_at: ctx.expiresStr,
+    client: {
+      firstName,
+      lastName: lastName || firstName,
+      fullName,
+    },
+    property: { address: docDetail },
+    signing_link: ctx.signUrl,    // placeholder URL during editing; replaced on send
+    expires_at: expiresStr,
     agent: { signature: ctx.agent.signature },
   };
 
@@ -13039,67 +13072,134 @@ function _renderEmailComposerPreview() {
   document.getElementById('email-composer-body').value = body;
 }
 
-// Build mailto: URL — used as fallback for "Bežný email klient"
-function _buildMailto() {
-  const to = document.getElementById('email-composer-to').value;
-  const subj = document.getElementById('email-composer-subject').value;
-  const body = document.getElementById('email-composer-body').value;
-  return 'mailto:' + encodeURIComponent(to)
-    + '?subject=' + encodeURIComponent(subj)
-    + '&body=' + encodeURIComponent(body);
+// Create the real signing link via the API (called once, lazy on first send-action)
+async function _emailComposerEnsureLink() {
+  if (!_emailComposerCtx) return null;
+  if (_emailComposerCtx.realLinkCreated && _emailComposerCtx.signUrl !== _EC_PLACEHOLDER_URL) {
+    return _emailComposerCtx.signUrl;
+  }
+
+  const token = (typeof getStoredToken === 'function') ? getStoredToken() : null;
+  if (!token) {
+    showToast('Nie ste prihlásený', 'error');
+    return null;
+  }
+
+  const docType = document.getElementById('ec-doc-type').value;
+  const docDetail = document.getElementById('ec-doc-detail').value.trim();
+  const signerName = document.getElementById('ec-client-name').value.trim();
+  const signerEmail = document.getElementById('ec-client-email').value.trim();
+  const signerPhone = document.getElementById('ec-client-phone').value.trim();
+  const expiresInHours = parseInt(document.getElementById('ec-expires').value);
+
+  if (!signerName) {
+    showToast('Vyplňte meno klienta', 'warning');
+    return null;
+  }
+
+  // Build doc reference: "<Prefix> – <detail>"
+  const docDef = (typeof RS_DOC_DEFAULTS !== 'undefined' && RS_DOC_DEFAULTS[docType])
+    ? RS_DOC_DEFAULTS[docType] : { prefix: 'Dokument', role: '' };
+  const documentRef = docDetail ? docDef.prefix + ' – ' + docDetail : docDef.prefix;
+  const signerRole = docDef.role || '';
+
+  document.getElementById('ec-loading').style.display = '';
+
+  try {
+    const r = await secureFetch('/api/sign/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ documentType: docType, documentRef, signerName, signerRole, signerEmail, signerPhone, expiresInHours }),
+    });
+    const data = await r.json();
+    if (!data.ok) {
+      showToast(data.error || 'Chyba pri vytváraní odkazu', 'error');
+      return null;
+    }
+    _emailComposerCtx.signUrl = data.signUrl;
+    _emailComposerCtx.expiresAt = data.expiresAt;
+    _emailComposerCtx.realLinkCreated = true;
+    _remoteSignCache = null;
+    refreshRemoteSignatures();
+    return data.signUrl;
+  } catch (e) {
+    showToast('Chyba pripojenia k serveru', 'error');
+    return null;
+  } finally {
+    document.getElementById('ec-loading').style.display = 'none';
+  }
 }
 
-function emailComposerOpenInGmail() {
-  const to = document.getElementById('email-composer-to').value;
-  const subj = document.getElementById('email-composer-subject').value;
-  const body = document.getElementById('email-composer-body').value;
+// Replace the placeholder URL in body with the real one. If the user removed
+// the placeholder while editing, append the real URL at the end.
+function _emailComposerBodyWithRealLink(realUrl) {
+  let body = document.getElementById('email-composer-body').value;
+  if (body.includes(_EC_PLACEHOLDER_URL)) {
+    body = body.split(_EC_PLACEHOLDER_URL).join(realUrl);
+  } else if (!body.includes(realUrl)) {
+    body += '\n\n📎 Odkaz na podpis: ' + realUrl;
+  }
+  return body;
+}
+
+// Returns { to, subj, body, phone } with real URL substituted, or null on validation fail
+async function _emailComposerPrepareForSend() {
+  const realUrl = await _emailComposerEnsureLink();
+  if (!realUrl) return null;
+  return {
+    to: document.getElementById('ec-client-email').value.trim(),
+    subj: document.getElementById('email-composer-subject').value,
+    body: _emailComposerBodyWithRealLink(realUrl),
+    phone: document.getElementById('ec-client-phone').value.trim(),
+    realUrl,
+  };
+}
+
+async function emailComposerOpenInGmail() {
+  const data = await _emailComposerPrepareForSend(); if (!data) return;
   const url = 'https://mail.google.com/mail/?view=cm&fs=1'
-    + '&to=' + encodeURIComponent(to)
-    + '&su=' + encodeURIComponent(subj)
-    + '&body=' + encodeURIComponent(body);
+    + '&to=' + encodeURIComponent(data.to)
+    + '&su=' + encodeURIComponent(data.subj)
+    + '&body=' + encodeURIComponent(data.body);
   window.open(url, '_blank');
   _rememberEmailSendChannel('gmail');
 }
-function emailComposerOpenInOutlook() {
-  const to = document.getElementById('email-composer-to').value;
-  const subj = document.getElementById('email-composer-subject').value;
-  const body = document.getElementById('email-composer-body').value;
+async function emailComposerOpenInOutlook() {
+  const data = await _emailComposerPrepareForSend(); if (!data) return;
   const url = 'https://outlook.live.com/mail/0/deeplink/compose?'
-    + 'to=' + encodeURIComponent(to)
-    + '&subject=' + encodeURIComponent(subj)
-    + '&body=' + encodeURIComponent(body);
+    + 'to=' + encodeURIComponent(data.to)
+    + '&subject=' + encodeURIComponent(data.subj)
+    + '&body=' + encodeURIComponent(data.body);
   window.open(url, '_blank');
   _rememberEmailSendChannel('outlook');
 }
-function emailComposerOpenInMailto() {
-  window.location.href = _buildMailto();
+async function emailComposerOpenInMailto() {
+  const data = await _emailComposerPrepareForSend(); if (!data) return;
+  const url = 'mailto:' + encodeURIComponent(data.to)
+    + '?subject=' + encodeURIComponent(data.subj)
+    + '&body=' + encodeURIComponent(data.body);
+  window.location.href = url;
   _rememberEmailSendChannel('mailto');
 }
-function emailComposerOpenInWhatsApp() {
-  if (!_emailComposerCtx) return;
-  const subj = document.getElementById('email-composer-subject').value;
-  const body = document.getElementById('email-composer-body').value;
-  const phone = (_emailComposerCtx.client && _emailComposerCtx.client.phone) || '';
-  // WhatsApp short version — focus on the link
-  const text = subj + '\n\n' + body;
-  const url = phone
-    ? 'https://wa.me/' + encodeURIComponent(phone.replace(/\s/g, '')) + '?text=' + encodeURIComponent(text)
+async function emailComposerOpenInWhatsApp() {
+  const data = await _emailComposerPrepareForSend(); if (!data) return;
+  const text = data.subj + '\n\n' + data.body;
+  const url = data.phone
+    ? 'https://wa.me/' + encodeURIComponent(data.phone.replace(/\s/g, '')) + '?text=' + encodeURIComponent(text)
     : 'https://wa.me/?text=' + encodeURIComponent(text);
   window.open(url, '_blank');
   _rememberEmailSendChannel('whatsapp');
 }
-function emailComposerCopy() {
-  const to = document.getElementById('email-composer-to').value;
-  const subj = document.getElementById('email-composer-subject').value;
-  const body = document.getElementById('email-composer-body').value;
-  const text = (to ? 'Komu: ' + to + '\n' : '') + 'Predmet: ' + subj + '\n\n' + body;
+async function emailComposerCopy() {
+  const data = await _emailComposerPrepareForSend(); if (!data) return;
+  const text = (data.to ? 'Komu: ' + data.to + '\n' : '') + 'Predmet: ' + data.subj + '\n\n' + data.body;
   if (typeof copyText === 'function') copyText(text);
   _rememberEmailSendChannel('copy');
 }
 // Fallback — skopírovať iba samotný odkaz (bez celého emailu)
-function emailComposerCopySigningLinkOnly() {
-  if (!_emailComposerCtx) return;
-  const url = _emailComposerCtx.signUrl;
+async function emailComposerCopySigningLinkOnly() {
+  const url = await _emailComposerEnsureLink();
+  if (!url) return;
   if (typeof copyText === 'function') copyText(url);
   showToast('Odkaz skopírovaný do schránky ✓', 'success');
 }

@@ -965,6 +965,39 @@
       flex-shrink: 0;
     }
 
+    /* Email composer — section grouping */
+    .ec-section {
+      padding: 0.65rem 0.85rem;
+      background: linear-gradient(135deg, #FAFBFC, #F5F7FA);
+      border: 1px solid #E5E9F0;
+      border-radius: 10px;
+      margin-bottom: 0.65rem;
+    }
+    .ec-section-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: #6B7280;
+      margin-bottom: 0.5rem;
+    }
+    .ec-section .form-label {
+      font-size: 0.72rem;
+      margin-bottom: 0.2rem;
+    }
+    .ec-spinner {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border: 2px solid rgba(26, 82, 118, 0.2);
+      border-top-color: #1A5276;
+      border-radius: 50%;
+      animation: ec-spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+    @keyframes ec-spin { to { transform: rotate(360deg); } }
+
     /* Email composer — tonality + gender pills + send buttons */
     .email-tonality-pill {
       padding: 5px 12px;
