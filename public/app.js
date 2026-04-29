@@ -82,6 +82,13 @@ function showPage(id) {
   if (id === 'dokumenty') renderDocs();
   if (id === 'signatures') { if (typeof refreshRemoteSignatures === 'function') refreshRemoteSignatures(); }
   if (id === 'clients' && typeof renderClients === 'function') renderClients();
+  // When showing My Properties, also refresh remote sig statuses so verified
+  // (orange) chips can transition to done (green) automatically.
+  if (id === 'properties') {
+    if (typeof refreshRemoteSignatures === 'function') {
+      refreshRemoteSignatures();
+    }
+  }
   window.scrollTo(0, 0);
 }
 
@@ -3174,14 +3181,35 @@ const DEAL_STATUS_META = {
 const DEAL_STATUS_KEYS = ['not_started', 'pending', 'verified', 'done'];
 
 // Get deal status for a given property + deal type.
-// For 'nabor' the status is derived from p.nabor presence + signatures.
-// For others it's read from p.deals[key].status (default: not_started).
+// For 'nabor' the status is derived through the lifecycle:
+//   1. not_started — žiadny náborák uložený
+//   2. pending     — náborák uložený (rozpracovaný), nie je odoslaný ani podpísaný
+//   3. verified    — email odoslaný klientovi, čaká sa na podpis
+//   4. done        — podpísané (lokálne alebo cez vzdialený podpis)
 function getDealStatus(p, key) {
   if (key === 'nabor') {
     if (!p || !p.nabor) return 'not_started';
+
+    // Local signatures take precedence (signed in the modal)
     const sigs = p.nabor.signatures || {};
-    const hasSig = !!(sigs.seller || sigs.agent);
-    return hasSig ? 'done' : 'pending';
+    if (sigs.seller || sigs.agent) return 'done';
+
+    // Remote signed-status — check if our remote request has been signed
+    const rr = p.nabor.remoteRequest;
+    if (rr) {
+      // If we already cached the remote signed-status on the property, use it
+      if (rr.signedAt) return 'done';
+      // Otherwise, look up the cached remote-signatures index (from /api/sign/list)
+      if (Array.isArray(_remoteSignCache)) {
+        const match = _remoteSignCache.find(s => s.token === rr.token);
+        if (match && match.status === 'signed') return 'done';
+      }
+      // Email was sent → verified state (orange — waiting on client)
+      if (rr.sentAt) return 'verified';
+      // Request created but no send button clicked yet → still pending
+      return 'pending';
+    }
+    return 'pending';
   }
   if (!p || !p.deals || !p.deals[key]) return 'not_started';
   const s = p.deals[key].status;
@@ -3206,6 +3234,15 @@ function getDealFileCount(p, key) {
   return (rec && Array.isArray(rec.files)) ? rec.files.length : 0;
 }
 
+// More descriptive labels for the náborák lifecycle states (used in chip tooltip
+// and the "signed document" banner).
+const NABOR_STATUS_LABELS = {
+  not_started: 'Nezačatý',
+  pending:     'Rozpracovaný — čaká na odoslanie / podpis',
+  verified:    'Email odoslaný — čaká na podpis klienta',
+  done:        'Podpísané ✓',
+};
+
 // Build the deal-tracker chip row HTML for a property card.
 function getDealsRowHtml(p) {
   const chips = DEAL_TYPES.map(t => {
@@ -3215,7 +3252,10 @@ function getDealsRowHtml(p) {
       ? `openNaborModal('${p.id}')`
       : `openDealStatusEditor('${p.id}', '${t.key}')`;
     const fileCount = getDealFileCount(p, t.key);
-    const titleAttr = t.label + ' — ' + meta.label + (fileCount ? ' · ' + fileCount + ' dok.' : '');
+    const stateLabel = (t.key === 'nabor' && NABOR_STATUS_LABELS[status])
+      ? NABOR_STATUS_LABELS[status]
+      : meta.label;
+    const titleAttr = t.label + ' — ' + stateLabel + (fileCount ? ' · ' + fileCount + ' dok.' : '');
     const fileBadge = fileCount > 0
       ? `<span class="deal-chip-files" title="${fileCount} priložených dokumentov">${fileCount}</span>`
       : '';
@@ -3225,10 +3265,39 @@ function getDealsRowHtml(p) {
       ${fileBadge}
     </button>`;
   }).join('');
+
+  // Signed-document banner — shown once the náborák is signed remotely.
+  // Pripravené na archiváciu — klient klikne, otvorí sa modal s podpisom + PDF download.
+  let signedBanner = '';
+  const naborStatus = getDealStatus(p, 'nabor');
+  if (naborStatus === 'done') {
+    const rr = p.nabor && p.nabor.remoteRequest;
+    const signedDate = rr && rr.signedAt ? new Date(rr.signedAt).toLocaleString('sk-SK', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+    const signedBy = (rr && rr.signedByName) || (p.nabor && p.nabor.signatures && p.nabor.signatures.seller && p.nabor.signatures.seller.signerName) || '';
+    signedBanner = `<div class="signed-doc-banner" onclick="event.stopPropagation();openSignedNaborView('${p.id}');">
+      <span class="signed-doc-icon">✓</span>
+      <div class="signed-doc-text">
+        <div class="signed-doc-title">Náborák podpísaný — pripravené na archiváciu</div>
+        <div class="signed-doc-sub">${signedBy ? esc(signedBy) + ' · ' : ''}${signedDate}</div>
+      </div>
+      <span class="signed-doc-action">📄 Zobraziť</span>
+    </div>`;
+  }
+
   return `<div class="deal-row">
     <div class="deal-row-title">📋 Dokumentácia obchodu:</div>
     <div class="deal-row-chips">${chips}</div>
+    ${signedBanner}
   </div>`;
+}
+
+// Open the náborák modal in a "signed view" — shows the signed signature
+// image prominently and offers a PDF download with the signature embedded.
+function openSignedNaborView(propId) {
+  // Reuse existing nabor modal — it already restores signatures from the
+  // remote request when present (see openNaborModal). The signature box for
+  // the seller will show the signed image, and "Generovať PDF" embeds it.
+  openNaborModal(propId);
 }
 
 // Working files for the currently open deal-editor session
@@ -4912,10 +4981,22 @@ function openNaborModal(propId) {
   if (hasSaved) {
     // Restore saved state — overrides property pre-fill
     _naborApplyFormData(type === 'byt' ? 'nb' : 'nd', p.nabor.data);
-    // Restore signatures if present
+
+    // Pull seller signature from a remotely-signed request if available
+    let sellerSig = (p.nabor.signatures && p.nabor.signatures.seller) || null;
+    const rr = p.nabor.remoteRequest;
+    if (!sellerSig && rr && rr.signedAt && rr.signedSignatureDataUrl) {
+      sellerSig = {
+        dataUrl: rr.signedSignatureDataUrl,
+        signerName: rr.signedByName || rr.signerName || '',
+        signedAt: rr.signedAt,
+        auditId: rr.token,
+        remote: true,
+      };
+    }
     _naborSigState = {
-      seller: (p.nabor.signatures && p.nabor.signatures.seller) || null,
-      agent:  (p.nabor.signatures && p.nabor.signatures.agent)  || null,
+      seller: sellerSig,
+      agent:  (p.nabor.signatures && p.nabor.signatures.agent) || null,
     };
     if (typeof _refreshNaborSigPreview === 'function') {
       _refreshNaborSigPreview('seller');
@@ -12229,9 +12310,57 @@ async function refreshRemoteSignatures() {
     _remoteSignCache = data.items || [];
     _remoteSignLastFetch = now;
     renderRemoteSignatures(_remoteSignCache);
+    // Sync property.nabor.remoteRequest signed-status from the freshly fetched list
+    _syncSignedStatusToProperties(_remoteSignCache);
   } catch (e) {
     console.warn('[SecPro] Failed to fetch remote signatures:', e);
     renderRemoteSignatures(_remoteSignCache || []);
+  }
+}
+
+// Walk all properties with a pending remote request and persist signed-state +
+// fetch the full record (signature image) for any that have been signed since
+// last refresh. Triggers a re-render of the property cards if anything changed.
+async function _syncSignedStatusToProperties(remoteList) {
+  if (!Array.isArray(remoteList) || remoteList.length === 0) return;
+  const props = getProperties();
+  let changed = false;
+
+  for (const p of props) {
+    const rr = p.nabor && p.nabor.remoteRequest;
+    if (!rr || !rr.token) continue;
+    if (rr.signedAt) continue;            // already synced as signed
+    const match = remoteList.find(s => s.token === rr.token);
+    if (!match) continue;
+    if (match.status !== 'signed') continue;
+
+    // Pull the full record (with signatureDataUrl) so we can display it
+    rr.signedAt = match.signedAt || new Date().toISOString();
+    rr.signedByName = match.signedByName || rr.signerName;
+    try {
+      const sToken = getStoredToken();
+      if (sToken) {
+        const r = await secureFetch('/api/sign/list?detail=' + rr.token, {
+          headers: { 'Authorization': 'Bearer ' + sToken },
+        });
+        if (r.ok) {
+          const data = await r.json();
+          const rec = data.record || {};
+          if (rec.signatureDataUrl) {
+            rr.signedSignatureDataUrl = rec.signatureDataUrl;
+            rr.signedByIp = rec.signedByIp || null;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[SecPro] Failed to fetch full signed record for token', rr.token);
+    }
+    changed = true;
+  }
+
+  if (changed) {
+    saveProperties(props);
+    if (typeof renderProperties === 'function') renderProperties();
   }
 }
 
@@ -12466,9 +12595,11 @@ function sendNaborForRemoteSign(role) {
                   || document.getElementById('nd-email-vlastnik')?.value || '').trim();
   const ownerPhone = (document.getElementById('nb-tel-vlastnik')?.value
                   || document.getElementById('nd-tel-vlastnik')?.value || '').trim();
+  const propertyId = document.getElementById('nabor-prop-id')?.value || null;
 
   // Open the unified composer directly — no intermediate "Nová žiadosť" form
   openEmailComposer({
+    propertyId,
     documentType: 'nabor',
     docDetail: address,
     signerName: role === 'seller' ? vlastnik : (getProfile()?.name || ''),
@@ -12551,7 +12682,12 @@ function splitName(fullName) {
   return { firstName: parts[0], lastName: parts.slice(1).join(' ') };
 }
 
-// ── Built-in email templates: 4 doc types × 3 tonalities ──
+// Visual separator used to frame the call-to-action block in plain-text emails.
+// Box-drawing chars render correctly in Gmail, Outlook, Apple Mail, and most
+// modern email clients.
+const _EMAIL_SEP = '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
+
+// ── Built-in email templates: 5 doc types × 3 tonalities ──
 const EMAIL_TEMPLATES = {
   nabor: {
     label: 'Náborový list',
@@ -12561,21 +12697,27 @@ const EMAIL_TEMPLATES = {
       body:
 `Dobrý deň {{salutation}} {{client.lastName}},
 
-posielam Vám na elektronický podpis náborový list k nehnuteľnosti
-na adrese {{property.address}}.
+posielam Vám náborový list k nehnuteľnosti na adrese
+{{property.address}}, ktorý čaká na Váš elektronický podpis.
 
-Odkaz Vás zavedie na zabezpečenú stránku SecPro, kde si môžete
-dokument prečítať a podpísať prstom alebo myšou. Žiadna registrácia
+${_EMAIL_SEP}
+
+   PODPÍSAŤ DOKUMENT
+
+   {{signing_link}}
+
+   Platnosť odkazu: do {{expires_at}}
+
+${_EMAIL_SEP}
+
+Odkaz Vás zavedie na zabezpečenú stránku SecPro, kde si dokument
+môžete prečítať a podpísať prstom alebo myšou. Žiadna registrácia
 nie je potrebná.
-
-👉 Otvoriť dokument na podpis:
-{{signing_link}}
-
-Odkaz je platný do {{expires_at}}.
 
 V prípade akýchkoľvek otázok ma neváhajte kontaktovať.
 
 S pozdravom,
+
 {{agent.signature}}`
     },
     formalny: {
@@ -12584,19 +12726,26 @@ S pozdravom,
       body:
 `{{honorific}} {{client.lastName}},
 
-obraciam sa na Vás s prosbou o elektronický podpis náborového listu
-k nehnuteľnosti na adrese {{property.address}}.
+obraciam sa na Vás s prosbou o elektronický podpis náborového
+listu k nehnuteľnosti na adrese {{property.address}}.
 
-Pre podpis použite nasledujúci zabezpečený odkaz, ktorý Vás zavedie
-na stránku SecPro určenú na elektronické podpisovanie dokumentov:
+${_EMAIL_SEP}
 
-{{signing_link}}
+   PODPÍSAŤ DOKUMENT
 
-Platnosť odkazu: do {{expires_at}}.
+   {{signing_link}}
+
+   Platnosť odkazu: do {{expires_at}}
+
+${_EMAIL_SEP}
+
+Odkaz Vás zavedie na zabezpečenú stránku SecPro určenú na
+elektronické podpisovanie dokumentov.
 
 Som k dispozícii pre akékoľvek otázky alebo doplnenia.
 
 S úctou,
+
 {{agent.signature}}`
     },
     urgentny: {
@@ -12608,15 +12757,23 @@ S úctou,
 dovoľte mi Vás zdvorilo upozorniť, že náborový list k nehnuteľnosti
 na adrese {{property.address}} ešte čaká na Váš elektronický podpis.
 
-👉 Podpísať teraz:
-{{signing_link}}
+${_EMAIL_SEP}
 
-Odkaz expiruje {{expires_at}} – po tomto čase budete potrebovať
-nový. Podpis trvá menej ako minútu.
+   PODPÍSAŤ TERAZ
+
+   {{signing_link}}
+
+   Odkaz expiruje: {{expires_at}}
+
+${_EMAIL_SEP}
+
+Po expirácii budete potrebovať nový odkaz. Samotný podpis trvá
+menej ako minútu.
 
 V prípade akýchkoľvek otázok ma neváhajte kontaktovať.
 
 S pozdravom,
+
 {{agent.signature}}`
     }
   },
@@ -12628,17 +12785,23 @@ S pozdravom,
       body:
 `Dobrý deň {{salutation}} {{client.lastName}},
 
-posielam Vám na elektronický podpis sprostredkovateľskú zmluvu
-k nehnuteľnosti na adrese {{property.address}}.
+posielam Vám sprostredkovateľskú zmluvu k nehnuteľnosti na adrese
+{{property.address}}, ktorá čaká na Váš elektronický podpis.
 
-👉 Otvoriť dokument na podpis:
-{{signing_link}}
+${_EMAIL_SEP}
 
-Odkaz je platný do {{expires_at}}.
+   PODPÍSAŤ ZMLUVU
+
+   {{signing_link}}
+
+   Platnosť odkazu: do {{expires_at}}
+
+${_EMAIL_SEP}
 
 V prípade otázok som k dispozícii.
 
 S pozdravom,
+
 {{agent.signature}}`
     },
     formalny: {
@@ -12650,12 +12813,18 @@ S pozdravom,
 predkladám Vám na elektronický podpis sprostredkovateľskú zmluvu
 týkajúcu sa nehnuteľnosti na adrese {{property.address}}.
 
-Pre podpis prosím použite nasledujúci odkaz:
-{{signing_link}}
+${_EMAIL_SEP}
 
-Platnosť odkazu: do {{expires_at}}.
+   PODPÍSAŤ ZMLUVU
+
+   {{signing_link}}
+
+   Platnosť odkazu: do {{expires_at}}
+
+${_EMAIL_SEP}
 
 S úctou,
+
 {{agent.signature}}`
     },
     urgentny: {
@@ -12667,11 +12836,18 @@ S úctou,
 sprostredkovateľská zmluva k nehnuteľnosti na adrese
 {{property.address}} ešte čaká na Váš podpis.
 
-👉 Podpísať: {{signing_link}}
+${_EMAIL_SEP}
 
-Odkaz expiruje {{expires_at}}.
+   PODPÍSAŤ TERAZ
+
+   {{signing_link}}
+
+   Odkaz expiruje: {{expires_at}}
+
+${_EMAIL_SEP}
 
 S pozdravom,
+
 {{agent.signature}}`
     }
   },
@@ -12684,17 +12860,23 @@ S pozdravom,
 `Dobrý deň {{salutation}} {{client.lastName}},
 
 posielam Vám rezervačnú zmluvu k nehnuteľnosti na adrese
-{{property.address}}. Po podpise zmluvy budete inštrukčne vyzvaní
-k úhrade rezervačného poplatku.
+{{property.address}}. Po podpise zmluvy budete vyzvaní k úhrade
+rezervačného poplatku.
 
-👉 Podpísať zmluvu:
-{{signing_link}}
+${_EMAIL_SEP}
 
-Odkaz je platný do {{expires_at}}.
+   PODPÍSAŤ ZMLUVU
+
+   {{signing_link}}
+
+   Platnosť odkazu: do {{expires_at}}
+
+${_EMAIL_SEP}
 
 V prípade otázok ma neváhajte kontaktovať.
 
 S pozdravom,
+
 {{agent.signature}}`
     },
     formalny: {
@@ -12706,15 +12888,21 @@ S pozdravom,
 predkladám Vám na elektronický podpis rezervačnú zmluvu
 k nehnuteľnosti na adrese {{property.address}}.
 
-Pre podpis použite nasledujúci zabezpečený odkaz:
-{{signing_link}}
+${_EMAIL_SEP}
 
-Platnosť odkazu: do {{expires_at}}.
+   PODPÍSAŤ ZMLUVU
+
+   {{signing_link}}
+
+   Platnosť odkazu: do {{expires_at}}
+
+${_EMAIL_SEP}
 
 Po obojstrannom podpise Vás budem informovať o ďalších krokoch
 k úhrade rezervačného poplatku.
 
 S úctou,
+
 {{agent.signature}}`
     },
     urgentny: {
@@ -12724,15 +12912,21 @@ S úctou,
 `Dobrý deň {{salutation}} {{client.lastName}},
 
 rezervačná zmluva k nehnuteľnosti na adrese {{property.address}}
-ešte čaká na Váš elektronický podpis. Bez podpisu nemôžeme rezerváciu
-finalizovať a riskujeme stratu nehnuteľnosti pre iného záujemcu.
+ešte čaká na Váš elektronický podpis. Bez podpisu nemôžeme
+rezerváciu finalizovať.
 
-👉 Podpísať teraz:
-{{signing_link}}
+${_EMAIL_SEP}
 
-Odkaz expiruje {{expires_at}}.
+   PODPÍSAŤ TERAZ
+
+   {{signing_link}}
+
+   Odkaz expiruje: {{expires_at}}
+
+${_EMAIL_SEP}
 
 S pozdravom,
+
 {{agent.signature}}`
     }
   },
@@ -12744,15 +12938,21 @@ S pozdravom,
       body:
 `Dobrý deň {{salutation}} {{client.lastName}},
 
-posielam Vám na elektronický podpis kúpnu zmluvu k nehnuteľnosti
-na adrese {{property.address}}.
+posielam Vám na elektronický podpis kúpnu zmluvu
+k nehnuteľnosti na adrese {{property.address}}.
 
-👉 Otvoriť na podpis:
-{{signing_link}}
+${_EMAIL_SEP}
 
-Odkaz je platný do {{expires_at}}.
+   PODPÍSAŤ ZMLUVU
+
+   {{signing_link}}
+
+   Platnosť odkazu: do {{expires_at}}
+
+${_EMAIL_SEP}
 
 S pozdravom,
+
 {{agent.signature}}`
     },
     formalny: {
@@ -12764,14 +12964,18 @@ S pozdravom,
 predkladám Vám na elektronický podpis kúpnu zmluvu
 k nehnuteľnosti na adrese {{property.address}}.
 
-Prosím podpíšte zmluvu prostredníctvom nasledujúceho zabezpečeného
-odkazu:
+${_EMAIL_SEP}
 
-{{signing_link}}
+   PODPÍSAŤ ZMLUVU
 
-Platnosť odkazu: do {{expires_at}}.
+   {{signing_link}}
+
+   Platnosť odkazu: do {{expires_at}}
+
+${_EMAIL_SEP}
 
 S úctou,
+
 {{agent.signature}}`
     },
     urgentny: {
@@ -12783,11 +12987,18 @@ S úctou,
 kúpna zmluva k nehnuteľnosti na adrese {{property.address}}
 ešte čaká na Váš elektronický podpis.
 
-👉 Podpísať: {{signing_link}}
+${_EMAIL_SEP}
 
-Odkaz expiruje {{expires_at}}.
+   PODPÍSAŤ TERAZ
+
+   {{signing_link}}
+
+   Odkaz expiruje: {{expires_at}}
+
+${_EMAIL_SEP}
 
 S pozdravom,
+
 {{agent.signature}}`
     }
   },
@@ -12804,6 +13015,7 @@ posielam Vám faktúru k nehnuteľnosti na adrese {{property.address}}.
 V prípade otázok ma neváhajte kontaktovať.
 
 S pozdravom,
+
 {{agent.signature}}`
     },
     formalny: {
@@ -12816,6 +13028,7 @@ zasielam Vám faktúru týkajúcu sa nehnuteľnosti na adrese
 {{property.address}}.
 
 S úctou,
+
 {{agent.signature}}`
     },
     urgentny: {
@@ -12830,21 +13043,26 @@ na adrese {{property.address}} ešte čaká na úhradu.
 V prípade, že úhrada už prebehla, prosím ignorujte túto správu.
 
 S pozdravom,
+
 {{agent.signature}}`
     }
   }
 };
 
-// Build agent's plain-text signature from profile fields
+// Build agent's plain-text signature from profile fields.
+// Dropped emoji icons (📞 ✉️ 🌐) — they render as pixelated images in
+// Gmail and look unprofessional. Replaced with aligned text labels.
 function buildAgentSignature() {
   const p = (typeof getProfile === 'function') ? getProfile() : {};
   const lines = [];
   if (p.name) lines.push(p.name);
   const titleLine = [p.title || '', p.company || ''].filter(Boolean).join(' | ');
   if (titleLine) lines.push(titleLine);
-  if (p.phone) lines.push('📞 ' + p.phone);
-  if (p.email) lines.push('✉️ ' + p.email);
-  if (p.website) lines.push('🌐 ' + p.website.replace(/^https?:\/\//, ''));
+  // Blank line before contact block
+  if (p.phone || p.email || p.website) lines.push('');
+  if (p.phone)   lines.push('Tel:    ' + p.phone);
+  if (p.email)   lines.push('Email:  ' + p.email);
+  if (p.website) lines.push('Web:    ' + p.website.replace(/^https?:\/\//, ''));
   return lines.join('\n');
 }
 
@@ -12900,6 +13118,7 @@ function openEmailComposer(opts) {
   const profile = check.profile || {};
 
   _emailComposerCtx = {
+    propertyId: opts.propertyId || null,    // for back-linking the request to a property
     docType: opts.documentType || 'nabor',
     docDetail: opts.docDetail || (opts.documentRef ? opts.documentRef.replace(/^.+? – /, '') : ''),
     tonality: 'priatelsky',
@@ -13128,8 +13347,21 @@ async function _emailComposerEnsureLink() {
     _emailComposerCtx.signUrl = data.signUrl;
     _emailComposerCtx.expiresAt = data.expiresAt;
     _emailComposerCtx.realLinkCreated = true;
+    _emailComposerCtx.token = data.token || data.signUrl.split('/').pop();
     _remoteSignCache = null;
     refreshRemoteSignatures();
+    // Persist back-link onto the property's nabor record (for status tracking).
+    // This lets the deal chip turn orange (= "sent, waiting for signature").
+    if (_emailComposerCtx.propertyId && _emailComposerCtx.docType === 'nabor') {
+      _attachRemoteRequestToProperty(_emailComposerCtx.propertyId, {
+        token: _emailComposerCtx.token,
+        signUrl: data.signUrl,
+        expiresAt: data.expiresAt,
+        createdAt: new Date().toISOString(),
+        signerName: document.getElementById('ec-client-name').value.trim(),
+        signerEmail: document.getElementById('ec-client-email').value.trim(),
+      });
+    }
     return data.signUrl;
   } catch (e) {
     showToast('Chyba pripojenia k serveru', 'error');
@@ -13164,6 +13396,38 @@ async function _emailComposerPrepareForSend() {
   };
 }
 
+// Persist a remote-sign request on the property's nabor record.
+// Used to drive the deal-chip status (turns orange — "email sent, waiting").
+function _attachRemoteRequestToProperty(propertyId, request) {
+  const props = getProperties();
+  const idx = props.findIndex(p => p.id === propertyId);
+  if (idx === -1) return;
+  if (!props[idx].nabor) {
+    // Initialise a minimal nabor record so the chip transitions correctly
+    props[idx].nabor = {
+      type: props[idx].type === 'dom' ? 'dom' : 'byt',
+      data: { fields: {}, chips: {} },
+      signatures: { seller: null, agent: null },
+      savedAt: new Date().toISOString(),
+    };
+  }
+  props[idx].nabor.remoteRequest = request;
+  saveProperties(props);
+}
+
+// Mark a sent channel on the remoteRequest after the user clicks Gmail/Outlook/etc.
+function _markRemoteRequestSent(channel) {
+  if (!_emailComposerCtx || !_emailComposerCtx.propertyId) return;
+  if (_emailComposerCtx.docType !== 'nabor') return;
+  const props = getProperties();
+  const idx = props.findIndex(p => p.id === _emailComposerCtx.propertyId);
+  if (idx === -1 || !props[idx].nabor || !props[idx].nabor.remoteRequest) return;
+  props[idx].nabor.remoteRequest.sentAt = new Date().toISOString();
+  props[idx].nabor.remoteRequest.channel = channel;
+  saveProperties(props);
+  if (typeof renderProperties === 'function') renderProperties();
+}
+
 async function emailComposerOpenInGmail() {
   const data = await _emailComposerPrepareForSend(); if (!data) return;
   const url = 'https://mail.google.com/mail/?view=cm&fs=1'
@@ -13172,6 +13436,7 @@ async function emailComposerOpenInGmail() {
     + '&body=' + encodeURIComponent(data.body);
   window.open(url, '_blank');
   _rememberEmailSendChannel('gmail');
+  _markRemoteRequestSent('gmail');
 }
 async function emailComposerOpenInOutlook() {
   const data = await _emailComposerPrepareForSend(); if (!data) return;
@@ -13181,6 +13446,7 @@ async function emailComposerOpenInOutlook() {
     + '&body=' + encodeURIComponent(data.body);
   window.open(url, '_blank');
   _rememberEmailSendChannel('outlook');
+  _markRemoteRequestSent('outlook');
 }
 async function emailComposerOpenInMailto() {
   const data = await _emailComposerPrepareForSend(); if (!data) return;
@@ -13189,6 +13455,7 @@ async function emailComposerOpenInMailto() {
     + '&body=' + encodeURIComponent(data.body);
   window.location.href = url;
   _rememberEmailSendChannel('mailto');
+  _markRemoteRequestSent('mailto');
 }
 async function emailComposerOpenInWhatsApp() {
   const data = await _emailComposerPrepareForSend(); if (!data) return;
@@ -13198,12 +13465,106 @@ async function emailComposerOpenInWhatsApp() {
     : 'https://wa.me/?text=' + encodeURIComponent(text);
   window.open(url, '_blank');
   _rememberEmailSendChannel('whatsapp');
+  _markRemoteRequestSent('whatsapp');
 }
 async function emailComposerCopy() {
   const data = await _emailComposerPrepareForSend(); if (!data) return;
   const text = (data.to ? 'Komu: ' + data.to + '\n' : '') + 'Predmet: ' + data.subj + '\n\n' + data.body;
-  if (typeof copyText === 'function') copyText(text);
+  const html = _buildBrandedEmailHtml(data.subj, data.body, data.realUrl);
+
+  // Try writing both text/plain and text/html to the clipboard so the user
+  // can paste branded HTML into Gmail/Outlook compose, or fall back to plain
+  // text in apps like Slack / Notes.
+  try {
+    if (navigator.clipboard && window.ClipboardItem) {
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          'text/plain': new Blob([text], { type: 'text/plain' }),
+          'text/html':  new Blob([html], { type: 'text/html' }),
+        })
+      ]);
+      showToast('Skopírované — vložte do Gmail/Outlook compose ✓', 'success');
+    } else {
+      // Older browser fallback
+      if (typeof copyText === 'function') copyText(text);
+    }
+  } catch (e) {
+    // Fall back to plain text on permissions failure
+    if (typeof copyText === 'function') copyText(text);
+  }
   _rememberEmailSendChannel('copy');
+  _markRemoteRequestSent('copy');
+}
+
+// Build a lightweight, Gmail-paste-friendly HTML email.
+// Uses inline styles only — Gmail strips <style> tags but keeps inline CSS.
+// The CTA button is a fat coloured anchor that survives most sanitizers.
+function _buildBrandedEmailHtml(subject, plainBody, signUrl) {
+  const profile = (typeof getProfile === 'function') ? getProfile() : {};
+  // Convert plaintext body into safe HTML paragraphs, but replace the CTA
+  // block (link surrounded by separators) with a real branded button.
+  const bodyHtml = _plainBodyToBrandedHtml(plainBody, signUrl, profile);
+  return '<!doctype html><html><body style="margin:0;padding:0;background:#F5F7FA;">'
+    + '<div style="font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;color:#1A2235;max-width:600px;margin:0 auto;padding:24px;background:#fff;">'
+    + bodyHtml
+    + '</div></body></html>';
+}
+
+function _escHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function _plainBodyToBrandedHtml(plain, signUrl, profile) {
+  // Strip the plaintext separators + CTA block; we'll re-emit a styled button.
+  // Pattern: "<sep>\n\n   PODPÍSAŤ ...\n\n   <url>\n\n   Platnosť ...\n\n<sep>"
+  const ctaRegex = new RegExp(
+    _EMAIL_SEP + '\\n\\n\\s*([A-ZÁÄČĎÉÍĽĹŇÓÔŔŠŤÚÝŽa-záäčďéíľĺňóôŕšťúýž ]+)\\n\\n\\s*' + _escapeRegex(signUrl)
+    + '\\n\\n\\s*(Platnosť[^\\n]*|Odkaz expiruje[^\\n]*)\\n\\n' + _EMAIL_SEP,
+    'm'
+  );
+  const ctaButton = (label, expiry) => `
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:24px auto;">
+  <tr><td align="center" bgcolor="#0B2A3C" style="border-radius:8px;">
+    <a href="${_escHtml(signUrl)}" target="_blank"
+       style="display:inline-block;padding:14px 36px;font-size:16px;font-weight:600;
+              color:#ffffff;text-decoration:none;border-radius:8px;
+              background:linear-gradient(135deg,#1A7A8A,#0B2A3C);">
+      ${_escHtml(label)}
+    </a>
+  </td></tr>
+  <tr><td align="center" style="padding-top:8px;font-size:12px;color:#64748B;">
+    ${_escHtml(expiry)}
+  </td></tr>
+</table>`;
+
+  let html = plain.replace(ctaRegex, (_m, label, expiry) => ctaButton(label.trim(), expiry.trim()));
+
+  // Convert remaining plain text into HTML — preserve paragraphs + line breaks.
+  // Split on double-newlines for paragraphs, escape remaining lines, join with <br>.
+  // Keep the CTA HTML we already injected as-is.
+  const ctaSentinel = '\u0001CTA\u0001';
+  const ctaParts = [];
+  html = html.replace(/<table[^]*?<\/table>/g, (m) => { ctaParts.push(m); return ctaSentinel + (ctaParts.length-1) + ctaSentinel; });
+  html = html.split(/\n{2,}/).map(par => {
+    if (par.includes(ctaSentinel)) return par;     // preserve CTA blocks
+    const safe = _escHtml(par).replace(/\n/g, '<br>');
+    return '<p style="margin:0 0 14px;line-height:1.55;font-size:15px;color:#1A2235;">' + safe + '</p>';
+  }).join('\n');
+  html = html.replace(new RegExp(ctaSentinel + '(\\d+)' + ctaSentinel, 'g'), (_, i) => ctaParts[+i]);
+
+  // Add a subtle SecPro footer brand strip
+  html += `
+<div style="margin-top:24px;padding-top:16px;border-top:1px solid #E5E9F0;font-size:11px;color:#94A3B8;line-height:1.5;">
+  Tento email obsahuje odkaz na elektronický podpis dokumentu.<br>
+  Odkaz Vás zavedie na zabezpečenú stránku <b style="color:#0B2A3C;">SecPro</b>.
+</div>`;
+
+  return html;
+}
+
+function _escapeRegex(s) {
+  return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 // Fallback — skopírovať iba samotný odkaz (bez celého emailu)
 async function emailComposerCopySigningLinkOnly() {

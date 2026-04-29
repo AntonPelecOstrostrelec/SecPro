@@ -1180,6 +1180,52 @@
     }
     .deal-file-remove:hover { background: #FEE2E2; }
 
+    /* Signed-doc banner — shown on property card when náborák is fully signed */
+    .signed-doc-banner {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      margin-top: 0.5rem;
+      padding: 0.65rem 0.85rem;
+      background: linear-gradient(135deg, #ECFDF5, #D1FAE5);
+      border: 1px solid #6EE7B7;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.18s;
+    }
+    .signed-doc-banner:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 10px rgba(16, 185, 129, 0.15);
+      border-color: #10B981;
+    }
+    .signed-doc-icon {
+      flex-shrink: 0;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #10B981;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.95rem;
+      box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
+    }
+    .signed-doc-text { flex: 1; min-width: 0; }
+    .signed-doc-title { font-size: 0.82rem; font-weight: 700; color: #065F46; }
+    .signed-doc-sub { font-size: 0.7rem; color: #047857; margin-top: 1px; }
+    .signed-doc-action {
+      flex-shrink: 0;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #065F46;
+      padding: 4px 10px;
+      background: #fff;
+      border: 1px solid #6EE7B7;
+      border-radius: 999px;
+    }
+
     /* Deal chip file-count badge */
     .deal-chip-files {
       display: inline-flex;
