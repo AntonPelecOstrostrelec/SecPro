@@ -3274,28 +3274,83 @@ const NABOR_STATUS_LABELS = {
   done:        'Podpísané ✓',
 };
 
-// Build the deal-tracker chip row HTML for a property card.
+// Doc types currently enabled for the [+] add-menu. Others stay greyed out
+// with a "Čoskoro" tag until their templates / editors are built.
+const DEAL_AVAILABLE_TYPES = new Set(['nabor']);
+
+// Has this property "created" the given deal type? Drives whether a card
+// shows up in the dynamic list under "Dokumentácia obchodu".
+function isDealCreated(p, key) {
+  if (!p) return false;
+  if (key === 'nabor') return !!p.nabor;
+  return !!(p.deals && p.deals[key]);
+}
+
+// Short labels used as the title of each card in the deal list.
+function dealCardTitle(key) {
+  const dt = DEAL_TYPES.find(x => x.key === key);
+  return dt ? dt.label : key;
+}
+
+// Short status-line text shown under the card title. Date when relevant.
+function dealCardSubtitle(p, key) {
+  const status = getDealStatus(p, key);
+  const meta = DEAL_STATUS_META[status];
+  if (key === 'nabor') {
+    const rr = p.nabor && p.nabor.remoteRequest;
+    if (rr && rr.signedAt) {
+      return 'Podpísané · ' + new Date(rr.signedAt).toLocaleDateString('sk-SK');
+    }
+    if (rr && rr.sentAt) {
+      return 'Email odoslaný · ' + new Date(rr.sentAt).toLocaleDateString('sk-SK');
+    }
+    if (p.nabor && p.nabor.savedAt) {
+      return 'Rozpracovaný · ' + new Date(p.nabor.savedAt).toLocaleDateString('sk-SK');
+    }
+  }
+  const rec = p.deals && p.deals[key];
+  if (rec && rec.updatedAt) {
+    return meta.label + ' · ' + new Date(rec.updatedAt).toLocaleDateString('sk-SK');
+  }
+  return meta.label;
+}
+
+// Build the deal-tracker block HTML for a property card.
+// New design (per user sketch): header with [+] add-menu + a list of cards
+// for documents the agent has actually created. Empty state if none.
 function getDealsRowHtml(p) {
-  const chips = DEAL_TYPES.map(t => {
-    const status = getDealStatus(p, t.key);
-    const meta = DEAL_STATUS_META[status];
-    const onClick = t.key === 'nabor'
-      ? `openNaborModal('${p.id}')`
-      : `openDealStatusEditor('${p.id}', '${t.key}')`;
-    const fileCount = getDealFileCount(p, t.key);
-    const stateLabel = (t.key === 'nabor' && NABOR_STATUS_LABELS[status])
-      ? NABOR_STATUS_LABELS[status]
-      : meta.label;
-    const titleAttr = t.label + ' — ' + stateLabel + (fileCount ? ' · ' + fileCount + ' dok.' : '');
-    const fileBadge = fileCount > 0
-      ? `<span class="deal-chip-files" title="${fileCount} priložených dokumentov">${fileCount}</span>`
-      : '';
-    return `<button class="deal-chip deal-chip-${status}" onclick="event.stopPropagation();${onClick}" title="${titleAttr}">
-      <span class="deal-dot" style="background:${meta.dot};"></span>
-      <span class="deal-chip-label">${t.abbr}</span>
-      ${fileBadge}
-    </button>`;
-  }).join('');
+  // Cards for created documents only — no longer always-visible chips
+  const createdCards = DEAL_TYPES
+    .filter(t => isDealCreated(p, t.key))
+    .map(t => {
+      const status = getDealStatus(p, t.key);
+      const meta = DEAL_STATUS_META[status];
+      const onClick = t.key === 'nabor'
+        ? `openNaborModal('${p.id}')`
+        : `openDealStatusEditor('${p.id}', '${t.key}')`;
+      const fileCount = getDealFileCount(p, t.key);
+      const fileBadge = fileCount > 0
+        ? `<span class="deal-card-files" title="${fileCount} priložených dokumentov">${fileCount}</span>`
+        : '';
+      const stateLabel = (t.key === 'nabor' && NABOR_STATUS_LABELS[status])
+        ? NABOR_STATUS_LABELS[status]
+        : meta.label;
+      return `<button class="deal-card-row deal-card-row-${status}" onclick="event.stopPropagation();${onClick}" title="${stateLabel}">
+        <span class="deal-card-dot" style="background:${meta.dot};"></span>
+        <span class="deal-card-row-label">${t.label}</span>
+        <span class="deal-card-row-meta">${dealCardSubtitle(p, t.key)}</span>
+        ${fileBadge}
+        <svg class="deal-card-row-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>`;
+    }).join('');
+
+  const emptyState = createdCards
+    ? ''
+    : `<div class="deal-empty">Zatiaľ žiadne dokumenty. Pridajte cez <b>+</b></div>`;
+
+  // Note: previously a row of 5 always-visible status chips lived here.
+  // Replaced with the card list above + a [+] add-menu in the header so the
+  // section only shows what the agent has actually started working on.
 
   // Signed-document card — shown ONLY when the client really signed remotely.
   // (Local seller-only signatures from agent's test draws are excluded.)
@@ -3340,10 +3395,99 @@ function getDealsRowHtml(p) {
   }
 
   return `<div class="deal-row">
-    <div class="deal-row-title">📋 Dokumentácia obchodu:</div>
-    <div class="deal-row-chips">${chips}</div>
+    <div class="deal-row-head">
+      <div class="deal-row-title">📋 Dokumentácia obchodu</div>
+      <button class="deal-row-add" onclick="event.stopPropagation();openDealAddMenu(this, '${p.id}');" title="Pridať dokument" aria-label="Pridať dokument">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+    </div>
+    <div class="deal-row-list">
+      ${createdCards}
+      ${emptyState}
+    </div>
     ${signedBanner}
   </div>`;
+}
+
+// Floating dropdown menu shown when the [+] button is clicked.
+// Lists the 5 deal types — only those in DEAL_AVAILABLE_TYPES can be picked.
+function openDealAddMenu(btn, propId) {
+  // Close any existing menu
+  closeDealAddMenu();
+
+  const menu = document.createElement('div');
+  menu.className = 'deal-add-menu';
+  menu.id = '_deal-add-menu-active';
+  menu.dataset.propId = propId;
+
+  const props = getProperties();
+  const p = props.find(x => x.id === propId);
+  if (!p) return;
+
+  menu.innerHTML = DEAL_TYPES.map(t => {
+    const enabled = DEAL_AVAILABLE_TYPES.has(t.key);
+    const created = isDealCreated(p, t.key);
+    const cls = !enabled ? 'deal-add-item disabled' : (created ? 'deal-add-item exists' : 'deal-add-item');
+    const note = !enabled ? '<span class="dai-tag">Čoskoro</span>'
+              : created ? '<span class="dai-tag dai-tag-existing">Už pridané</span>'
+              : '';
+    const onClick = (enabled && !created)
+      ? `event.stopPropagation();addDealForProperty('${propId}', '${t.key}');closeDealAddMenu();`
+      : (enabled && created)
+        ? `event.stopPropagation();closeDealAddMenu();(${t.key === 'nabor' ? `openNaborModal('${propId}')` : `openDealStatusEditor('${propId}', '${t.key}')`});`
+        : 'event.stopPropagation();';
+    return `<button class="${cls}" onclick="${onClick}" ${!enabled ? 'aria-disabled="true"' : ''}>
+      <span class="dai-label">${t.label}</span>
+      ${note}
+    </button>`;
+  }).join('');
+
+  // Position the menu under the [+] button
+  document.body.appendChild(menu);
+  const rect = btn.getBoundingClientRect();
+  // Prefer right-aligned to the button so the menu doesn't extend off-screen
+  const menuW = 230;
+  let left = rect.right - menuW + window.scrollX;
+  if (left < 8) left = 8;
+  if (left + menuW > window.innerWidth - 8) left = window.innerWidth - menuW - 8;
+  menu.style.position = 'absolute';
+  menu.style.top = (rect.bottom + 6 + window.scrollY) + 'px';
+  menu.style.left = left + 'px';
+  menu.style.width = menuW + 'px';
+
+  // Close on outside click / Esc
+  setTimeout(() => {
+    document.addEventListener('click', _onDealAddMenuOutsideClick, { capture: true });
+    document.addEventListener('keydown', _onDealAddMenuKey);
+  }, 0);
+}
+
+function _onDealAddMenuOutsideClick(e) {
+  const menu = document.getElementById('_deal-add-menu-active');
+  if (!menu) return;
+  if (!menu.contains(e.target)) closeDealAddMenu();
+}
+function _onDealAddMenuKey(e) {
+  if (e.key === 'Escape') closeDealAddMenu();
+}
+function closeDealAddMenu() {
+  const menu = document.getElementById('_deal-add-menu-active');
+  if (menu) menu.remove();
+  document.removeEventListener('click', _onDealAddMenuOutsideClick, { capture: true });
+  document.removeEventListener('keydown', _onDealAddMenuKey);
+}
+
+// Trigger the right editor for a newly-added document type.
+// nabor → opens the náborový list modal directly.
+// others → for now disabled, but if enabled in the future, open their editor.
+function addDealForProperty(propId, key) {
+  if (key === 'nabor') {
+    openNaborModal(propId);
+    return;
+  }
+  if (DEAL_AVAILABLE_TYPES.has(key)) {
+    openDealStatusEditor(propId, key);
+  }
 }
 
 // Open the náborák modal in a "signed view" — shows the signed signature

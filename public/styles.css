@@ -878,7 +878,7 @@
       color: #4A5568;
       letter-spacing: 0.01em;
     }
-    /* Deal documents tracker (semafor) on property card */
+    /* Deal documents block — header + dynamic card list */
     .deal-row {
       margin: 0.5rem 0 0.4rem;
       padding: 0.5rem 0.65rem;
@@ -886,47 +886,183 @@
       border: 1px solid #E5E9F0;
       border-radius: 10px;
     }
+    .deal-row-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.4rem;
+    }
     .deal-row-title {
       font-size: 0.7rem;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.6px;
       color: #6B7280;
-      margin-bottom: 0.4rem;
     }
-    .deal-row-chips {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 4px;
-    }
-    .deal-chip {
+    .deal-row-add {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 1px solid #CBD5E1;
+      background: #fff;
+      color: #475569;
+      cursor: pointer;
       display: inline-flex;
       align-items: center;
-      gap: 5px;
-      padding: 3px 8px 3px 6px;
-      border-radius: 999px;
+      justify-content: center;
+      transition: all 0.15s;
+    }
+    .deal-row-add:hover {
+      background: #1A7A8A;
+      color: #fff;
+      border-color: #1A7A8A;
+      transform: scale(1.05);
+    }
+    .deal-row-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .deal-empty {
+      font-size: 0.74rem;
+      color: #94A3B8;
+      padding: 6px 4px;
+      font-style: italic;
+    }
+    .deal-empty b {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #1A7A8A;
+      color: #fff;
+      text-align: center;
+      line-height: 16px;
+      font-style: normal;
       font-size: 0.72rem;
-      font-weight: 600;
-      cursor: pointer;
-      border: 1px solid transparent;
+      vertical-align: middle;
+      margin: 0 1px;
+    }
+
+    /* Individual deal-document card row */
+    .deal-card-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid;
+      border-radius: 8px;
       background: #fff;
-      color: #374151;
+      cursor: pointer;
+      text-align: left;
+      font-size: 0.78rem;
       transition: all 0.15s ease;
     }
-    .deal-chip:hover {
+    .deal-card-row:hover {
       transform: translateY(-1px);
       box-shadow: 0 2px 6px rgba(0,0,0,0.08);
     }
-    .deal-dot {
+    .deal-card-dot {
       width: 8px;
       height: 8px;
       border-radius: 50%;
       flex-shrink: 0;
     }
-    .deal-chip-not_started { background: #F3F4F6; color: #6B7280; border-color: #E5E7EB; }
-    .deal-chip-pending     { background: #FEE2E2; color: #991B1B; border-color: #FCA5A5; }
-    .deal-chip-verified    { background: #FEF3C7; color: #92400E; border-color: #FCD34D; }
-    .deal-chip-done        { background: #D1FAE5; color: #065F46; border-color: #6EE7B7; }
+    .deal-card-row-label {
+      font-weight: 700;
+      color: #1A2235;
+      flex-shrink: 0;
+    }
+    .deal-card-row-meta {
+      flex: 1;
+      min-width: 0;
+      font-size: 0.72rem;
+      color: #64748B;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .deal-card-files {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 16px;
+      height: 16px;
+      padding: 0 5px;
+      font-size: 0.62rem;
+      font-weight: 700;
+      background: rgba(11,42,60,0.85);
+      color: #fff;
+      border-radius: 10px;
+      flex-shrink: 0;
+    }
+    .deal-card-row-arrow {
+      flex-shrink: 0;
+      color: #94A3B8;
+      transition: transform 0.15s;
+    }
+    .deal-card-row:hover .deal-card-row-arrow {
+      transform: translateX(2px);
+      color: #1A2235;
+    }
+    /* Status-coloured backgrounds — paint the whole card per status */
+    .deal-card-row-not_started { background: #F8FAFC;  border-color: #E5E7EB; }
+    .deal-card-row-pending     { background: #FEF2F2;  border-color: #FCA5A5; }
+    .deal-card-row-verified    { background: #FFFBEB;  border-color: #FCD34D; }
+    .deal-card-row-done        { background: #ECFDF5;  border-color: #86EFAC; }
+    .deal-card-row-done .deal-card-row-label { color: #065F46; }
+    .deal-card-row-done .deal-card-row-meta  { color: #047857; }
+    .deal-card-row-pending .deal-card-row-label { color: #991B1B; }
+    .deal-card-row-pending .deal-card-row-meta  { color: #B91C1C; }
+    .deal-card-row-verified .deal-card-row-label { color: #92400E; }
+    .deal-card-row-verified .deal-card-row-meta  { color: #B45309; }
+
+    /* Floating [+] add-menu */
+    .deal-add-menu {
+      z-index: 10000;
+      background: #fff;
+      border: 1px solid #E5E9F0;
+      border-radius: 10px;
+      box-shadow: 0 8px 24px rgba(11, 42, 60, 0.18);
+      padding: 4px;
+      animation: dealAddIn 0.12s ease-out;
+    }
+    @keyframes dealAddIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .deal-add-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding: 8px 10px;
+      border: none;
+      background: transparent;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.84rem;
+      font-weight: 600;
+      color: #1A2235;
+      transition: background 0.12s;
+    }
+    .deal-add-item:hover { background: #F0FAFA; color: #0B2A3C; }
+    .deal-add-item.disabled {
+      color: #94A3B8;
+      cursor: not-allowed;
+    }
+    .deal-add-item.disabled:hover { background: transparent; }
+    .deal-add-item.exists { color: #047857; }
+    .dai-tag {
+      font-size: 0.68rem;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: #F1F5F9;
+      color: #64748B;
+    }
+    .dai-tag-existing { background: #DCFCE7; color: #065F46; }
 
     /* Deal status editor — radio button list */
     .deal-status-btn-row {
