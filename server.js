@@ -16,6 +16,9 @@ const data = require('./api/data');
 const orsr = require('./api/orsr');
 const syncListing = require('./api/sync-listing');
 const amlCheck = require('./api/aml-check');
+const signCreate = require('./api/sign/create');
+const signList = require('./api/sign/list');
+const signToken = require('./api/sign/[token]');
 
 app.all('/api/leads', leads);
 app.all('/api/lead-detail', leadDetail);
@@ -25,6 +28,18 @@ app.all('/api/data', data);
 app.all('/api/orsr', orsr);
 app.all('/api/sync-listing', syncListing);
 app.all('/api/aml-check', amlCheck);
+app.all('/api/sign/create', signCreate);
+app.all('/api/sign/list', signList);
+app.all('/api/sign/:token', (req, res) => {
+  // Express puts the token in req.params; the handler reads it from req.query
+  req.query = Object.assign({}, req.query, { token: req.params.token });
+  return signToken(req, res);
+});
+
+// Mirror the Vercel rewrite for the short signing URL (/podpis/<token>)
+app.get('/podpis/:token', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'sign.html'));
+});
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));

@@ -6,129 +6,196 @@
 <title>Podpis dokumentu – SecPro</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
-  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f0f2f5;color:#1a1a2e;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px}
-  .card{background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.08);max-width:600px;width:100%;overflow:hidden}
-  .card-header{background:linear-gradient(135deg,#0b2a3c 0%,#1a5276 100%);color:#fff;padding:24px;text-align:center}
-  .card-header h1{font-size:18px;font-weight:600;margin-bottom:4px}
-  .card-header p{font-size:13px;opacity:.8}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#F5F7FA;color:#0B2A3C;min-height:100vh;display:flex;flex-direction:column;padding:0}
+  .page-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 16px;width:100%}
+
+  /* SecPro brand header */
+  .brand-header{
+    background:linear-gradient(135deg,#0B2A3C 0%,#1A7A8A 100%);
+    color:#fff;
+    padding:24px 16px;
+    text-align:center;
+    width:100%;
+    box-shadow:0 2px 12px rgba(11,42,60,0.18);
+  }
+  .brand-name{font-size:22px;font-weight:800;letter-spacing:1px;text-transform:uppercase}
+  .brand-tag{font-size:12px;opacity:.85;margin-top:4px;letter-spacing:.4px}
+
+  /* Card */
+  .card{background:#fff;border-radius:14px;box-shadow:0 8px 32px rgba(11,42,60,0.10);max-width:600px;width:100%;overflow:hidden;border:1px solid #E5E9F0}
+
+  /* Coloured top bar — varies per state */
+  .state-bar{height:5px;width:100%}
+  .state-bar.error    {background:linear-gradient(90deg,#DC2626,#EF4444)}
+  .state-bar.expired  {background:linear-gradient(90deg,#F59E0B,#F97316)}
+  .state-bar.signed   {background:linear-gradient(90deg,#10B981,#059669)}
+  .state-bar.success  {background:linear-gradient(90deg,#10B981,#059669)}
+  .state-bar.form     {background:linear-gradient(90deg,#1A7A8A,#0B2A3C)}
+  .state-bar.loading  {background:linear-gradient(90deg,#1A7A8A,#0B2A3C)}
+
+  /* Form-state header strip */
+  .card-header{background:linear-gradient(135deg,#0b2a3c 0%,#1a5276 100%);color:#fff;padding:20px 24px;text-align:center}
+  .card-header h1{font-size:17px;font-weight:600;margin-bottom:4px;line-height:1.3}
+  .card-header p{font-size:13px;opacity:.85}
+
   .card-body{padding:24px}
   .info-row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f0f0f0;font-size:14px}
   .info-row:last-child{border:none}
   .info-label{color:#666;font-weight:500}
-  .info-value{color:#1a1a2e;font-weight:600;text-align:right}
-  .message-box{background:#f8f9fa;border-left:3px solid #1a5276;padding:12px 16px;margin:16px 0;border-radius:0 8px 8px 0;font-size:13px;color:#444;line-height:1.5}
-  .doc-preview{background:#fafbfc;border:1px solid #e8e8e8;border-radius:8px;padding:16px;margin:16px 0;max-height:300px;overflow-y:auto;font-size:13px;line-height:1.6}
+  .info-value{color:#0B2A3C;font-weight:600;text-align:right}
+  .message-box{background:#F0FAFA;border-left:3px solid #1A7A8A;padding:12px 16px;margin:16px 0;border-radius:0 8px 8px 0;font-size:13px;color:#0B2A3C;line-height:1.5}
+  .doc-preview{background:#FAFBFC;border:1px solid #E5E9F0;border-radius:8px;padding:16px;margin:16px 0;max-height:300px;overflow-y:auto;font-size:13px;line-height:1.6}
   .sig-section{margin-top:20px;padding-top:20px;border-top:2px solid #f0f0f0}
   .sig-section h3{font-size:15px;margin-bottom:12px;color:#0b2a3c}
-  .sig-name-input{width:100%;padding:10px 14px;border:1px solid #ddd;border-radius:8px;font-size:14px;margin-bottom:12px;outline:none;transition:border .2s}
-  .sig-name-input:focus{border-color:#1a5276}
-  .canvas-wrap{position:relative;border:2px dashed #ccc;border-radius:8px;background:#fff;cursor:crosshair;touch-action:none;margin-bottom:8px}
-  .canvas-wrap.has-ink{border-color:#1a5276;border-style:solid}
+  .sig-name-input{width:100%;padding:10px 14px;border:1.5px solid #E2E8F0;border-radius:8px;font-size:14px;margin-bottom:12px;outline:none;transition:all .2s;background:#FAFBFC}
+  .sig-name-input:focus{border-color:#1A7A8A;background:#fff;box-shadow:0 0 0 3px rgba(26,122,138,0.15)}
+  .canvas-wrap{position:relative;border:2px dashed #CBD5E1;border-radius:8px;background:#fff;cursor:crosshair;touch-action:none;margin-bottom:8px}
+  .canvas-wrap.has-ink{border-color:#1A7A8A;border-style:solid}
   canvas{display:block;width:100%;border-radius:6px}
-  .canvas-placeholder{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#bbb;font-size:14px;pointer-events:none;text-align:center}
+  .canvas-placeholder{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#94A3B8;font-size:14px;pointer-events:none;text-align:center}
   .canvas-wrap.has-ink .canvas-placeholder{display:none}
   .btn-row{display:flex;gap:8px;margin-top:12px}
   .btn{flex:1;padding:12px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s}
-  .btn-clear{background:#f0f0f0;color:#666}
-  .btn-clear:hover{background:#e0e0e0}
-  .btn-sign{background:linear-gradient(135deg,#0b2a3c,#1a5276);color:#fff}
-  .btn-sign:hover{opacity:.9}
-  .btn-sign:disabled{opacity:.5;cursor:not-allowed}
-  .legal-note{font-size:11px;color:#888;margin-top:12px;line-height:1.5;text-align:center}
+  .btn-clear{background:#F1F5F9;color:#475569}
+  .btn-clear:hover{background:#E2E8F0}
+  .btn-sign{background:linear-gradient(135deg,#1A7A8A,#0b2a3c);color:#fff;box-shadow:0 2px 6px rgba(11,42,60,0.15)}
+  .btn-sign:hover{transform:translateY(-1px);box-shadow:0 4px 10px rgba(11,42,60,0.20)}
+  .btn-sign:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+  .legal-note{font-size:11px;color:#94A3B8;margin-top:12px;line-height:1.5;text-align:center}
+
+  /* Status states */
   .status-card{text-align:center;padding:48px 24px}
-  .status-icon{font-size:48px;margin-bottom:16px}
-  .status-title{font-size:20px;font-weight:700;margin-bottom:8px}
-  .status-sub{font-size:14px;color:#666;line-height:1.5}
-  .spinner{border:3px solid #f0f0f0;border-top:3px solid #1a5276;border-radius:50%;width:32px;height:32px;animation:spin .8s linear infinite;margin:0 auto 16px}
+  .status-icon-circle{
+    width:64px;height:64px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    margin:0 auto 16px;font-size:32px;font-weight:700;color:#fff;
+  }
+  .status-icon-circle.error   {background:linear-gradient(135deg,#DC2626,#EF4444);box-shadow:0 4px 12px rgba(220,38,38,0.3)}
+  .status-icon-circle.expired {background:linear-gradient(135deg,#F59E0B,#F97316);box-shadow:0 4px 12px rgba(245,158,11,0.3)}
+  .status-icon-circle.signed  {background:linear-gradient(135deg,#10B981,#059669);box-shadow:0 4px 12px rgba(16,185,129,0.3)}
+  .status-icon-circle.success {background:linear-gradient(135deg,#10B981,#059669);box-shadow:0 4px 12px rgba(16,185,129,0.3)}
+  .status-title{font-size:20px;font-weight:700;margin-bottom:8px;color:#0B2A3C}
+  .status-sub{font-size:14px;color:#64748B;line-height:1.5}
+  .spinner{border:3px solid #E5E9F0;border-top:3px solid #1A7A8A;border-radius:50%;width:32px;height:32px;animation:spin .8s linear infinite;margin:0 auto 16px}
   @keyframes spin{to{transform:rotate(360deg)}}
-  .logo{font-size:13px;color:#aaa;margin-top:16px;text-align:center}
-  .logo b{color:#0b2a3c}
+
+  /* Footer */
+  .footer{font-size:12px;color:#94A3B8;padding:16px;text-align:center}
+  .footer b{color:#0B2A3C;font-weight:700}
+  .footer-meta{font-size:10px;opacity:.7;margin-top:2px}
+
   @media(max-width:480px){
-    body{padding:8px}
-    .card-body{padding:16px}
+    body{padding:0}
+    .page-wrap{padding:16px 12px}
+    .card-body{padding:18px}
     .info-row{flex-direction:column;gap:2px}
     .info-value{text-align:left}
+    .status-card{padding:36px 18px}
   }
 </style>
 </head>
 <body>
 
-<div class="card" id="main-card">
-  <!-- Loading state -->
-  <div class="status-card" id="state-loading">
-    <div class="spinner"></div>
-    <div class="status-title">Načítavam dokument...</div>
-  </div>
+<header class="brand-header">
+  <div class="brand-name">SecPro</div>
+  <div class="brand-tag">Zabezpečené elektronické podpisy</div>
+</header>
 
-  <!-- Error state -->
-  <div class="status-card" id="state-error" style="display:none">
-    <div class="status-icon">&#10060;</div>
-    <div class="status-title" id="error-title">Chyba</div>
-    <div class="status-sub" id="error-msg"></div>
-  </div>
+<div class="page-wrap">
+  <div class="card" id="main-card">
+    <div class="state-bar loading" id="state-bar"></div>
 
-  <!-- Expired state -->
-  <div class="status-card" id="state-expired" style="display:none">
-    <div class="status-icon">&#9203;</div>
-    <div class="status-title">Platnosť odkazu vypršala</div>
-    <div class="status-sub">Kontaktujte svojho makléra pre nový odkaz na podpis.</div>
-  </div>
-
-  <!-- Already signed state -->
-  <div class="status-card" id="state-signed" style="display:none">
-    <div class="status-icon">&#9989;</div>
-    <div class="status-title">Dokument bol podpísaný</div>
-    <div class="status-sub" id="signed-info"></div>
-  </div>
-
-  <!-- Success state (after signing) -->
-  <div class="status-card" id="state-success" style="display:none">
-    <div class="status-icon">&#9989;</div>
-    <div class="status-title">Podpis bol prijatý!</div>
-    <div class="status-sub">Ďakujeme. Váš maklér dostane potvrdenie o podpise.</div>
-  </div>
-
-  <!-- Signing form -->
-  <div id="state-form" style="display:none">
-    <div class="card-header">
-      <h1 id="form-title">Podpis dokumentu</h1>
-      <p id="form-subtitle"></p>
+    <!-- Loading state -->
+    <div class="status-card" id="state-loading">
+      <div class="spinner"></div>
+      <div class="status-title">Načítavam dokument...</div>
     </div>
-    <div class="card-body">
-      <div id="doc-info"></div>
 
-      <div id="agent-message" class="message-box" style="display:none"></div>
+    <!-- Error state -->
+    <div class="status-card" id="state-error" style="display:none">
+      <div class="status-icon-circle error">×</div>
+      <div class="status-title" id="error-title">Chyba</div>
+      <div class="status-sub" id="error-msg"></div>
+    </div>
 
-      <div id="doc-preview" class="doc-preview" style="display:none"></div>
+    <!-- Expired state -->
+    <div class="status-card" id="state-expired" style="display:none">
+      <div class="status-icon-circle expired">⏱</div>
+      <div class="status-title">Platnosť odkazu vypršala</div>
+      <div class="status-sub">Kontaktujte svojho makléra a požiadajte o nový odkaz na podpis.</div>
+    </div>
 
-      <div class="sig-section">
-        <h3>Elektronický podpis</h3>
-        <input type="text" class="sig-name-input" id="signer-name" placeholder="Vaše celé meno">
-        <div class="canvas-wrap" id="canvas-wrap">
-          <canvas id="sig-canvas" height="180"></canvas>
-          <div class="canvas-placeholder">Podpíšte sa tu prstom alebo myšou</div>
-        </div>
-        <div class="btn-row">
-          <button class="btn btn-clear" onclick="clearCanvas()">Vymazať</button>
-          <button class="btn btn-sign" id="btn-submit" onclick="submitSignature()" disabled>Podpísať dokument</button>
-        </div>
-        <div class="legal-note">
-          Kliknutím na "Podpísať dokument" súhlasíte s použitím elektronického podpisu
-          v zmysle §40 ods. 4 Občianskeho zákonníka. Podpis je právne záväzný
-          ako jednoduchý elektronický podpis (SES).
+    <!-- Already signed state -->
+    <div class="status-card" id="state-signed" style="display:none">
+      <div class="status-icon-circle signed">✓</div>
+      <div class="status-title">Dokument bol podpísaný</div>
+      <div class="status-sub" id="signed-info"></div>
+    </div>
+
+    <!-- Success state (after signing) -->
+    <div class="status-card" id="state-success" style="display:none">
+      <div class="status-icon-circle success">✓</div>
+      <div class="status-title">Podpis bol prijatý!</div>
+      <div class="status-sub">Ďakujeme. Váš maklér dostane potvrdenie o podpise.</div>
+    </div>
+
+    <!-- Signing form -->
+    <div id="state-form" style="display:none">
+      <div class="card-header">
+        <h1 id="form-title">Podpis dokumentu</h1>
+        <p id="form-subtitle"></p>
+      </div>
+      <div class="card-body">
+        <div id="doc-info"></div>
+
+        <div id="agent-message" class="message-box" style="display:none"></div>
+
+        <div id="doc-preview" class="doc-preview" style="display:none"></div>
+
+        <div class="sig-section">
+          <h3>Elektronický podpis</h3>
+          <input type="text" class="sig-name-input" id="signer-name" placeholder="Vaše celé meno">
+          <div class="canvas-wrap" id="canvas-wrap">
+            <canvas id="sig-canvas" height="180"></canvas>
+            <div class="canvas-placeholder">Podpíšte sa tu prstom alebo myšou</div>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-clear" onclick="clearCanvas()">Vymazať</button>
+            <button class="btn btn-sign" id="btn-submit" onclick="submitSignature()" disabled>Podpísať dokument</button>
+          </div>
+          <div class="legal-note">
+            Kliknutím na "Podpísať dokument" súhlasíte s použitím elektronického podpisu
+            v zmysle §40 ods. 4 Občianskeho zákonníka. Podpis je právne záväzný
+            ako jednoduchý elektronický podpis (SES).
+          </div>
         </div>
       </div>
     </div>
   </div>
 </div>
 
-<div class="logo">Zabezpečené cez <b>SecPro</b></div>
+<div class="footer">
+  Zabezpečené cez <b>SecPro</b>
+  <div class="footer-meta">Centrum pre moderných maklérov</div>
+</div>
 
 <script>
 (function() {
   const API_BASE = window.location.origin;
-  const params = new URLSearchParams(window.location.search);
-  const token = params.get('token');
+
+  // Token can come from either `?token=...` (legacy) or the URL path
+  // `/podpis/<token>` (new short URL via Vercel rewrite). With rewrites,
+  // window.location.search is empty for the client even though the server
+  // sees the rewritten query string — so we MUST also parse the path.
+  function _resolveToken() {
+    const params = new URLSearchParams(window.location.search);
+    let t = params.get('token');
+    if (t) return t;
+    const pathMatch = window.location.pathname.match(/\/podpis\/([^\/?#]+)/);
+    if (pathMatch) return decodeURIComponent(pathMatch[1]);
+    return null;
+  }
+  const token = _resolveToken();
 
   let docData = null;
   let hasInk = false;
@@ -308,6 +375,12 @@
       const el = document.getElementById('state-' + s);
       if (el) el.style.display = (s === id) ? '' : 'none';
     });
+    // Update the colored top bar to match the active state
+    const bar = document.getElementById('state-bar');
+    if (bar) {
+      bar.classList.remove('loading', 'error', 'expired', 'signed', 'success', 'form');
+      bar.classList.add(id);
+    }
   }
 
   function showError(title, msg) {
