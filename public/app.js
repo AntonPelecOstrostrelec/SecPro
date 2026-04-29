@@ -4928,9 +4928,13 @@ function openNaborModal(propId) {
       if (p.rooms) document.getElementById('nb-izby').value = p.rooms;
       if (p.area) document.getElementById('nb-obytna-plocha').value = p.area;
       if (p.floor) document.getElementById('nb-poschodie').value = p.floor;
-      if (p.ownerName) document.getElementById('nb-vlastnik').value = p.ownerName;
-      if (p.ownerPhone) document.getElementById('nb-tel-vlastnik').value = p.ownerPhone;
-      if (p.ownerEmail) document.getElementById('nb-email-vlastnik').value = p.ownerEmail;
+      // Property fields are saved as p.owner / p.phone / p.email (not p.ownerName/etc.)
+      const ownerName = p.owner || p.ownerName || '';
+      const ownerPhone = p.phone || p.ownerPhone || '';
+      const ownerEmail = p.email || p.ownerEmail || '';
+      if (ownerName) document.getElementById('nb-vlastnik').value = ownerName;
+      if (ownerPhone) document.getElementById('nb-tel-vlastnik').value = ownerPhone;
+      if (ownerEmail) document.getElementById('nb-email-vlastnik').value = ownerEmail;
       if (p.price) document.getElementById('nb-cena-inzercia-byt').value = p.price + ' €';
       document.getElementById('nb-datum-byt').value = new Date().toISOString().split('T')[0];
       const session = getStoredUser();
@@ -4939,7 +4943,12 @@ function openNaborModal(propId) {
       if (p.address) document.getElementById('nd-adresa').value = (p.address || '') + (p.city ? ', ' + p.city : '');
       if (p.rooms) document.getElementById('nd-izby').value = p.rooms;
       if (p.area) document.getElementById('nd-uzitkova').value = p.area;
-      if (p.ownerName) document.getElementById('nd-vlastnik1').value = p.ownerName;
+      const ownerName = p.owner || p.ownerName || '';
+      const ownerPhone = p.phone || p.ownerPhone || '';
+      const ownerEmail = p.email || p.ownerEmail || '';
+      if (ownerName) document.getElementById('nd-vlastnik1').value = ownerName;
+      if (ownerPhone && document.getElementById('nd-tel-vlastnik')) document.getElementById('nd-tel-vlastnik').value = ownerPhone;
+      if (ownerEmail && document.getElementById('nd-email-vlastnik')) document.getElementById('nd-email-vlastnik').value = ownerEmail;
       if (p.price) document.getElementById('nd-cena-inzercia').value = p.price + ' €';
       document.getElementById('nd-datum').value = new Date().toISOString().split('T')[0];
       const session = getStoredUser();

@@ -965,25 +965,63 @@
       flex-shrink: 0;
     }
 
-    /* Email composer — section grouping */
+    /* Email composer — branded section grouping */
     .ec-section {
-      padding: 0.65rem 0.85rem;
-      background: linear-gradient(135deg, #FAFBFC, #F5F7FA);
+      position: relative;
+      padding: 0.85rem 1rem 0.85rem 1.1rem;
+      background: #fff;
       border: 1px solid #E5E9F0;
-      border-radius: 10px;
+      border-radius: 12px;
       margin-bottom: 0.65rem;
+      box-shadow: 0 1px 2px rgba(11, 42, 60, 0.04);
+      transition: box-shadow 0.15s;
+    }
+    .ec-section:hover {
+      box-shadow: 0 2px 8px rgba(11, 42, 60, 0.06);
+    }
+    .ec-section::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 12px;
+      bottom: 12px;
+      width: 3px;
+      background: linear-gradient(180deg, #1A7A8A, #0B2A3C);
+      border-radius: 0 3px 3px 0;
     }
     .ec-section-title {
       font-size: 0.72rem;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.6px;
-      color: #6B7280;
-      margin-bottom: 0.5rem;
+      letter-spacing: 0.8px;
+      color: #0B2A3C;
+      margin-bottom: 0.6rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
     .ec-section .form-label {
+      display: block;
       font-size: 0.72rem;
-      margin-bottom: 0.2rem;
+      margin-bottom: 0.25rem;
+      font-weight: 600;
+      color: #4A5568;
+      letter-spacing: 0.02em;
+    }
+    .ec-section .form-input {
+      padding: 0.5rem 0.7rem;
+      border: 1.5px solid #E2E8F0;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      background: #FAFBFC;
+      transition: all 0.15s;
+      width: 100%;
+    }
+    .ec-section .form-input:focus {
+      outline: none;
+      border-color: #1A7A8A;
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(26, 122, 138, 0.15);
     }
     .ec-spinner {
       display: inline-block;
@@ -1035,7 +1073,7 @@
       font-weight: 600;
     }
     .email-send-btn {
-      padding: 8px 14px;
+      padding: 10px 14px;
       border: 1.5px solid #E5E7EB;
       border-radius: 10px;
       background: #fff;
@@ -1043,23 +1081,40 @@
       font-size: 0.82rem;
       font-weight: 600;
       color: #374151;
-      transition: all 0.15s;
+      transition: all 0.18s ease;
       display: inline-flex;
       align-items: center;
-      gap: 4px;
+      gap: 6px;
       flex: 1;
       min-width: 110px;
       justify-content: center;
+      position: relative;
     }
     .email-send-btn:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 14px rgba(0,0,0,0.10);
     }
-    .email-send-gmail:hover    { background: #FEF2F2; border-color: #DC2626; color: #DC2626; }
-    .email-send-outlook:hover  { background: #EFF6FF; border-color: #2563EB; color: #2563EB; }
-    .email-send-whatsapp:hover { background: #ECFDF5; border-color: #059669; color: #059669; }
-    .email-send-mailto:hover   { background: #F5F3FF; border-color: #7C3AED; color: #7C3AED; }
-    .email-send-copy:hover     { background: #F1F5F9; border-color: #475569; color: #1E293B; }
+    .email-send-btn:active { transform: translateY(0); }
+    /* Brand-coloured left strip — subtle */
+    .email-send-btn::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 3px;
+      border-radius: 10px 0 0 10px;
+      background: currentColor;
+      opacity: 0.6;
+    }
+    .email-send-gmail    { color: #C5221F; border-color: #FECACA; background: #fff; }
+    .email-send-outlook  { color: #0078D4; border-color: #BFDBFE; background: #fff; }
+    .email-send-mailto   { color: #6D28D9; border-color: #DDD6FE; background: #fff; }
+    .email-send-whatsapp { color: #128C7E; border-color: #99F6E4; background: #fff; }
+    .email-send-copy     { color: #475569; border-color: #CBD5E1; background: #fff; }
+    .email-send-gmail:hover    { background: #FEF2F2; border-color: #C5221F; }
+    .email-send-outlook:hover  { background: #EFF6FF; border-color: #0078D4; }
+    .email-send-mailto:hover   { background: #F5F3FF; border-color: #6D28D9; }
+    .email-send-whatsapp:hover { background: #ECFDF5; border-color: #128C7E; }
+    .email-send-copy:hover     { background: #F1F5F9; border-color: #475569; }
 
     /* Deal files — dropzone + list */
     .deal-files-dropzone {
