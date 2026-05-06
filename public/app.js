@@ -6734,6 +6734,7 @@ let _propMapPOIActive = {};         // { mhd: true, schools: false, ... }
 let _propMapPOILayer = null;        // L.layerGroup holding visible POI markers
 let _propMapPOICache = {};          // { 'mhd:bbox-key': [poi, poi, ...] }
 let _propMapPOIDebounce = null;
+let _propMapPOIGen = 0;             // increments on each refresh — stale fetches abort
 let _geocodeInProgress = false;
 
 // POI categories — Overpass tag queries per category, with brand colour + emoji
@@ -6770,8 +6771,9 @@ const POI_CATEGORIES = {
   },
 };
 
-// Toggle a POI category. When turning on, fetch + plot for current bounds;
-// when off, clear that category's markers.
+// Toggle a POI category. Always debounces so rapid pill clicks coalesce
+// into a single refresh — otherwise concurrent fetches race over
+// _propMapPOILayer.clearLayers() and stale results overwrite fresh ones.
 function togglePOICategory(key) {
   if (!POI_CATEGORIES[key]) return;
   _propMapPOIActive[key] = !_propMapPOIActive[key];
@@ -6779,9 +6781,8 @@ function togglePOICategory(key) {
   document.querySelectorAll('.map-poi-pill').forEach(b => {
     b.classList.toggle('active', !!_propMapPOIActive[b.dataset.poi]);
   });
-  // Run refresh immediately on click (skip debounce for immediate user feedback)
   if (_propMapPOIDebounce) clearTimeout(_propMapPOIDebounce);
-  _doRefreshPOILayer();
+  _propMapPOIDebounce = setTimeout(_doRefreshPOILayer, 220);
 }
 
 // Refresh which POIs are shown — handles both adding new categories and
@@ -6793,6 +6794,11 @@ function refreshPOILayer() {
 
 async function _doRefreshPOILayer() {
   if (!_propertiesMap || !_propMapPOILayer) return;
+
+  // Generation counter: any concurrent refresh that started earlier will see
+  // its gen != current and silently drop its results instead of clobbering
+  // markers from this newer pass.
+  const myGen = ++_propMapPOIGen;
   _propMapPOILayer.clearLayers();
 
   const activeCats = Object.keys(_propMapPOIActive).filter(k => _propMapPOIActive[k]);
@@ -6827,22 +6833,51 @@ async function _doRefreshPOILayer() {
   // Round bbox so cache hits across small pans
   const roundedKey = (b.getSouth().toFixed(2) + ',' + b.getWest().toFixed(2) + ',' + b.getNorth().toFixed(2) + ',' + b.getEast().toFixed(2));
 
-  for (const cat of activeCats) {
+  _showPOIBusy('Načítavam ' + activeCats.map(c => POI_CATEGORIES[c].label).join(', ') + '...');
+
+  // Fetch all categories in parallel — Overpass handles 5 small queries
+  // way faster than 5 sequential awaits, and the user gets all pins at once.
+  const fetches = activeCats.map(async (cat) => {
     const cacheKey = cat + ':' + roundedKey;
-    let pois = _propMapPOICache[cacheKey];
-    if (!pois) {
-      _showPOIBusy('Načítavam ' + POI_CATEGORIES[cat].label + ' v okolí...');
-      pois = await _fetchPOIsForCategory(cat, b);
-      _propMapPOICache[cacheKey] = pois || [];
+    if (_propMapPOICache[cacheKey]) {
+      return { cat, pois: _propMapPOICache[cacheKey] };
     }
+    const pois = await _fetchPOIsForCategory(cat, b);
+    _propMapPOICache[cacheKey] = pois || [];
+    return { cat, pois: pois || [] };
+  });
+
+  let results;
+  try {
+    results = await Promise.all(fetches);
+  } catch (e) {
+    console.error('[SecPro POI] fetch error:', e);
+    showToast('Chyba pri načítavaní POI', 'error');
+    _hidePOIBusy();
+    return;
+  }
+
+  // Stale generation? Newer refresh started while we were waiting — drop.
+  if (myGen !== _propMapPOIGen) {
+    console.log('[SecPro POI] gen', myGen, 'superseded by', _propMapPOIGen, '— dropping stale results');
+    return;
+  }
+
+  let totalCount = 0;
+  results.forEach(({ cat, pois }) => {
     if (pois && pois.length) {
       _plotPOIs(cat, pois);
-    } else {
-      // No results in this area for this category
-      console.log('[SecPro POI] No', cat, 'in current view');
+      totalCount += pois.length;
     }
-  }
+  });
+
   _hidePOIBusy();
+
+  if (totalCount === 0) {
+    showToast('V tomto výseku sa nenašli žiadne POI — skúste posunúť mapu alebo zväčšiť výsek', 'warning');
+  } else {
+    console.log('[SecPro POI] plotted', totalCount, 'POIs across', activeCats.length, 'categories at zoom', zoom);
+  }
 }
 
 async function _fetchPOIsForCategory(cat, bounds) {
@@ -6854,6 +6889,7 @@ async function _fetchPOIsForCategory(cat, bounds) {
   const east = bounds.getEast().toFixed(5);
   const queries = def.overpass.map(sel => sel + '(' + south + ',' + west + ',' + north + ',' + east + ');').join('');
   const ql = '[out:json][timeout:25];(' + queries + ');out center 200;';
+  console.log('[SecPro POI] fetch', cat, 'bbox=', south, west, north, east);
   try {
     const r = await fetch('https://overpass-api.de/api/interpreter', {
       method: 'POST',
@@ -6862,14 +6898,15 @@ async function _fetchPOIsForCategory(cat, bounds) {
     });
     if (!r.ok) {
       console.warn('[SecPro POI] Overpass returned', r.status, 'for', cat);
-      showToast('Načítanie POI zlyhalo — skúste o chvíľu znova', 'warning');
+      // 429/504 are common when zoomed out — surface so the user knows
+      showToast('Overpass API: ' + r.status + ' pre ' + def.label + ' — skúste o chvíľu', 'warning');
       return [];
     }
     const data = await r.json();
     const out = [];
     for (const el of (data.elements || [])) {
-      const lat = el.lat || (el.center && el.center.lat);
-      const lng = el.lon || (el.center && el.center.lon);
+      const lat = (typeof el.lat === 'number') ? el.lat : (el.center && el.center.lat);
+      const lng = (typeof el.lon === 'number') ? el.lon : (el.center && el.center.lon);
       if (!isFinite(lat) || !isFinite(lng)) continue;
       out.push({
         lat, lng,
@@ -6877,9 +6914,11 @@ async function _fetchPOIsForCategory(cat, bounds) {
         kind: (el.tags && (el.tags.amenity || el.tags.shop || el.tags.leisure || el.tags.highway || el.tags.railway)) || cat,
       });
     }
+    console.log('[SecPro POI]', cat, '→', out.length, 'items');
     return out;
   } catch (e) {
     console.warn('[SecPro] POI fetch failed for', cat, e);
+    showToast('Sieťová chyba pri načítaní ' + def.label, 'error');
     return [];
   }
 }
