@@ -1,5 +1,28 @@
-// Initialize Lucide icons
+// === JS BUILD VERSION INDICATOR ===
+// If you don't see this badge in the top-left corner after a hard refresh,
+// the browser is still serving you a stale cached app.js bundle. Bump the
+// version string when deploying any POI/map fix and tell the user to look
+// for it.
+const SECPRO_JS_BUILD = 'mapfix3-2026-05-06';
+console.log('%c[SecPro] JS build:', 'background:#1E40AF;color:#fff;padding:2px 6px;border-radius:3px;', SECPRO_JS_BUILD);
 document.addEventListener('DOMContentLoaded', function() {
+  // Drop a small build-version chip in the top-left so a non-technical user
+  // can confirm at a glance that the latest JS actually loaded. Auto-hides
+  // after 12 seconds so it doesn't permanently clutter the UI.
+  try {
+    const chip = document.createElement('div');
+    chip.id = 'secpro-build-chip';
+    chip.textContent = 'JS: ' + SECPRO_JS_BUILD;
+    chip.style.cssText = 'position:fixed;top:8px;left:8px;z-index:99999;' +
+      'background:#16A34A;color:#fff;padding:4px 10px;border-radius:6px;' +
+      'font-family:monospace;font-size:11px;font-weight:700;' +
+      'box-shadow:0 2px 6px rgba(0,0,0,0.3);pointer-events:none;' +
+      'transition:opacity 0.6s;';
+    document.body.appendChild(chip);
+    setTimeout(() => { chip.style.opacity = '0'; }, 12000);
+    setTimeout(() => { chip.remove(); }, 13000);
+  } catch (e) { /* DOM not ready yet, harmless */ }
+
   lucide.createIcons();
   restoreSidebarState();
   if (typeof updateHomeStats === 'function') updateHomeStats();
