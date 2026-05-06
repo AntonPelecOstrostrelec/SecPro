@@ -6722,6 +6722,8 @@ function filterProperties() {
 let _propView = 'grid';            // 'grid' | 'map'
 let _propertiesMap = null;          // Leaflet instance
 let _propMapMarkers = [];           // active markers
+let _propMapCluster = null;         // L.markerClusterGroup
+let _propMapLegend = null;          // L.control instance
 let _geocodeInProgress = false;
 
 function setPropertyView(view) {
@@ -6764,6 +6766,46 @@ function initPropertiesMap() {
       subdomains: 'abcd',
       maxZoom: 19,
     }).addTo(_propertiesMap);
+
+    // Marker clustering — handles 50+ properties in the same area gracefully
+    if (typeof L.markerClusterGroup === 'function') {
+      _propMapCluster = L.markerClusterGroup({
+        showCoverageOnHover: false,
+        spiderfyOnMaxZoom: true,
+        disableClusteringAtZoom: 14,
+        maxClusterRadius: 60,
+        iconCreateFunction: function(cluster) {
+          const n = cluster.getChildCount();
+          let cls = 'sm';
+          if (n >= 50) cls = 'lg';
+          else if (n >= 10) cls = 'md';
+          return L.divIcon({
+            html: '<div class="map-cluster-bubble map-cluster-' + cls + '"><span>' + n + '</span></div>',
+            className: '',
+            iconSize: [42, 42],
+          });
+        },
+      });
+      _propertiesMap.addLayer(_propMapCluster);
+    }
+
+    // Status legend in bottom-left corner
+    _propMapLegend = L.control({ position: 'bottomleft' });
+    _propMapLegend.onAdd = function() {
+      const div = L.DomUtil.create('div', 'map-legend');
+      const statuses = ['novy', 'kontakt', 'stretnutie', 'nafotenie', 'inzercia', 'obhliadky', 'rezervacia', 'predana', 'stiahnuta'];
+      div.innerHTML = '<div class="map-legend-title">Status nehnuteľnosti</div>' +
+        statuses.map(s => {
+          const m = PROP_STATUS_MAP[s];
+          if (!m) return '';
+          return '<div class="map-legend-row"><span class="map-legend-dot" style="background:' + m.color + ';"></span><span class="map-legend-label">' + m.label + '</span></div>';
+        }).join('');
+      // Don't let map drag through the legend
+      L.DomEvent.disableClickPropagation(div);
+      L.DomEvent.disableScrollPropagation(div);
+      return div;
+    };
+    _propMapLegend.addTo(_propertiesMap);
   } else {
     // Force a redraw — Leaflet needs this when its container becomes visible
     setTimeout(() => _propertiesMap.invalidateSize(), 50);
@@ -6843,23 +6885,37 @@ async function geocodeMissingProperties() {
   _geocodeInProgress = false;
 }
 
-// Build a status-coloured pin via L.divIcon — matches SecPro brand colours.
+// Compact price formatter — "250 000 €" → "250k €", "1 500 000 €" → "1,5M €"
+function _formatPriceCompact(price) {
+  const n = Number(price);
+  if (!isFinite(n) || n <= 0) return '— €';
+  if (n >= 1000000) {
+    const m = n / 1000000;
+    const txt = m >= 10 ? Math.round(m).toString() : m.toFixed(1).replace('.', ',').replace(',0', '');
+    return txt + 'M €';
+  }
+  if (n >= 1000) return Math.round(n / 1000) + 'k €';
+  return Math.round(n) + ' €';
+}
+
+// Build an Airbnb-style price-label pin — the price itself is the marker so
+// the agent can read prices straight off the map without clicking.
 function _makePropertyMarkerIcon(p) {
   const meta = (typeof PROP_STATUS_MAP !== 'undefined' && PROP_STATUS_MAP[p.status])
     ? PROP_STATUS_MAP[p.status] : { color: '#64748B', bg: '#F1F5F9' };
   const isInactive = (typeof INACTIVE_STATUSES !== 'undefined') && INACTIVE_STATUSES.includes(p.status);
+  const priceTxt = _formatPriceCompact(p.price);
+
   return L.divIcon({
-    className: 'map-pin',
+    className: 'price-pin' + (isInactive ? ' price-pin-inactive' : ''),
     html:
-      '<div class="map-pin-circle" style="background:' + meta.color + ';' +
-        (isInactive ? 'opacity:0.6;' : '') + '">' +
-        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>' +
+      '<div class="price-pin-bubble" style="background:' + meta.color + ';">' +
+        priceTxt +
       '</div>' +
-      '<div class="map-pin-tail" style="border-top-color:' + meta.color + ';' +
-        (isInactive ? 'opacity:0.6;' : '') + '"></div>',
-    iconSize: [34, 44],
-    iconAnchor: [17, 44],
-    popupAnchor: [0, -42],
+      '<div class="price-pin-tail" style="border-top-color:' + meta.color + ';"></div>',
+    iconSize: [null, null],     // auto — text width drives it
+    iconAnchor: [0, 38],         // anchor at tip of tail
+    popupAnchor: [0, -38],
   });
 }
 
@@ -6868,6 +6924,11 @@ function _makePropertyMarkerPopup(p) {
   const meta = (typeof PROP_STATUS_MAP !== 'undefined' && PROP_STATUS_MAP[p.status]) || {};
   const photo = (p.photos && p.photos[0]) || '';
   const price = p.price ? Number(p.price).toLocaleString('sk-SK') + ' €' : 'Bez ceny';
+  // Google Maps directions URL — opens native nav app on mobile, web Maps on desktop
+  const navUrl = (p.geo && p.geo.lat && p.geo.lng)
+    ? 'https://www.google.com/maps/dir/?api=1&destination=' + p.geo.lat + ',' + p.geo.lng
+    : null;
+
   return '<div class="map-popup">' +
     (photo ? '<div class="map-popup-photo" style="background-image:url(' + photo + ');"></div>' : '') +
     '<div class="map-popup-body">' +
@@ -6875,18 +6936,29 @@ function _makePropertyMarkerPopup(p) {
       '<div class="map-popup-title">' + esc(p.title || 'Bez názvu') + '</div>' +
       '<div class="map-popup-price">' + price + '</div>' +
       (p.address || p.city ? '<div class="map-popup-loc">' + esc([p.address, p.city].filter(Boolean).join(', ')) + '</div>' : '') +
-      '<button class="map-popup-btn" onclick="openPropDetail(\'' + p.id + '\');_propertiesMap && _propertiesMap.closePopup();">Otvoriť detail</button>' +
+      '<div class="map-popup-actions">' +
+        '<button class="map-popup-btn map-popup-btn-primary" onclick="openPropDetail(\'' + p.id + '\');_propertiesMap && _propertiesMap.closePopup();">Otvoriť detail</button>' +
+        (navUrl ? '<a class="map-popup-btn map-popup-btn-secondary" href="' + navUrl + '" target="_blank" rel="noopener" title="Navigovať cez Google Maps">' +
+          '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>' +
+          'Navigovať' +
+        '</a>' : '') +
+      '</div>' +
     '</div>' +
   '</div>';
 }
 
 // Plot every property's marker on the map, replacing previous ones.
-// Auto-zooms to fit all visible pins.
+// Auto-zooms to fit all visible pins. Uses marker clustering when
+// available, falls back to plain map.addLayer otherwise.
 function plotPropertyMarkers() {
   if (!_propertiesMap) return;
 
-  // Clear previous
-  _propMapMarkers.forEach(m => m.remove());
+  // Clear previous markers from cluster (or directly from map)
+  if (_propMapCluster) {
+    _propMapCluster.clearLayers();
+  } else {
+    _propMapMarkers.forEach(m => m.remove());
+  }
   _propMapMarkers = [];
 
   // Use the same filtering as the grid view (search + type + status)
@@ -6911,8 +6983,12 @@ function plotPropertyMarkers() {
   const bounds = L.latLngBounds([]);
   filtered.forEach(p => {
     const m = L.marker([p.geo.lat, p.geo.lng], { icon: _makePropertyMarkerIcon(p) })
-      .bindPopup(_makePropertyMarkerPopup(p), { maxWidth: 280 })
-      .addTo(_propertiesMap);
+      .bindPopup(_makePropertyMarkerPopup(p), { maxWidth: 280 });
+    if (_propMapCluster) {
+      _propMapCluster.addLayer(m);
+    } else {
+      m.addTo(_propertiesMap);
+    }
     _propMapMarkers.push(m);
     bounds.extend([p.geo.lat, p.geo.lng]);
   });
