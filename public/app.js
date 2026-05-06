@@ -6775,14 +6775,38 @@ const POI_CATEGORIES = {
 // into a single refresh — otherwise concurrent fetches race over
 // _propMapPOILayer.clearLayers() and stale results overwrite fresh ones.
 function togglePOICategory(key) {
-  if (!POI_CATEGORIES[key]) return;
+  _poiOverlay('Klik prijatý: ' + key);
+  if (!POI_CATEGORIES[key]) { _poiOverlay('Neznáma kategória: ' + key, true); return; }
   _propMapPOIActive[key] = !_propMapPOIActive[key];
+  _poiOverlay('Klik prijatý: ' + key + ' = ' + (_propMapPOIActive[key] ? 'ON' : 'OFF'));
   // Update button visual state
   document.querySelectorAll('.map-poi-pill').forEach(b => {
     b.classList.toggle('active', !!_propMapPOIActive[b.dataset.poi]);
   });
   if (_propMapPOIDebounce) clearTimeout(_propMapPOIDebounce);
   _propMapPOIDebounce = setTimeout(_doRefreshPOILayer, 220);
+}
+
+// Fixed-position diagnostic overlay (top-right of the viewport, not the map).
+// Independent of map layout so even if the map container itself is broken,
+// this still shows. Buffers last 6 messages so user can read the sequence.
+const _poiOverlayLines = [];
+function _poiOverlay(msg, isError) {
+  console.log('[SecPro POI/UI]', msg);
+  let el = document.getElementById('poi-overlay');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'poi-overlay';
+    el.style.cssText = 'position:fixed;top:80px;right:16px;z-index:99999;' +
+      'background:rgba(11,42,60,0.95);color:#fff;padding:10px 14px;border-radius:10px;' +
+      'font-family:monospace;font-size:11px;line-height:1.5;max-width:340px;' +
+      'box-shadow:0 6px 18px rgba(0,0,0,0.4);pointer-events:none;white-space:pre-wrap;';
+    document.body.appendChild(el);
+  }
+  _poiOverlayLines.push((isError ? '⚠ ' : '• ') + msg);
+  if (_poiOverlayLines.length > 8) _poiOverlayLines.shift();
+  el.textContent = _poiOverlayLines.join('\n');
+  el.style.background = isError ? 'rgba(220, 38, 38, 0.95)' : 'rgba(11, 42, 60, 0.95)';
 }
 
 // Refresh which POIs are shown — handles both adding new categories and
@@ -6793,9 +6817,10 @@ function refreshPOILayer() {
 }
 
 async function _doRefreshPOILayer() {
+  _poiOverlay('Refresh: štart');
   _poiDiag('Spúšťam refresh...');
-  if (!_propertiesMap) { _poiDiag('CHYBA: mapa neexistuje', true); return; }
-  if (!_propMapPOILayer) { _poiDiag('CHYBA: POI vrstva neexistuje', true); return; }
+  if (!_propertiesMap) { _poiOverlay('CHYBA: mapa null', true); _poiDiag('CHYBA: mapa neexistuje', true); return; }
+  if (!_propMapPOILayer) { _poiOverlay('CHYBA: POI vrstva null', true); _poiDiag('CHYBA: POI vrstva neexistuje', true); return; }
 
   // Generation counter: any concurrent refresh that started earlier will see
   // its gen != current and silently drop its results instead of clobbering
@@ -6805,17 +6830,21 @@ async function _doRefreshPOILayer() {
 
   const activeCats = Object.keys(_propMapPOIActive).filter(k => _propMapPOIActive[k]);
   if (activeCats.length === 0) {
+    _poiOverlay('Žiadne aktívne kategórie');
     _hidePOIBusy();
     return;
   }
+  _poiOverlay('Aktívne: ' + activeCats.length + ' kat');
   _poiDiag('Aktívne: ' + activeCats.map(c => POI_CATEGORIES[c].label).join(', '));
 
   // Don't query at low zoom — would return thousands of POIs and freeze
   // the browser. If the user is at country/regional zoom, auto-zoom to a
   // city level so the feature does something useful immediately.
   const zoom = _propertiesMap.getZoom();
+  _poiOverlay('Zoom: ' + zoom);
   _poiDiag('Zoom: ' + zoom);
   if (zoom < 11) {
+    _poiOverlay('Zoom <11 → setZoom(13)');
     _poiDiag('Zoom < 11 → priblížujem na 13');
     _propertiesMap.setZoom(13, { animate: true });
     // moveend will trigger another refresh once the zoom settles
@@ -6840,6 +6869,7 @@ async function _doRefreshPOILayer() {
 
   // Fetch all categories in parallel — Overpass handles 5 small queries
   // way faster than 5 sequential awaits, and the user gets all pins at once.
+  _poiOverlay('Fetch start: ' + activeCats.length + ' kat');
   _poiDiag('Fetchujem ' + activeCats.length + ' kategórií paralelne...');
   const fetches = activeCats.map(async (cat) => {
     const cacheKey = cat + ':' + roundedKey;
@@ -6856,12 +6886,15 @@ async function _doRefreshPOILayer() {
     results = await Promise.all(fetches);
   } catch (e) {
     console.error('[SecPro POI] fetch error:', e);
+    _poiOverlay('Fetch CHYBA: ' + (e.message || e).slice(0, 60), true);
     _poiDiag('CHYBA fetch: ' + (e.message || e), true);
     return;
   }
+  _poiOverlay('Fetch hotový: ' + results.map(r => r.cat + ':' + (r.pois?.length || 0)).join(' '));
 
   // Stale generation? Newer refresh started while we were waiting — drop.
   if (myGen !== _propMapPOIGen) {
+    _poiOverlay('Gen ' + myGen + ' < ' + _propMapPOIGen + ' → drop');
     console.log('[SecPro POI] gen', myGen, 'superseded by', _propMapPOIGen);
     return;
   }
@@ -6898,6 +6931,8 @@ async function _doRefreshPOILayer() {
   const layerOnMap = _propertiesMap.hasLayer(_propMapPOILayer);
   const layerCount = _propMapPOILayer.getLayers().length;
   const coordStr = firstCoord ? (firstCoord.lat.toFixed(4) + ',' + firstCoord.lng.toFixed(4)) : '—';
+  _poiOverlay('Plot: layer-on-map=' + (layerOnMap ? 'YES' : 'NO') + ' členov=' + layerCount);
+  _poiOverlay('Test pin @' + center.lat.toFixed(4) + ',' + center.lng.toFixed(4));
   _poiDiag('✓ Hotovo: ' + summary.join(', ') + ' | Spolu ' + totalCount +
     ' (+1 TEST). Layer-na-mape: ' + (layerOnMap ? 'ÁNO' : 'NIE') +
     ', Layer-členov: ' + layerCount + ', 1.POI: ' + coordStr);
