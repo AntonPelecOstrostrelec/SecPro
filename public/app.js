@@ -5020,6 +5020,7 @@ function transferInterested(targetPropId) {
 function naborChip(el) {
   el.classList.toggle('active');
   if (typeof updateNaborPreview === 'function') updateNaborPreview();
+  if (typeof _naborScheduleAutoSave === 'function') _naborScheduleAutoSave();
 }
 
 function getActiveChips(containerId) {
@@ -5078,7 +5079,11 @@ function _naborApplyFormData(prefix, saved) {
 }
 
 // ── Save the current nábor form into property.nabor ──
-async function saveNabor() {
+// saveNabor(opts) — opts can include:
+//   silent: true     → no toast, just persist (used by auto-save)
+//   closeModal: true → close the modal after save (used by "Uložiť" click)
+async function saveNabor(opts) {
+  opts = opts || {};
   const propId = document.getElementById('nabor-prop-id').value;
   const type = document.getElementById('nabor-type').value;
   if (!propId) return;
@@ -5086,7 +5091,7 @@ async function saveNabor() {
   const prefix = type === 'byt' ? 'nb' : 'nd';
   const formData = _naborReadFormData(prefix);
   if (!formData) {
-    showToast('Nepodarilo sa prečítať údaje', 'error');
+    if (!opts.silent) showToast('Nepodarilo sa prečítať údaje', 'error');
     return;
   }
 
@@ -5095,6 +5100,9 @@ async function saveNabor() {
   if (idx === -1) return;
 
   const existed = !!props[idx].nabor;
+  // Preserve any remoteRequest already attached to the property — saveNabor
+  // shouldn't wipe the link to a sent / signed request.
+  const existingRemote = (props[idx].nabor && props[idx].nabor.remoteRequest) || null;
   props[idx].nabor = {
     type,
     data: formData,
@@ -5103,11 +5111,47 @@ async function saveNabor() {
       agent:  _naborSigState && _naborSigState.agent  ? _naborSigState.agent  : null,
     },
     savedAt: new Date().toISOString(),
+    ...(existingRemote ? { remoteRequest: existingRemote } : {}),
   };
   saveProperties(props);
 
-  showToast(existed ? 'Náborový list aktualizovaný ✓' : 'Náborový list uložený ✓', 'success');
+  if (opts.silent) {
+    // Auto-save — show a small inline "Uložené ✓" indicator instead of a toast
+    const info = document.getElementById('nabor-saved-info');
+    if (info) {
+      const t = new Date().toLocaleTimeString('sk-SK', { hour: '2-digit', minute: '2-digit' });
+      info.innerHTML = '<span style="color:#065F46;">✓</span> Auto-uložené ' + t;
+      info.style.display = '';
+    }
+  } else {
+    showToast(existed ? 'Náborový list aktualizovaný ✓' : 'Náborový list uložený ✓', 'success');
+  }
+
   if (typeof renderProperties === 'function') renderProperties();
+  if (opts.closeModal) closeNaborModal();
+}
+
+// ── Auto-save plumbing ──
+let _naborAutoSaveTimer = null;
+function _naborScheduleAutoSave() {
+  if (_naborAutoSaveTimer) clearTimeout(_naborAutoSaveTimer);
+  _naborAutoSaveTimer = setTimeout(() => { saveNabor({ silent: true }); }, 800);
+}
+function _naborCancelAutoSave() {
+  if (_naborAutoSaveTimer) { clearTimeout(_naborAutoSaveTimer); _naborAutoSaveTimer = null; }
+}
+
+// Attach input/change listeners to every field in both byt + dom forms so
+// changes get auto-saved with debounce.
+function _naborAttachAutoSave() {
+  const modal = document.getElementById('naborModal');
+  if (!modal) return;
+  modal.querySelectorAll('#nabor-form-byt input, #nabor-form-byt textarea, #nabor-form-byt select, #nabor-form-dom input, #nabor-form-dom textarea, #nabor-form-dom select').forEach(el => {
+    if (el.dataset.naborAutoSaveBound) return;
+    el.dataset.naborAutoSaveBound = '1';
+    const ev = (el.tagName === 'SELECT' || el.type === 'date') ? 'change' : 'input';
+    el.addEventListener(ev, _naborScheduleAutoSave);
+  });
 }
 
 function openNaborModal(propId) {
@@ -5222,6 +5266,11 @@ function openNaborModal(propId) {
   // viewing or downloading the PDF.
   _applyNaborLockState(p);
 
+  // Attach auto-save listeners to every field — silent debounced save on
+  // every input / chip toggle so the agent never loses progress.
+  _naborCancelAutoSave();   // cancel any pending save from a previous open
+  _naborAttachAutoSave();
+
   // Show initial name previews under signature boxes
   if (typeof _refreshAllNaborSigNames === 'function') _refreshAllNaborSigNames();
   // Live-update the name previews when the relevant form fields change
@@ -5235,6 +5284,13 @@ function openNaborModal(propId) {
 }
 
 function closeNaborModal() {
+  // Flush pending auto-save synchronously so the user can't lose the last
+  // few keystrokes when they close mid-edit.
+  if (_naborAutoSaveTimer) {
+    clearTimeout(_naborAutoSaveTimer);
+    _naborAutoSaveTimer = null;
+    try { saveNabor({ silent: true }); } catch (e) {}
+  }
   document.getElementById('naborModal').style.display = 'none';
   _naborSigState = { seller: null, agent: null };
   _applyNaborLockState(null); // reset lock state on close
@@ -12926,7 +12982,7 @@ async function sendNaborForRemoteSign(role) {
   //  • _attachRemoteRequestToProperty has a real p.nabor record to attach to
   //  • when the client signs, the signed PDF reflects the real form data
   if (propertyId) {
-    try { await saveNabor(); } catch (e) { console.warn('Auto-save before send failed:', e); }
+    try { await saveNabor({ silent: true }); } catch (e) { console.warn('Auto-save before send failed:', e); }
   }
 
   // Open the unified composer directly — no intermediate "Nová žiadosť" form
