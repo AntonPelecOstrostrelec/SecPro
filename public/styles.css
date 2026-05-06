@@ -1253,46 +1253,56 @@
       margin-top: 1px;
     }
 
-    /* ─── Map address search (top-left, below zoom) ────────── */
-    .map-search {
-      background: #fff;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(11,42,60,0.18);
-      border: 1px solid #E5E9F0;
-      overflow: hidden;
+    /* ─── Address search bar (above the map, not inside) ────── */
+    .prop-map-toolbar {
+      margin-bottom: 0.6rem;
     }
-    .map-search-form {
+    .prop-map-search {
       display: flex;
       align-items: center;
-      padding: 0 0 0 10px;
-      gap: 6px;
-      width: 260px;
+      gap: 8px;
+      padding: 0 6px 0 14px;
+      background: #fff;
+      border: 1.5px solid #E5E9F0;
+      border-radius: 10px;
+      max-width: 480px;
+      transition: all 0.15s;
+      box-shadow: 0 1px 3px rgba(11,42,60,0.04);
     }
-    .map-search-icon {
-      color: #64748B;
+    .prop-map-search:focus-within {
+      border-color: #1A7A8A;
+      box-shadow: 0 0 0 3px rgba(26,122,138,0.12);
+    }
+    .prop-map-search-icon {
+      color: #94A3B8;
       flex-shrink: 0;
     }
+    .prop-map-search:focus-within .prop-map-search-icon { color: #1A7A8A; }
     #map-search-input {
       flex: 1;
       border: none;
       outline: none;
-      padding: 9px 4px;
-      font-size: 0.86rem;
+      padding: 11px 4px;
+      font-size: 0.92rem;
       background: transparent;
       min-width: 0;
+      color: #0B2A3C;
     }
-    .map-search-clear {
-      width: 28px;
-      height: 28px;
+    #map-search-input::placeholder { color: #94A3B8; }
+    .prop-map-search-clear {
+      width: 30px;
+      height: 30px;
       border: none;
       background: transparent;
       color: #94A3B8;
       cursor: pointer;
-      font-size: 1.1rem;
+      font-size: 1.2rem;
       line-height: 1;
+      border-radius: 6px;
       flex-shrink: 0;
+      transition: all 0.15s;
     }
-    .map-search-clear:hover { color: #DC2626; }
+    .prop-map-search-clear:hover { color: #DC2626; background: #FEE2E2; }
 
     /* ─── Search-result temporary pin (gold) ──────────────── */
     .search-pin { position: relative; }

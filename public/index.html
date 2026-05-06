@@ -1590,6 +1590,14 @@
 
       <!-- Property map view -->
       <div id="prop-map-wrap" style="display:none;margin-top:1rem;">
+        <!-- Address search bar — above the map for prominent visibility -->
+        <div class="prop-map-toolbar">
+          <div class="prop-map-search">
+            <svg class="prop-map-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <input type="text" id="map-search-input" placeholder="Vyhľadať adresu / mesto..." autocomplete="off" />
+            <button type="button" class="prop-map-search-clear" id="map-search-clear" title="Vymazať">×</button>
+          </div>
+        </div>
         <div id="prop-map-progress" style="display:none;padding:0.55rem 0.85rem;background:#FFFBEB;border:1px solid #FCD34D;border-radius:8px;font-size:0.78rem;color:#92400E;margin-bottom:0.6rem;">
           <span class="ec-spinner"></span><span id="prop-map-progress-text">Lokalizujem nehnuteľnosti...</span>
         </div>

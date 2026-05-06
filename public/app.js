@@ -7086,33 +7086,27 @@ function initPropertiesMap() {
       if (anyActive) refreshPOILayer();
     });
 
-    // Address search box (top-left, below zoom control)
-    _propMapSearchControl = L.control({ position: 'topleft' });
-    _propMapSearchControl.onAdd = function() {
-      const div = L.DomUtil.create('div', 'map-search');
-      div.innerHTML =
-        '<form class="map-search-form" onsubmit="return false;">' +
-          '<svg class="map-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>' +
-          '<input type="text" id="map-search-input" placeholder="Vyhľadať adresu / mesto..." autocomplete="off">' +
-          '<button type="button" class="map-search-clear" id="map-search-clear" title="Vymazať">×</button>' +
-        '</form>';
-      L.DomEvent.disableClickPropagation(div);
-      L.DomEvent.disableScrollPropagation(div);
-      const input = div.querySelector('#map-search-input');
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') { e.preventDefault(); _doMapSearch(input.value); }
-        if (e.key === 'Escape') { input.value = ''; }
+    // Wire the toolbar search input (lives above the map as a regular form,
+    // not a Leaflet control — looks cleaner than stacked under zoom buttons).
+    const searchInput = document.getElementById('map-search-input');
+    const searchClear = document.getElementById('map-search-clear');
+    if (searchInput && !searchInput.dataset.bound) {
+      searchInput.dataset.bound = '1';
+      searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); _doMapSearch(searchInput.value); }
+        if (e.key === 'Escape') { searchInput.value = ''; searchInput.blur(); }
       });
-      div.querySelector('#map-search-clear').addEventListener('click', () => {
-        input.value = '';
+    }
+    if (searchClear && !searchClear.dataset.bound) {
+      searchClear.dataset.bound = '1';
+      searchClear.addEventListener('click', () => {
+        if (searchInput) searchInput.value = '';
         if (_propMapSearchMarker) {
           _propMapSearchMarker.remove();
           _propMapSearchMarker = null;
         }
       });
-      return div;
-    };
-    _propMapSearchControl.addTo(_propertiesMap);
+    }
 
     // Marker clustering — handles 50+ properties in the same area gracefully
     if (typeof L.markerClusterGroup === 'function') {
