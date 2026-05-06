@@ -6490,6 +6490,17 @@ async function saveProperty() {
   const existingIdx = props.findIndex(x => x.id === prop.id);
   if (existingIdx >= 0) {
     prop.createdAt = props[existingIdx].createdAt;
+    // Preserve geo if address didn't change — otherwise drop so the map view
+    // re-geocodes on next visit.
+    const prev = props[existingIdx];
+    const addressUnchanged = (prev.address === prop.address && prev.city === prop.city);
+    if (addressUnchanged && prev.geo) prop.geo = prev.geo;
+    // Preserve other meta we don't touch from the form
+    if (prev.nabor) prop.nabor = prev.nabor;
+    if (prev.deals) prop.deals = prev.deals;
+    if (prev.statusHistory) prop.statusHistory = prev.statusHistory;
+    if (prev.leonisPublished) prop.leonisPublished = prev.leonisPublished;
+    if (prev.leonisPublishedAt) prop.leonisPublishedAt = prev.leonisPublishedAt;
     props[existingIdx] = prop;
   } else {
     prop.createdAt = new Date().toISOString();
@@ -6698,6 +6709,220 @@ function advanceProperty(id, forceTo) {
 
 function filterProperties() {
   renderProperties();
+  // Re-plot map markers if map is the active view
+  if (_propView === 'map' && _propertiesMap) {
+    plotPropertyMarkers();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  PROPERTY MAP VIEW — Leaflet + Nominatim geocoding
+// ═══════════════════════════════════════════════════════════════
+
+let _propView = 'grid';            // 'grid' | 'map'
+let _propertiesMap = null;          // Leaflet instance
+let _propMapMarkers = [];           // active markers
+let _geocodeInProgress = false;
+
+function setPropertyView(view) {
+  _propView = view;
+  // Toggle buttons
+  document.querySelectorAll('#prop-view-toggle .vt-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.view === view);
+  });
+  // Show / hide containers
+  const grid = document.getElementById('prop-grid');
+  const mapWrap = document.getElementById('prop-map-wrap');
+  const empty = document.getElementById('prop-empty');
+  if (view === 'map') {
+    if (grid) grid.style.display = 'none';
+    if (empty) empty.style.display = 'none';
+    if (mapWrap) mapWrap.style.display = '';
+    initPropertiesMap();
+  } else {
+    if (grid) grid.style.display = '';
+    if (mapWrap) mapWrap.style.display = 'none';
+    renderProperties();
+  }
+}
+
+// Initialize the Leaflet map once, lazy
+function initPropertiesMap() {
+  const container = document.getElementById('prop-map');
+  if (!container || typeof L === 'undefined') return;
+
+  if (!_propertiesMap) {
+    // Default: centered on Slovakia
+    _propertiesMap = L.map(container, {
+      center: [48.66, 19.7],
+      zoom: 8,
+      zoomControl: true,
+      scrollWheelZoom: true,
+    });
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; OpenStreetMap, &copy; CartoDB',
+      subdomains: 'abcd',
+      maxZoom: 19,
+    }).addTo(_propertiesMap);
+  } else {
+    // Force a redraw — Leaflet needs this when its container becomes visible
+    setTimeout(() => _propertiesMap.invalidateSize(), 50);
+  }
+
+  // Kick off geocoding for properties without coords, then plot
+  geocodeMissingProperties().finally(plotPropertyMarkers);
+}
+
+// ── Nominatim geocoding ──
+// Free, no API key, but rate-limited to ~1 req/sec.
+async function geocodeAddress(address, city, country) {
+  if (!address && !city) return null;
+  const q = [address, city, country || 'Slovensko'].filter(Boolean).join(', ');
+  const url = 'https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(q) + '&format=json&limit=1&addressdetails=0';
+  try {
+    const r = await fetch(url, { headers: { 'Accept-Language': 'sk' } });
+    if (!r.ok) return null;
+    const data = await r.json();
+    if (!Array.isArray(data) || data.length === 0) return null;
+    return {
+      lat: parseFloat(data[0].lat),
+      lng: parseFloat(data[0].lon),
+      formattedAddress: data[0].display_name || '',
+      source: 'nominatim',
+      geocodedAt: new Date().toISOString(),
+    };
+  } catch (e) {
+    console.warn('[SecPro] Geocoding failed for', q, e);
+    return null;
+  }
+}
+
+// Geocode every property that doesn't have geo yet, throttled to respect
+// Nominatim's 1 req/sec rate limit. Updates progress banner as it goes.
+async function geocodeMissingProperties() {
+  if (_geocodeInProgress) return;
+  _geocodeInProgress = true;
+
+  const props = getProperties();
+  const missing = props.filter(p => !p.geo && (p.address || p.city));
+  const progressEl = document.getElementById('prop-map-progress');
+  const progressText = document.getElementById('prop-map-progress-text');
+
+  if (missing.length === 0) {
+    if (progressEl) progressEl.style.display = 'none';
+    _geocodeInProgress = false;
+    return;
+  }
+
+  if (progressEl) progressEl.style.display = '';
+
+  for (let i = 0; i < missing.length; i++) {
+    const p = missing[i];
+    if (progressText) {
+      progressText.textContent = 'Lokalizujem nehnuteľnosti... ' + (i + 1) + ' / ' + missing.length;
+    }
+    const geo = await geocodeAddress(p.address, p.city);
+    if (geo) {
+      // Re-load + write — another tab may have changed properties meanwhile
+      const fresh = getProperties();
+      const idx = fresh.findIndex(x => x.id === p.id);
+      if (idx !== -1) {
+        fresh[idx].geo = geo;
+        saveProperties(fresh);
+      }
+      // Re-plot incrementally so the user sees progress
+      plotPropertyMarkers();
+    }
+    // Throttle to 1.1s between requests (Nominatim policy)
+    if (i < missing.length - 1) {
+      await new Promise(r => setTimeout(r, 1100));
+    }
+  }
+
+  if (progressEl) progressEl.style.display = 'none';
+  _geocodeInProgress = false;
+}
+
+// Build a status-coloured pin via L.divIcon — matches SecPro brand colours.
+function _makePropertyMarkerIcon(p) {
+  const meta = (typeof PROP_STATUS_MAP !== 'undefined' && PROP_STATUS_MAP[p.status])
+    ? PROP_STATUS_MAP[p.status] : { color: '#64748B', bg: '#F1F5F9' };
+  const isInactive = (typeof INACTIVE_STATUSES !== 'undefined') && INACTIVE_STATUSES.includes(p.status);
+  return L.divIcon({
+    className: 'map-pin',
+    html:
+      '<div class="map-pin-circle" style="background:' + meta.color + ';' +
+        (isInactive ? 'opacity:0.6;' : '') + '">' +
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>' +
+      '</div>' +
+      '<div class="map-pin-tail" style="border-top-color:' + meta.color + ';' +
+        (isInactive ? 'opacity:0.6;' : '') + '"></div>',
+    iconSize: [34, 44],
+    iconAnchor: [17, 44],
+    popupAnchor: [0, -42],
+  });
+}
+
+// Build the popup HTML shown when a marker is clicked.
+function _makePropertyMarkerPopup(p) {
+  const meta = (typeof PROP_STATUS_MAP !== 'undefined' && PROP_STATUS_MAP[p.status]) || {};
+  const photo = (p.photos && p.photos[0]) || '';
+  const price = p.price ? Number(p.price).toLocaleString('sk-SK') + ' €' : 'Bez ceny';
+  return '<div class="map-popup">' +
+    (photo ? '<div class="map-popup-photo" style="background-image:url(' + photo + ');"></div>' : '') +
+    '<div class="map-popup-body">' +
+      (meta.label ? '<span class="map-popup-status" style="background:' + (meta.bg || '#f0f0f0') + ';color:' + (meta.color || '#444') + ';">' + meta.label + '</span>' : '') +
+      '<div class="map-popup-title">' + esc(p.title || 'Bez názvu') + '</div>' +
+      '<div class="map-popup-price">' + price + '</div>' +
+      (p.address || p.city ? '<div class="map-popup-loc">' + esc([p.address, p.city].filter(Boolean).join(', ')) + '</div>' : '') +
+      '<button class="map-popup-btn" onclick="openPropDetail(\'' + p.id + '\');_propertiesMap && _propertiesMap.closePopup();">Otvoriť detail</button>' +
+    '</div>' +
+  '</div>';
+}
+
+// Plot every property's marker on the map, replacing previous ones.
+// Auto-zooms to fit all visible pins.
+function plotPropertyMarkers() {
+  if (!_propertiesMap) return;
+
+  // Clear previous
+  _propMapMarkers.forEach(m => m.remove());
+  _propMapMarkers = [];
+
+  // Use the same filtering as the grid view (search + type + status)
+  const all = getProperties();
+  const search = (document.getElementById('prop-filter-search')?.value || '').toLowerCase();
+  const typeFilters = (typeof msGetValues === 'function') ? msGetValues('ms-prop-type') : [];
+  const statusFilters = (typeof msGetValues === 'function') ? msGetValues('ms-prop-status') : [];
+
+  const filtered = all.filter(p => {
+    if (!p.geo) return false;
+    if (search) {
+      const hay = ((p.title || '') + ' ' + (p.address || '') + ' ' + (p.city || '') + ' ' + (p.district || '')).toLowerCase();
+      if (!hay.includes(search)) return false;
+    }
+    if (typeFilters.length && !typeFilters.includes(p.type)) return false;
+    if (statusFilters.length && !statusFilters.includes(p.status)) return false;
+    return true;
+  });
+
+  if (filtered.length === 0) return;
+
+  const bounds = L.latLngBounds([]);
+  filtered.forEach(p => {
+    const m = L.marker([p.geo.lat, p.geo.lng], { icon: _makePropertyMarkerIcon(p) })
+      .bindPopup(_makePropertyMarkerPopup(p), { maxWidth: 280 })
+      .addTo(_propertiesMap);
+    _propMapMarkers.push(m);
+    bounds.extend([p.geo.lat, p.geo.lng]);
+  });
+
+  // Fit map view to show all markers (with reasonable zoom limits)
+  if (filtered.length === 1) {
+    _propertiesMap.setView([filtered[0].geo.lat, filtered[0].geo.lng], 14);
+  } else {
+    _propertiesMap.fitBounds(bounds, { padding: [40, 40], maxZoom: 13 });
+  }
 }
 
 function renderProperties() {

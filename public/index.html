@@ -13,6 +13,8 @@
   <script src="jspdf.plugin.autotable.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -1568,8 +1570,28 @@
         </div>
       </div>
 
+      <!-- View toggle: Grid / Map -->
+      <div class="view-toggle" id="prop-view-toggle">
+        <button class="vt-btn active" data-view="grid" onclick="setPropertyView('grid')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          Mriežka
+        </button>
+        <button class="vt-btn" data-view="map" onclick="setPropertyView('map')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+          Mapa
+        </button>
+      </div>
+
       <!-- Property cards grid -->
       <div id="prop-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:1rem;margin-top:1rem;"></div>
+
+      <!-- Property map view -->
+      <div id="prop-map-wrap" style="display:none;margin-top:1rem;">
+        <div id="prop-map-progress" style="display:none;padding:0.55rem 0.85rem;background:#FFFBEB;border:1px solid #FCD34D;border-radius:8px;font-size:0.78rem;color:#92400E;margin-bottom:0.6rem;">
+          <span class="ec-spinner"></span><span id="prop-map-progress-text">Lokalizujem nehnuteľnosti...</span>
+        </div>
+        <div id="prop-map" style="width:100%;height:calc(100vh - 360px);min-height:480px;border-radius:12px;border:1px solid var(--border);overflow:hidden;"></div>
+      </div>
 
       <!-- Empty state -->
       <div id="prop-empty" style="display:none;text-align:center;padding:3rem;">

@@ -1018,6 +1018,126 @@
     .deal-card-row-verified .deal-card-row-label { color: #92400E; }
     .deal-card-row-verified .deal-card-row-meta  { color: #B45309; }
 
+    /* ─── Property MAP view ──────────────────────────────────────────── */
+    .view-toggle {
+      display: inline-flex;
+      gap: 2px;
+      padding: 3px;
+      background: #F1F5F9;
+      border-radius: 10px;
+      margin-top: 0.5rem;
+    }
+    .vt-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border: none;
+      background: transparent;
+      border-radius: 7px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #64748B;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .vt-btn:hover { color: #0B2A3C; }
+    .vt-btn.active {
+      background: #fff;
+      color: #0B2A3C;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .vt-btn svg { color: currentColor; }
+
+    /* Map pin — div-icon, status-coloured */
+    .map-pin {
+      position: relative;
+      width: 34px;
+      height: 44px;
+    }
+    .map-pin-circle {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.25);
+      border: 2px solid #fff;
+    }
+    .map-pin-tail {
+      position: absolute;
+      left: 50%;
+      bottom: 0;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 6px solid transparent;
+      border-right: 6px solid transparent;
+      border-top: 12px solid currentColor;
+      filter: drop-shadow(0 1px 1px rgba(0,0,0,0.2));
+    }
+
+    /* Map popup styling — overrides Leaflet defaults */
+    .leaflet-popup-content-wrapper {
+      border-radius: 12px;
+      padding: 0;
+      box-shadow: 0 8px 24px rgba(11,42,60,0.18);
+    }
+    .leaflet-popup-content { margin: 0; padding: 0; line-height: 1.4; }
+    .map-popup { width: 260px; overflow: hidden; border-radius: 12px; }
+    .map-popup-photo {
+      width: 100%;
+      height: 130px;
+      background-size: cover;
+      background-position: center;
+      background-color: #F1F5F9;
+    }
+    .map-popup-body { padding: 12px 14px 14px; }
+    .map-popup-status {
+      display: inline-block;
+      font-size: 0.66rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 999px;
+      margin-bottom: 6px;
+      letter-spacing: 0.4px;
+    }
+    .map-popup-title {
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: #0B2A3C;
+      line-height: 1.25;
+      margin-bottom: 3px;
+    }
+    .map-popup-price {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: #1A7A8A;
+      margin-bottom: 6px;
+    }
+    .map-popup-loc {
+      font-size: 0.74rem;
+      color: #64748B;
+      margin-bottom: 10px;
+    }
+    .map-popup-btn {
+      display: block;
+      width: 100%;
+      padding: 7px 12px;
+      border: none;
+      border-radius: 7px;
+      background: linear-gradient(135deg, #0B2A3C, #1A7A8A);
+      color: #fff;
+      font-weight: 600;
+      font-size: 0.82rem;
+      cursor: pointer;
+    }
+    .map-popup-btn:hover { opacity: 0.9; }
+
+    /* Hide default Leaflet attribution flag colours that clash */
+    .leaflet-attribution-flag { display: none !important; }
+
     /* Property-card 3-dot ⋮ context menu (Stiahnuť / Zmazať / Obnoviť) */
     .pca-more {
       color: #64748B;
