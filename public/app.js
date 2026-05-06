@@ -6724,7 +6724,74 @@ let _propertiesMap = null;          // Leaflet instance
 let _propMapMarkers = [];           // active markers
 let _propMapCluster = null;         // L.markerClusterGroup
 let _propMapLegend = null;          // L.control instance
+let _propMapTileLayers = null;      // { light, dark, satellite }
+let _propMapActiveStyle = 'light';
+let _propMapStyleControl = null;
+let _propMapSearchControl = null;
+let _propMapSearchMarker = null;
 let _geocodeInProgress = false;
+
+// Switch the basemap tile style — light / dark / satellite. The other layers
+// stay loaded (Leaflet caches tiles) so subsequent switches are instant.
+function setMapStyle(style) {
+  if (!_propertiesMap || !_propMapTileLayers) return;
+  if (!_propMapTileLayers[style] || style === _propMapActiveStyle) return;
+  _propertiesMap.removeLayer(_propMapTileLayers[_propMapActiveStyle]);
+  _propMapTileLayers[style].addTo(_propertiesMap);
+  _propMapActiveStyle = style;
+  // Toggle button active state
+  document.querySelectorAll('.map-style-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.style === style);
+  });
+  // Toggle a body-ish class for popup theming on dark/satellite
+  const wrap = document.getElementById('prop-map');
+  if (wrap) {
+    wrap.classList.remove('map-style-light', 'map-style-dark', 'map-style-satellite');
+    wrap.classList.add('map-style-' + style);
+  }
+}
+
+// Address search — geocode via Nominatim, fly to result, drop a temporary
+// marker so the user can see where the search landed.
+async function _doMapSearch(query) {
+  query = (query || '').trim();
+  if (!query || !_propertiesMap) return;
+  // Default to Slovakia bias if no country in the query
+  const q = /slovensk|slovakia/i.test(query) ? query : query + ', Slovensko';
+  const url = 'https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(q) + '&format=json&limit=1';
+  try {
+    const r = await fetch(url, { headers: { 'Accept-Language': 'sk' } });
+    if (!r.ok) { showToast('Adresu sa nepodarilo nájsť', 'warning'); return; }
+    const data = await r.json();
+    if (!data || !data.length) { showToast('Adresu sa nepodarilo nájsť', 'warning'); return; }
+    const lat = parseFloat(data[0].lat);
+    const lng = parseFloat(data[0].lon);
+    if (!isFinite(lat) || !isFinite(lng)) { showToast('Adresu sa nepodarilo nájsť', 'warning'); return; }
+    // Make sure Leaflet has the right size before any pan/zoom — flyTo
+    // throws "Invalid LatLng (NaN)" if the map container size isn't
+    // properly known yet (it does an unproject internally).
+    _propertiesMap.invalidateSize();
+    _propertiesMap.setView([lat, lng], 14, { animate: true });
+    // Drop a temporary marker (gold pin) to mark the search target.
+    // Use explicit iconSize — Leaflet's flyTo throws "Invalid LatLng (NaN, NaN)"
+    // when the marker bounds can't be computed before the element renders.
+    if (_propMapSearchMarker) _propMapSearchMarker.remove();
+    _propMapSearchMarker = L.marker([lat, lng], {
+      icon: L.divIcon({
+        className: 'search-pin',
+        html: '<div class="search-pin-bubble">📍</div><div class="search-pin-tail"></div>',
+        iconSize: [32, 42],
+        iconAnchor: [16, 42],
+        popupAnchor: [0, -40],
+      }),
+      zIndexOffset: 1000,
+    }).addTo(_propertiesMap);
+    _propMapSearchMarker.bindPopup('<b>' + esc(data[0].display_name || query) + '</b>').openPopup();
+  } catch (e) {
+    console.error('[SecPro] map search error:', e);
+    showToast('Chyba pri vyhľadávaní adresy', 'error');
+  }
+}
 
 function setPropertyView(view) {
   _propView = view;
@@ -6761,11 +6828,76 @@ function initPropertiesMap() {
       zoomControl: true,
       scrollWheelZoom: true,
     });
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; OpenStreetMap, &copy; CartoDB',
-      subdomains: 'abcd',
-      maxZoom: 19,
-    }).addTo(_propertiesMap);
+
+    // Build the three tile layers up front so switching is instant
+    _propMapTileLayers = {
+      light: L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OpenStreetMap, &copy; CartoDB',
+        subdomains: 'abcd',
+        maxZoom: 19,
+      }),
+      dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OpenStreetMap, &copy; CartoDB',
+        subdomains: 'abcd',
+        maxZoom: 19,
+      }),
+      satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics',
+        maxZoom: 19,
+      }),
+    };
+    _propMapTileLayers.light.addTo(_propertiesMap);
+    _propMapActiveStyle = 'light';
+
+    // Tile-style switcher (top-right control)
+    _propMapStyleControl = L.control({ position: 'topright' });
+    _propMapStyleControl.onAdd = function() {
+      const div = L.DomUtil.create('div', 'map-style-switcher');
+      div.innerHTML =
+        '<button class="map-style-btn active" data-style="light" title="Svetlá mapa">' +
+          '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>' +
+        '</button>' +
+        '<button class="map-style-btn" data-style="dark" title="Tmavá mapa">' +
+          '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>' +
+        '</button>' +
+        '<button class="map-style-btn" data-style="satellite" title="Satelitná mapa">' +
+          '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.5 19.5l-3.4-3.4"/><path d="M14.5 9.5l4-4"/><path d="M9.5 14.5l-4 4"/></svg>' +
+        '</button>';
+      L.DomEvent.disableClickPropagation(div);
+      div.querySelectorAll('.map-style-btn').forEach(btn => {
+        btn.addEventListener('click', () => setMapStyle(btn.dataset.style));
+      });
+      return div;
+    };
+    _propMapStyleControl.addTo(_propertiesMap);
+
+    // Address search box (top-left, below zoom control)
+    _propMapSearchControl = L.control({ position: 'topleft' });
+    _propMapSearchControl.onAdd = function() {
+      const div = L.DomUtil.create('div', 'map-search');
+      div.innerHTML =
+        '<form class="map-search-form" onsubmit="return false;">' +
+          '<svg class="map-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>' +
+          '<input type="text" id="map-search-input" placeholder="Vyhľadať adresu / mesto..." autocomplete="off">' +
+          '<button type="button" class="map-search-clear" id="map-search-clear" title="Vymazať">×</button>' +
+        '</form>';
+      L.DomEvent.disableClickPropagation(div);
+      L.DomEvent.disableScrollPropagation(div);
+      const input = div.querySelector('#map-search-input');
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); _doMapSearch(input.value); }
+        if (e.key === 'Escape') { input.value = ''; }
+      });
+      div.querySelector('#map-search-clear').addEventListener('click', () => {
+        input.value = '';
+        if (_propMapSearchMarker) {
+          _propMapSearchMarker.remove();
+          _propMapSearchMarker = null;
+        }
+      });
+      return div;
+    };
+    _propMapSearchControl.addTo(_propertiesMap);
 
     // Marker clustering — handles 50+ properties in the same area gracefully
     if (typeof L.markerClusterGroup === 'function') {
@@ -6906,6 +7038,8 @@ function _makePropertyMarkerIcon(p) {
   const isInactive = (typeof INACTIVE_STATUSES !== 'undefined') && INACTIVE_STATUSES.includes(p.status);
   const priceTxt = _formatPriceCompact(p.price);
 
+  // Estimated bubble width based on text length (avoids Leaflet NaN-bounds bug)
+  const estW = Math.max(54, priceTxt.length * 8 + 20);
   return L.divIcon({
     className: 'price-pin' + (isInactive ? ' price-pin-inactive' : ''),
     html:
@@ -6913,7 +7047,7 @@ function _makePropertyMarkerIcon(p) {
         priceTxt +
       '</div>' +
       '<div class="price-pin-tail" style="border-top-color:' + meta.color + ';"></div>',
-    iconSize: [null, null],     // auto — text width drives it
+    iconSize: [estW, 38],
     iconAnchor: [0, 38],         // anchor at tip of tail
     popupAnchor: [0, -38],
   });
@@ -6924,9 +7058,14 @@ function _makePropertyMarkerPopup(p) {
   const meta = (typeof PROP_STATUS_MAP !== 'undefined' && PROP_STATUS_MAP[p.status]) || {};
   const photo = (p.photos && p.photos[0]) || '';
   const price = p.price ? Number(p.price).toLocaleString('sk-SK') + ' €' : 'Bez ceny';
+  const hasGeo = !!(p.geo && p.geo.lat && p.geo.lng);
   // Google Maps directions URL — opens native nav app on mobile, web Maps on desktop
-  const navUrl = (p.geo && p.geo.lat && p.geo.lng)
+  const navUrl = hasGeo
     ? 'https://www.google.com/maps/dir/?api=1&destination=' + p.geo.lat + ',' + p.geo.lng
+    : null;
+  // Google Street View URL — opens the panoramic view at the property's location
+  const streetUrl = hasGeo
+    ? 'https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=' + p.geo.lat + ',' + p.geo.lng
     : null;
 
   return '<div class="map-popup">' +
@@ -6943,6 +7082,10 @@ function _makePropertyMarkerPopup(p) {
           'Navigovať' +
         '</a>' : '') +
       '</div>' +
+      (streetUrl ? '<a class="map-popup-streetview" href="' + streetUrl + '" target="_blank" rel="noopener" title="Otvoriť Google Street View">' +
+        '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>' +
+        'Pozrieť okolie (Street View)' +
+      '</a>' : '') +
     '</div>' +
   '</div>';
 }

@@ -1120,6 +1120,128 @@
     }
     .marker-cluster span { display: none !important; }   /* hide default text */
 
+    /* ─── Map style switcher (top-right) ──────────────────── */
+    .map-style-switcher {
+      display: flex;
+      gap: 0;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(11,42,60,0.18);
+      border: 1px solid #E5E9F0;
+      overflow: hidden;
+    }
+    .map-style-btn {
+      width: 34px;
+      height: 34px;
+      border: none;
+      background: #fff;
+      color: #64748B;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+      border-right: 1px solid #E5E9F0;
+    }
+    .map-style-btn:last-child { border-right: none; }
+    .map-style-btn:hover { background: #F0FAFA; color: #0B2A3C; }
+    .map-style-btn.active {
+      background: linear-gradient(135deg, #1A7A8A, #0B2A3C);
+      color: #fff;
+    }
+
+    /* ─── Map address search (top-left, below zoom) ────────── */
+    .map-search {
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(11,42,60,0.18);
+      border: 1px solid #E5E9F0;
+      overflow: hidden;
+    }
+    .map-search-form {
+      display: flex;
+      align-items: center;
+      padding: 0 0 0 10px;
+      gap: 6px;
+      width: 260px;
+    }
+    .map-search-icon {
+      color: #64748B;
+      flex-shrink: 0;
+    }
+    #map-search-input {
+      flex: 1;
+      border: none;
+      outline: none;
+      padding: 9px 4px;
+      font-size: 0.86rem;
+      background: transparent;
+      min-width: 0;
+    }
+    .map-search-clear {
+      width: 28px;
+      height: 28px;
+      border: none;
+      background: transparent;
+      color: #94A3B8;
+      cursor: pointer;
+      font-size: 1.1rem;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+    .map-search-clear:hover { color: #DC2626; }
+
+    /* ─── Search-result temporary pin (gold) ──────────────── */
+    .search-pin { position: relative; }
+    .search-pin-bubble {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #F59E0B, #D97706);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      box-shadow: 0 3px 8px rgba(217,119,6,0.45);
+      border: 2px solid #fff;
+      animation: searchPinDrop 0.4s ease-out;
+    }
+    .search-pin-tail {
+      position: absolute;
+      left: 50%;
+      bottom: 0;
+      transform: translateX(-50%);
+      width: 0; height: 0;
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-top: 10px solid #D97706;
+    }
+    @keyframes searchPinDrop {
+      0% { transform: translateY(-30px); opacity: 0; }
+      60% { transform: translateY(4px); }
+      100% { transform: translateY(0); opacity: 1; }
+    }
+
+    /* Street View link in popup */
+    .map-popup-streetview {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 8px;
+      padding: 5px 10px;
+      font-size: 0.74rem;
+      font-weight: 600;
+      color: #64748B;
+      text-decoration: none;
+      border-radius: 6px;
+      transition: all 0.15s;
+    }
+    .map-popup-streetview:hover {
+      background: #F1F5F9;
+      color: #0B2A3C;
+    }
+
     /* Map legend — status colours dictionary */
     .map-legend {
       background: #fff;
