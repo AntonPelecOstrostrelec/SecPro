@@ -6779,7 +6779,9 @@ function togglePOICategory(key) {
   document.querySelectorAll('.map-poi-pill').forEach(b => {
     b.classList.toggle('active', !!_propMapPOIActive[b.dataset.poi]);
   });
-  refreshPOILayer();
+  // Run refresh immediately on click (skip debounce for immediate user feedback)
+  if (_propMapPOIDebounce) clearTimeout(_propMapPOIDebounce);
+  _doRefreshPOILayer();
 }
 
 // Refresh which POIs are shown — handles both adding new categories and
@@ -6799,14 +6801,29 @@ async function _doRefreshPOILayer() {
     return;
   }
 
-  // Don't query at low zoom — would return thousands of POIs
+  // Don't query at low zoom — would return thousands of POIs and freeze
+  // the browser. If the user is at country/regional zoom, auto-zoom to a
+  // city level so the feature does something useful immediately.
   const zoom = _propertiesMap.getZoom();
-  if (zoom < 12) {
-    _showPOIBusy('Priblížte mapu pre zobrazenie POI (zoom ≥ 12)');
+  if (zoom < 11) {
+    showToast('Priblížil som mapu — POI sa zobrazujú od mestského zoomu.', 'info');
+    _propertiesMap.setZoom(13, { animate: true });
+    // moveend will trigger another refresh once the zoom settles
     return;
   }
 
+  // Make sure the map has actually computed its size before reading bounds —
+  // bounds collapse to a point if the container hasn't been measured.
+  if (_propertiesMap.getSize().x === 0) {
+    _propertiesMap.invalidateSize(true);
+  }
+
   const b = _propertiesMap.getBounds();
+  const sizePx = _propertiesMap.getSize();
+  if (sizePx.x === 0 || sizePx.y === 0 || b.getNorth() === b.getSouth()) {
+    _showPOIBusy('Mapa sa ešte načítava... skúste znova o chvíľu');
+    return;
+  }
   // Round bbox so cache hits across small pans
   const roundedKey = (b.getSouth().toFixed(2) + ',' + b.getWest().toFixed(2) + ',' + b.getNorth().toFixed(2) + ',' + b.getEast().toFixed(2));
 
@@ -6814,11 +6831,16 @@ async function _doRefreshPOILayer() {
     const cacheKey = cat + ':' + roundedKey;
     let pois = _propMapPOICache[cacheKey];
     if (!pois) {
-      _showPOIBusy('Načítavam POI: ' + POI_CATEGORIES[cat].label + '...');
+      _showPOIBusy('Načítavam ' + POI_CATEGORIES[cat].label + ' v okolí...');
       pois = await _fetchPOIsForCategory(cat, b);
       _propMapPOICache[cacheKey] = pois || [];
     }
-    if (pois && pois.length) _plotPOIs(cat, pois);
+    if (pois && pois.length) {
+      _plotPOIs(cat, pois);
+    } else {
+      // No results in this area for this category
+      console.log('[SecPro POI] No', cat, 'in current view');
+    }
   }
   _hidePOIBusy();
 }
@@ -6838,7 +6860,11 @@ async function _fetchPOIsForCategory(cat, bounds) {
       body: 'data=' + encodeURIComponent(ql),
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     });
-    if (!r.ok) return [];
+    if (!r.ok) {
+      console.warn('[SecPro POI] Overpass returned', r.status, 'for', cat);
+      showToast('Načítanie POI zlyhalo — skúste o chvíľu znova', 'warning');
+      return [];
+    }
     const data = await r.json();
     const out = [];
     for (const el of (data.elements || [])) {
