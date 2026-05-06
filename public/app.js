@@ -7460,6 +7460,17 @@ function renderProperties() {
 
   if (countEl) countEl.textContent = `${filtered.length} z ${props.length} nehnuteľností`;
 
+  // If the user is currently on the map view, don't touch the grid's display.
+  // setPropertyView('map') deliberately hid the grid, but async refreshes
+  // (login flow → loadAllData → _reRenderAll → renderProperties) would set
+  // grid.style.display = 'grid' below and silently kick the user back to
+  // the grid view mid-interaction. Instead, just re-plot markers so map
+  // reflects fresh data without disrupting the current view.
+  if (_propView === 'map') {
+    if (typeof plotPropertyMarkers === 'function') plotPropertyMarkers();
+    return;
+  }
+
   if (filtered.length === 0) {
     grid.innerHTML = '';
     grid.style.display = 'none';
