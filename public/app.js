@@ -6793,7 +6793,9 @@ function refreshPOILayer() {
 }
 
 async function _doRefreshPOILayer() {
-  if (!_propertiesMap || !_propMapPOILayer) return;
+  _poiDiag('Spúšťam refresh...');
+  if (!_propertiesMap) { _poiDiag('CHYBA: mapa neexistuje', true); return; }
+  if (!_propMapPOILayer) { _poiDiag('CHYBA: POI vrstva neexistuje', true); return; }
 
   // Generation counter: any concurrent refresh that started earlier will see
   // its gen != current and silently drop its results instead of clobbering
@@ -6806,13 +6808,15 @@ async function _doRefreshPOILayer() {
     _hidePOIBusy();
     return;
   }
+  _poiDiag('Aktívne: ' + activeCats.map(c => POI_CATEGORIES[c].label).join(', '));
 
   // Don't query at low zoom — would return thousands of POIs and freeze
   // the browser. If the user is at country/regional zoom, auto-zoom to a
   // city level so the feature does something useful immediately.
   const zoom = _propertiesMap.getZoom();
+  _poiDiag('Zoom: ' + zoom);
   if (zoom < 11) {
-    showToast('Priblížil som mapu — POI sa zobrazujú od mestského zoomu.', 'info');
+    _poiDiag('Zoom < 11 → priblížujem na 13');
     _propertiesMap.setZoom(13, { animate: true });
     // moveend will trigger another refresh once the zoom settles
     return;
@@ -6827,16 +6831,16 @@ async function _doRefreshPOILayer() {
   const b = _propertiesMap.getBounds();
   const sizePx = _propertiesMap.getSize();
   if (sizePx.x === 0 || sizePx.y === 0 || b.getNorth() === b.getSouth()) {
-    _showPOIBusy('Mapa sa ešte načítava... skúste znova o chvíľu');
+    _poiDiag('CHYBA: mapa nemá rozmer (' + sizePx.x + 'x' + sizePx.y + ')', true);
     return;
   }
+  _poiDiag('Bbox: ' + b.getSouth().toFixed(3) + ',' + b.getWest().toFixed(3) + ' → ' + b.getNorth().toFixed(3) + ',' + b.getEast().toFixed(3));
   // Round bbox so cache hits across small pans
   const roundedKey = (b.getSouth().toFixed(2) + ',' + b.getWest().toFixed(2) + ',' + b.getNorth().toFixed(2) + ',' + b.getEast().toFixed(2));
 
-  _showPOIBusy('Načítavam ' + activeCats.map(c => POI_CATEGORIES[c].label).join(', ') + '...');
-
   // Fetch all categories in parallel — Overpass handles 5 small queries
   // way faster than 5 sequential awaits, and the user gets all pins at once.
+  _poiDiag('Fetchujem ' + activeCats.length + ' kategórií paralelne...');
   const fetches = activeCats.map(async (cat) => {
     const cacheKey = cat + ':' + roundedKey;
     if (_propMapPOICache[cacheKey]) {
@@ -6852,32 +6856,50 @@ async function _doRefreshPOILayer() {
     results = await Promise.all(fetches);
   } catch (e) {
     console.error('[SecPro POI] fetch error:', e);
-    showToast('Chyba pri načítavaní POI', 'error');
-    _hidePOIBusy();
+    _poiDiag('CHYBA fetch: ' + (e.message || e), true);
     return;
   }
 
   // Stale generation? Newer refresh started while we were waiting — drop.
   if (myGen !== _propMapPOIGen) {
-    console.log('[SecPro POI] gen', myGen, 'superseded by', _propMapPOIGen, '— dropping stale results');
+    console.log('[SecPro POI] gen', myGen, 'superseded by', _propMapPOIGen);
     return;
   }
 
   let totalCount = 0;
+  const summary = [];
   results.forEach(({ cat, pois }) => {
+    summary.push(POI_CATEGORIES[cat].label + ':' + (pois?.length || 0));
     if (pois && pois.length) {
       _plotPOIs(cat, pois);
       totalCount += pois.length;
     }
   });
 
-  _hidePOIBusy();
-
+  _poiDiag('Hotovo: ' + summary.join(', ') + ' = ' + totalCount + ' markerov');
   if (totalCount === 0) {
-    showToast('V tomto výseku sa nenašli žiadne POI — skúste posunúť mapu alebo zväčšiť výsek', 'warning');
+    setTimeout(() => _hidePOIBusy(), 4000);
   } else {
-    console.log('[SecPro POI] plotted', totalCount, 'POIs across', activeCats.length, 'categories at zoom', zoom);
+    setTimeout(() => _hidePOIBusy(), 1800);
   }
+}
+
+// Visible diagnostic banner — replaces the silent busy indicator with
+// step-by-step output so a non-technical user can see exactly where the
+// POI pipeline is failing without opening DevTools.
+function _poiDiag(msg, isError) {
+  console.log('[SecPro POI]', msg);
+  let el = document.getElementById('poi-busy');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'poi-busy';
+    el.className = 'poi-busy';
+    const wrap = document.getElementById('prop-map-wrap');
+    if (wrap) wrap.appendChild(el);
+  }
+  el.style.display = '';
+  el.style.background = isError ? 'rgba(220, 38, 38, 0.95)' : 'rgba(11, 42, 60, 0.92)';
+  el.textContent = msg;
 }
 
 async function _fetchPOIsForCategory(cat, bounds) {
@@ -6925,20 +6947,26 @@ async function _fetchPOIsForCategory(cat, bounds) {
 
 function _plotPOIs(cat, pois) {
   const def = POI_CATEGORIES[cat];
+  // Use fully inline styles so a CSS regression (or a stale stylesheet
+  // cache) can't ever hide the POI bubbles.
+  const bubbleStyle = 'width:24px;height:24px;border-radius:50%;background:' + def.color +
+    ';border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.35);display:flex;' +
+    'align-items:center;justify-content:center;color:#fff;font-size:13px;line-height:1;';
   pois.forEach(poi => {
     const m = L.marker([poi.lat, poi.lng], {
       icon: L.divIcon({
         className: 'poi-pin',
-        html: '<div class="poi-pin-bubble" style="background:' + def.color + ';">' + def.icon + '</div>',
-        iconSize: [22, 22],
-        iconAnchor: [11, 11],
-        popupAnchor: [0, -11],
+        html: '<div style="' + bubbleStyle + '">' + def.icon + '</div>',
+        iconSize: [24, 24],
+        iconAnchor: [12, 12],
+        popupAnchor: [0, -12],
       }),
       keyboard: false,
     });
     m.bindPopup('<div class="poi-popup"><span class="poi-popup-icon" style="background:' + def.color + ';">' + def.icon + '</span><div><div class="poi-popup-name">' + esc(poi.name) + '</div><div class="poi-popup-cat">' + esc(def.label) + '</div></div></div>', { maxWidth: 220 });
     _propMapPOILayer.addLayer(m);
   });
+  console.log('[SecPro POI] _plotPOIs', cat, 'added', pois.length, 'markers; layer now has', _propMapPOILayer.getLayers().length);
 }
 
 function _showPOIBusy(text) {

@@ -1196,20 +1196,24 @@
     .poi-pill-icon { font-size: 12px; line-height: 1; }
     .poi-pill-label { font-size: 0.74rem; }
 
-    /* POI busy banner (bottom-center) */
+    /* POI diagnostic banner — top-center, very visible so non-tech users
+       can see what's happening without devtools */
     .poi-busy {
       position: absolute;
       left: 50%;
-      bottom: 16px;
+      top: 16px;
       transform: translateX(-50%);
       background: rgba(11, 42, 60, 0.92);
       color: #fff;
-      padding: 6px 14px;
+      padding: 8px 16px;
       border-radius: 999px;
-      font-size: 0.74rem;
+      font-size: 0.82rem;
       font-weight: 600;
-      z-index: 999;
+      z-index: 1001;
       box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+      max-width: 80%;
+      text-align: center;
+      pointer-events: none;
     }
 
     /* POI map markers — small coloured dot with emoji */
