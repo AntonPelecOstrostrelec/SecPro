@@ -6565,6 +6565,90 @@ async function changePropertyStatus(id, newStatus) {
   }
 }
 
+// ─── Property card 3-dot context menu ──────────────────────────────
+// Opens a small floating menu anchored to the ⋮ button in the property
+// card footer. Holds the destructive actions (Stiahnuť, Zmazať) so the
+// card stays clean and accidental clicks are unlikely.
+function openCardMenu(btn, propId) {
+  closeCardMenu();
+  const props = getProperties();
+  const p = props.find(x => x.id === propId);
+  if (!p) return;
+
+  const isTerminal = (typeof INACTIVE_STATUSES !== 'undefined') && INACTIVE_STATUSES.includes(p.status);
+  const isCompleted = p.status === 'predana';
+
+  const items = [];
+  if (!isTerminal && !isCompleted) {
+    items.push({
+      cls: 'card-menu-item card-menu-warn',
+      icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>',
+      label: 'Stiahnuť z ponuky',
+      onClick: `closeCardMenu();confirmWithdrawProperty('${propId}');`,
+    });
+  }
+  if (isTerminal) {
+    items.push({
+      cls: 'card-menu-item',
+      icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 0 1 15.5-6.36L21 8"/><path d="M21 3v5h-5"/></svg>',
+      label: 'Obnoviť do aktívnej ponuky',
+      onClick: `closeCardMenu();advanceProperty('${propId}', 'novy');`,
+    });
+  }
+  items.push({ divider: true });
+  items.push({
+    cls: 'card-menu-item card-menu-danger',
+    icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>',
+    label: 'Zmazať natrvalo',
+    onClick: `closeCardMenu();deleteProperty('${propId}');`,
+  });
+
+  const menu = document.createElement('div');
+  menu.id = '_card-menu-active';
+  menu.className = 'card-action-menu';
+  menu.innerHTML = items.map(it => {
+    if (it.divider) return '<div class="card-menu-divider"></div>';
+    return `<button class="${it.cls}" onclick="event.stopPropagation();${it.onClick}">${it.icon}<span>${it.label}</span></button>`;
+  }).join('');
+  document.body.appendChild(menu);
+
+  // Position the menu — prefer below the button, but flip up if no room
+  const rect = btn.getBoundingClientRect();
+  const menuW = 230;
+  const menuH = 48 * items.filter(i => !i.divider).length + 10;
+  let left = rect.right - menuW + window.scrollX;
+  if (left < 8) left = 8;
+  if (left + menuW > window.innerWidth - 8) left = window.innerWidth - menuW - 8;
+  let top = rect.bottom + 6 + window.scrollY;
+  if (rect.bottom + 6 + menuH > window.innerHeight) {
+    top = rect.top - menuH - 6 + window.scrollY;
+  }
+  menu.style.position = 'absolute';
+  menu.style.top = top + 'px';
+  menu.style.left = left + 'px';
+  menu.style.width = menuW + 'px';
+
+  setTimeout(() => {
+    document.addEventListener('click', _onCardMenuOutsideClick, { capture: true });
+    document.addEventListener('keydown', _onCardMenuKey);
+  }, 0);
+}
+
+function _onCardMenuOutsideClick(e) {
+  const menu = document.getElementById('_card-menu-active');
+  if (!menu) return;
+  if (!menu.contains(e.target)) closeCardMenu();
+}
+function _onCardMenuKey(e) {
+  if (e.key === 'Escape') closeCardMenu();
+}
+function closeCardMenu() {
+  const menu = document.getElementById('_card-menu-active');
+  if (menu) menu.remove();
+  document.removeEventListener('click', _onCardMenuOutsideClick, { capture: true });
+  document.removeEventListener('keydown', _onCardMenuKey);
+}
+
 // Wraps advanceProperty(id, 'stiahnuta') in a clear confirmation prompt so
 // the agent doesn't accidentally withdraw a live listing with one click.
 async function confirmWithdrawProperty(id) {
@@ -6764,8 +6848,7 @@ function renderProperties() {
           ${viewCount ? `<button onclick="generateViewingDocument('${p.id}')" class="pca-btn pca-doc" title="Zápisnica PDF"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></button>` : ''}
           ${p.url ? `<a href="${p.url}" target="_blank" class="pca-btn pca-link" title="Inzerát"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>` : ''}
           <button onclick="openPropertyForm('${p.id}')" class="pca-btn pca-edit" title="Upraviť"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-          ${!isTerminal && !isCompleted ? `<button onclick="confirmWithdrawProperty('${p.id}')" class="pca-btn pca-cancel" title="Stiahnuť z ponuky"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>` : ''}
-          <button onclick="deleteProperty('${p.id}')" class="pca-btn pca-delete" title="Zmazať"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>
+          <button onclick="event.stopPropagation();openCardMenu(this, '${p.id}');" class="pca-btn pca-more" title="Ďalšie akcie" aria-label="Ďalšie akcie"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg></button>
         </div>
       </div>
     </div>`;

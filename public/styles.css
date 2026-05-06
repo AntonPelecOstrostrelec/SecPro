@@ -1018,6 +1018,72 @@
     .deal-card-row-verified .deal-card-row-label { color: #92400E; }
     .deal-card-row-verified .deal-card-row-meta  { color: #B45309; }
 
+    /* Property-card 3-dot ⋮ context menu (Stiahnuť / Zmazať / Obnoviť) */
+    .pca-more {
+      color: #64748B;
+    }
+    .pca-more:hover {
+      background: #F1F5F9;
+      color: #1A2235;
+    }
+    .card-action-menu {
+      z-index: 10000;
+      background: #fff;
+      border: 1px solid #E5E9F0;
+      border-radius: 10px;
+      box-shadow: 0 8px 24px rgba(11, 42, 60, 0.18);
+      padding: 4px;
+      animation: cardMenuIn 0.12s ease-out;
+    }
+    @keyframes cardMenuIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .card-menu-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      width: 100%;
+      padding: 8px 12px;
+      border: none;
+      background: transparent;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.83rem;
+      font-weight: 500;
+      color: #1A2235;
+      text-align: left;
+      transition: background 0.12s, color 0.12s;
+    }
+    .card-menu-item svg {
+      flex-shrink: 0;
+      color: #64748B;
+    }
+    .card-menu-item:hover {
+      background: #F0FAFA;
+      color: #0B2A3C;
+    }
+    .card-menu-item:hover svg { color: #0B2A3C; }
+    .card-menu-warn { color: #92400E; }
+    .card-menu-warn svg { color: #92400E; }
+    .card-menu-warn:hover {
+      background: #FEF3C7;
+      color: #78350F;
+    }
+    .card-menu-warn:hover svg { color: #78350F; }
+    .card-menu-danger { color: #B91C1C; }
+    .card-menu-danger svg { color: #B91C1C; }
+    .card-menu-danger:hover {
+      background: #FEE2E2;
+      color: #991B1B;
+    }
+    .card-menu-danger:hover svg { color: #991B1B; }
+    .card-menu-divider {
+      height: 1px;
+      background: #E5E9F0;
+      margin: 4px 6px;
+    }
+
     /* Floating [+] add-menu */
     .deal-add-menu {
       z-index: 10000;
