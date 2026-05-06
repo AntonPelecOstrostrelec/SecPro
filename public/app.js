@@ -13914,13 +13914,29 @@ async function _emailComposerEnsureLink() {
   const documentRef = docDetail ? docDef.prefix + ' – ' + docDetail : docDef.prefix;
   const signerRole = docDef.role || '';
 
+  // Capture document content so the client can READ what they're signing.
+  // Without this the signing page would just show a name field + signature
+  // canvas — that's not legally valid: §40 OZ requires the signer be able to
+  // read the document. For nabor we grab the rendered HTML preview from the
+  // open náborák modal.
+  let documentHtml = null;
+  if (docType === 'nabor') {
+    const naborModal = document.getElementById('naborModal');
+    if (naborModal && naborModal.style.display !== 'none') {
+      const previewContent = document.getElementById('naborPreviewContent');
+      if (previewContent && previewContent.innerHTML.trim().length > 0) {
+        documentHtml = previewContent.innerHTML;
+      }
+    }
+  }
+
   document.getElementById('ec-loading').style.display = '';
 
   try {
     const r = await secureFetch('/api/sign/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-      body: JSON.stringify({ documentType: docType, documentRef, signerName, signerRole, signerEmail, signerPhone, expiresInHours }),
+      body: JSON.stringify({ documentType: docType, documentRef, signerName, signerRole, signerEmail, signerPhone, expiresInHours, documentHtml }),
     });
     const data = await r.json();
     if (!data.ok) {

@@ -44,7 +44,78 @@
   .info-label{color:#666;font-weight:500}
   .info-value{color:#0B2A3C;font-weight:600;text-align:right}
   .message-box{background:#F0FAFA;border-left:3px solid #1A7A8A;padding:12px 16px;margin:16px 0;border-radius:0 8px 8px 0;font-size:13px;color:#0B2A3C;line-height:1.5}
-  .doc-preview{background:#FAFBFC;border:1px solid #E5E9F0;border-radius:8px;padding:16px;margin:16px 0;max-height:300px;overflow-y:auto;font-size:13px;line-height:1.6}
+
+  /* Document preview — looks like a paper page so the client knows
+     they're reading the actual contract */
+  .doc-section-title{font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:#1A7A8A;margin-top:24px;margin-bottom:8px;padding-bottom:4px;border-bottom:2px solid #1A7A8A}
+  .doc-preview{
+    background:#fff;
+    border:1px solid #E5E9F0;
+    border-radius:8px;
+    padding:24px;
+    margin:0 0 16px;
+    max-height:55vh;
+    overflow-y:auto;
+    font-size:11px;
+    line-height:1.5;
+    color:#1e1e1e;
+    font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;
+    box-shadow:inset 0 0 0 1px #fff, 0 1px 3px rgba(0,0,0,0.05);
+  }
+
+  /* Inline copy of the .np-* styles from the main app — so the embedded
+     náborový list HTML preview looks like the actual document. */
+  .doc-preview .np-title-bar{background:#0B2A3C;color:#fff;padding:8px 12px;font-size:13px;font-weight:700;text-align:center;border-radius:4px;margin-bottom:12px;letter-spacing:1px}
+  .doc-preview .np-section{background:#1A2235;color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;padding:5px 10px;margin-top:14px;margin-bottom:6px;border-radius:3px}
+  .doc-preview .np-row{display:flex;background:#F8FAFC;border-radius:2px;padding:5px 8px;margin-bottom:2px;font-size:10.5px}
+  .doc-preview .np-row.np-row2{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:transparent;padding:0;margin-bottom:2px}
+  .doc-preview .np-row2 > div{background:#F8FAFC;border-radius:2px;padding:5px 8px}
+  .doc-preview .np-label{font-weight:700;color:#475569;width:40%;flex-shrink:0}
+  .doc-preview .np-value{flex:1;color:#1e1e1e}
+  .doc-preview .np-multi{color:#1e1e1e;white-space:pre-wrap;margin-top:2px}
+  .doc-preview .np-empty{color:#94A3B8;font-style:italic}
+  .doc-preview .np-footer{margin-top:18px;padding-top:8px;border-top:1px solid #E2E8F0;font-size:9px;color:#94A3B8;text-align:center}
+  .doc-preview .np-signature-block{display:none}  /* Don't show old signatures inside the to-be-signed view */
+
+  /* Acknowledgement checkbox — required to enable Sign button */
+  .ack-row{
+    display:flex;
+    align-items:flex-start;
+    gap:10px;
+    padding:12px 14px;
+    margin-top:14px;
+    background:#FFFBEB;
+    border:1.5px solid #FCD34D;
+    border-radius:10px;
+    transition:all 0.2s;
+  }
+  .ack-row.checked{
+    background:#ECFDF5;
+    border-color:#86EFAC;
+  }
+  .ack-row input[type="checkbox"]{
+    margin-top:2px;
+    width:18px;height:18px;
+    accent-color:#1A7A8A;
+    flex-shrink:0;
+    cursor:pointer;
+  }
+  .ack-row label{
+    font-size:13px;
+    line-height:1.5;
+    color:#92400E;
+    cursor:pointer;
+    user-select:none;
+  }
+  .ack-row.checked label{color:#065F46}
+  .ack-required-hint{
+    font-size:11px;
+    color:#B91C1C;
+    margin-top:6px;
+    text-align:center;
+    display:none;
+  }
+  .ack-required-hint.shown{display:block}
   .sig-section{margin-top:20px;padding-top:20px;border-top:2px solid #f0f0f0}
   .sig-section h3{font-size:15px;margin-bottom:12px;color:#0b2a3c}
   .sig-name-input{width:100%;padding:10px 14px;border:1.5px solid #E2E8F0;border-radius:8px;font-size:14px;margin-bottom:12px;outline:none;transition:all .2s;background:#FAFBFC}
@@ -150,7 +221,24 @@
 
         <div id="agent-message" class="message-box" style="display:none"></div>
 
-        <div id="doc-preview" class="doc-preview" style="display:none"></div>
+        <!-- Document content — the client must be able to read what they're
+             signing. Section title is hidden when no document content arrived. -->
+        <div id="doc-preview-wrap" style="display:none;">
+          <div class="doc-section-title">📄 Dokument na podpis — prečítajte si pred podpisom</div>
+          <div id="doc-preview" class="doc-preview"></div>
+        </div>
+
+        <!-- Acknowledgement — required to enable Sign button -->
+        <div id="ack-row" class="ack-row" style="display:none;">
+          <input type="checkbox" id="ack-checkbox">
+          <label for="ack-checkbox">
+            Prečítal/-a som si celý dokument vyššie a súhlasím s jeho obsahom.
+            Beriem na vedomie, že podpis je právne záväzný.
+          </label>
+        </div>
+        <div id="ack-required-hint" class="ack-required-hint">
+          ⚠ Pred podpisom musíte potvrdiť, že ste si dokument prečítali.
+        </div>
 
         <div class="sig-section">
           <h3>Elektronický podpis</h3>
@@ -249,9 +337,21 @@
     }
 
     if (d.documentHtml) {
+      // Show the document content + the "I have read" acknowledgement
       const prev = document.getElementById('doc-preview');
       prev.innerHTML = d.documentHtml;
-      prev.style.display = 'block';
+      document.getElementById('doc-preview-wrap').style.display = 'block';
+      document.getElementById('ack-row').style.display = 'flex';
+    }
+    // Wire up the acknowledgement checkbox to update the submit-button state
+    const ackBox = document.getElementById('ack-checkbox');
+    if (ackBox && !ackBox.dataset.bound) {
+      ackBox.dataset.bound = '1';
+      ackBox.addEventListener('change', () => {
+        document.getElementById('ack-row').classList.toggle('checked', ackBox.checked);
+        document.getElementById('ack-required-hint').classList.remove('shown');
+        updateSubmitBtn();
+      });
     }
 
     document.getElementById('signer-name').value = d.signerName || '';
@@ -328,7 +428,12 @@
 
   function updateSubmitBtn() {
     const name = document.getElementById('signer-name').value.trim();
-    document.getElementById('btn-submit').disabled = !(hasInk && name.length >= 2);
+    // If there's a document to read, the agent must tick the acknowledgement
+    // box first. If no documentHtml was provided, fall back to legacy
+    // behaviour (just name + signature).
+    const docShown = document.getElementById('doc-preview-wrap')?.style.display !== 'none';
+    const ackChecked = !docShown || document.getElementById('ack-checkbox')?.checked;
+    document.getElementById('btn-submit').disabled = !(hasInk && name.length >= 2 && ackChecked);
   }
 
   document.addEventListener('input', function(e) {
@@ -340,6 +445,14 @@
     const btn = document.getElementById('btn-submit');
     const name = document.getElementById('signer-name').value.trim();
     if (!hasInk || name.length < 2) return;
+    // Belt-and-braces — server doesn't enforce the ack box, but the button
+    // should already be disabled. Just in case, surface the hint if it
+    // somehow fires without ack ticked.
+    const docShown = document.getElementById('doc-preview-wrap')?.style.display !== 'none';
+    if (docShown && !document.getElementById('ack-checkbox')?.checked) {
+      document.getElementById('ack-required-hint').classList.add('shown');
+      return;
+    }
 
     btn.disabled = true;
     btn.textContent = 'Odosielam...';

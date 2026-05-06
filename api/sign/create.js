@@ -30,6 +30,12 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: 'Chýba documentType, documentRef alebo signerName' });
   }
 
+  // Cap embedded document content size — Upstash KV has a 1 MB value limit
+  // and we want to leave headroom for the rest of the record + future fields.
+  if (documentHtml && documentHtml.length > 800000) {
+    return res.status(400).json({ error: 'Obsah dokumentu je príliš veľký pre prenos' });
+  }
+
   // Generate a short URL-safe token (~16 chars, ~95 bits of entropy).
   // Use base64url so the link looks cleaner: /podpis/Nx7Qr2pK8vM3aBcD
   const token = crypto.randomBytes(12).toString('base64')
