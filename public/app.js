@@ -5302,6 +5302,85 @@ function closeNaborModal() {
 // PDF render — same one that downloads — embedded as an iframe. The agent
 // sees exactly what the printed document will look like, including all
 // sections and embedded signatures.
+// Bridge for the "Editovať znova" footer button — pulls propId from the
+// open modal and delegates to unlockNabor.
+function unlockNaborFromModal() {
+  const propId = document.getElementById('nabor-prop-id')?.value;
+  if (!propId) return;
+  unlockNabor(propId);
+}
+
+// Re-open a signed náborový list for editing. Asks the user to confirm,
+// then drops the seller signature + remoteRequest from the property and
+// from the KV store, so the document goes back to "rozpracovaný" (red)
+// and can be edited and re-sent for signature.
+async function unlockNabor(propId) {
+  const props = getProperties();
+  const idx = props.findIndex(p => p.id === propId);
+  if (idx === -1) return;
+  const p = props[idx];
+  if (!p.nabor) return;
+
+  // Confirm dialog — make consequence very clear
+  const confirmed = await secConfirm({
+    title: 'Editovať podpísaný dokument?',
+    message:
+      'Po znovuotvorení tohto náborového listu sa vymaže existujúci podpis ' +
+      'klienta a budete musieť dokument klientovi opätovne poslať na podpis.\n\n' +
+      'Pokračovať?',
+    type: 'warning',
+    ok: 'Áno, editovať znova',
+    cancel: 'Zrušiť',
+  });
+  if (!confirmed) return;
+
+  // Best-effort delete the remote KV record (agent's session token required).
+  // Failure is non-fatal — the record will expire naturally in 30 days.
+  const rr = p.nabor.remoteRequest;
+  if (rr && rr.token) {
+    try {
+      const sessionToken = (typeof getStoredToken === 'function') ? getStoredToken() : null;
+      if (sessionToken && typeof secureFetch === 'function') {
+        await secureFetch('/api/sign/' + encodeURIComponent(rr.token), {
+          method: 'DELETE',
+          headers: { 'Authorization': 'Bearer ' + sessionToken },
+        });
+      }
+    } catch (e) {
+      console.warn('[SecPro] Could not delete remote sign record', e);
+    }
+  }
+
+  // Clear seller signature + the entire remote-sign attachment.
+  // Keep agent's local signature — the maklér's part doesn't need redoing.
+  p.nabor.signatures = {
+    seller: null,
+    agent: (p.nabor.signatures && p.nabor.signatures.agent) || null,
+  };
+  delete p.nabor.remoteRequest;
+  saveProperties(props);
+
+  // Refresh local cache so getDealStatus doesn't still see the request as 'signed'
+  if (typeof _remoteSignCache !== 'undefined' && Array.isArray(_remoteSignCache)) {
+    _remoteSignCache = _remoteSignCache.filter(s => s.token !== (rr && rr.token));
+  }
+
+  // Re-apply lock state on the open modal — now unlocked, form-side reappears.
+  // Also re-render property cards so the chip drops back to "Rozpracovaný" (red).
+  _applyNaborLockState(p);
+  _naborSigState = {
+    seller: null,
+    agent: (p.nabor.signatures && p.nabor.signatures.agent) || null,
+  };
+  if (typeof _refreshNaborSigPreview === 'function') {
+    _refreshNaborSigPreview('seller');
+    _refreshNaborSigPreview('agent');
+  }
+  if (typeof renderProperties === 'function') renderProperties();
+
+  showToast('Dokument je znova editovateľný. Po úprave odošlite klientovi nový odkaz na podpis.', 'info');
+}
+
 function _applyNaborLockState(p) {
   const modal = document.getElementById('naborModal');
   if (!modal) return;
@@ -5317,6 +5396,10 @@ function _applyNaborLockState(p) {
   // Save button hidden in locked mode (cannot save a finalised document)
   const saveBtn = modal.querySelector('.nabor-btn-save');
   if (saveBtn) saveBtn.style.display = locked ? 'none' : '';
+
+  // Re-edit button only appears in locked mode
+  const reeditBtn = document.getElementById('nabor-btn-reedit');
+  if (reeditBtn) reeditBtn.style.display = locked ? '' : 'none';
 
   // PDF button: "Generovať PDF" → "Stiahnuť PDF" once finalised
   const pdfBtn = modal.querySelector('.nabor-btn-pdf');

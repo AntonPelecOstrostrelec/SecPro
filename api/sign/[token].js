@@ -1,7 +1,7 @@
-const { kvGet, kvSet, handleCors, getKV } = require('../../lib/kv');
+const { kvGet, kvSet, kvDel, handleCors, getKV, validateToken } = require('../../lib/kv');
 
 module.exports = async (req, res) => {
-  if (handleCors(req, res, 'GET, POST, OPTIONS')) return;
+  if (handleCors(req, res, 'GET, POST, DELETE, OPTIONS')) return;
 
   const { KV_URL, KV_TOKEN, ok } = getKV();
   if (!ok) return res.status(500).json({ error: 'Server nie je nakonfigurovaný' });
@@ -11,6 +11,29 @@ module.exports = async (req, res) => {
 
   const record = await kvGet(KV_URL, KV_TOKEN, `sign:${token}`);
   if (!record) return res.status(404).json({ error: 'Podpisová žiadosť neexistuje alebo vypršala' });
+
+  // ── DELETE: remove sign record (used when agent re-edits a signed doc) ──
+  if (req.method === 'DELETE') {
+    // Auth — only the agent who created the request can delete it
+    const authHeader = req.headers.authorization || '';
+    const sessionToken = authHeader.replace('Bearer ', '');
+    const session = await validateToken(KV_URL, KV_TOKEN, sessionToken);
+    if (!session) return res.status(401).json({ error: 'Neautorizovaný prístup' });
+    if (record.agentId !== session.userId) {
+      return res.status(403).json({ error: 'Tento záznam vám nepatrí' });
+    }
+
+    await kvDel(KV_URL, KV_TOKEN, `sign:${token}`);
+
+    // Remove from agent's index
+    const indexKey = `sign-index:${record.agentId}`;
+    const index = (await kvGet(KV_URL, KV_TOKEN, indexKey)) || [];
+    const next = index.filter(e => e.token !== token);
+    if (next.length !== index.length) {
+      await kvSet(KV_URL, KV_TOKEN, indexKey, next);
+    }
+    return res.status(200).json({ ok: true });
+  }
 
   // ── GET: return document info for the signing page ──
   if (req.method === 'GET') {

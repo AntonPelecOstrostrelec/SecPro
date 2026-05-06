@@ -3943,6 +3943,19 @@
       background: linear-gradient(135deg, #0B2A3C, #1A7A8A); color: #fff;
     }
     .nabor-btn-pdf:hover { opacity: 0.9; transform: translateY(-1px); }
+    /* "Editovať znova" — only shown when document is locked. Amber, distinct
+       from the primary save and PDF buttons so the destructive nature is
+       obvious. */
+    .nabor-btn-reedit {
+      background: #FFFBEB;
+      color: #92400E;
+      border: 1px solid #FCD34D;
+    }
+    .nabor-btn-reedit:hover {
+      background: #FEF3C7;
+      border-color: #F59E0B;
+      color: #78350F;
+    }
 
     /* --- Viewing card --- */
     .vi-card {
