@@ -3170,6 +3170,14 @@ const PROP_PIPELINE = [
 ];
 const PROP_PIPELINE_KEYS = PROP_PIPELINE.map(s => s.key);
 
+// Statuses available in the inline-status dropdown — pipeline + the two
+// terminal options. Order matters (this is the order user sees in the menu).
+const PROP_STATUS_DROPDOWN = [
+  ...PROP_PIPELINE,
+  { key: 'stiahnuta',  label: 'Stiahnutá',  icon: '⏸️', color: '#DC2626' },
+  { key: 'zamietnuty', label: 'Zamietnutý', icon: '❌', color: '#DC2626' },
+];
+
 // ===================== DEAL DOCUMENTS TRACKER =====================
 // 5-stage transaction lifecycle with traffic-light status.
 // Náborák status is auto-derived from p.nabor; the rest is manual.
@@ -6707,6 +6715,176 @@ function advanceProperty(id, forceTo) {
   changePropertyStatus(id, newStatus);
 }
 
+// ═══════════════════════════════════════════════════════════════
+//  INLINE QUICK EDIT — price + status, edited directly on the card
+// ═══════════════════════════════════════════════════════════════
+
+// ---------- PRICE ----------
+// Replace the price <div> with a number input. Save on Enter or blur,
+// cancel on Escape. event.stopPropagation must be called before this so
+// the card-level onclick (openPropDetail) doesn't fire.
+function startInlinePriceEdit(span, propId) {
+  // Don't re-enter if already editing this cell
+  if (span.querySelector('input')) return;
+
+  const props = getProperties();
+  const p = props.find(x => x.id === propId);
+  if (!p) return;
+
+  const originalText = span.textContent;
+  const currentVal = p.price || '';
+
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.min = '0';
+  input.step = '1000';
+  input.value = currentVal;
+  input.className = 'prop-inline-input prop-inline-input-price';
+
+  span.classList.add('is-editing');
+  span.textContent = '';
+  span.appendChild(input);
+  input.focus();
+  input.select();
+
+  let committed = false;
+  const commit = () => {
+    if (committed) return;
+    committed = true;
+    const raw = input.value.trim();
+    const num = raw === '' ? 0 : Number(raw);
+    if (raw !== '' && (!isFinite(num) || num < 0)) {
+      // Invalid → revert + toast
+      span.textContent = originalText;
+      span.classList.remove('is-editing');
+      showToast('Neplatná cena', 'error');
+      return;
+    }
+    // No change → just revert visual without saving
+    if (num === (p.price || 0)) {
+      span.textContent = originalText;
+      span.classList.remove('is-editing');
+      return;
+    }
+    // Persist
+    p.price = num || null;
+    p.updatedAt = new Date().toISOString();
+    saveProperties(props);
+    // Re-render so price label, sorting, map markers all update consistently
+    renderProperties();
+    if (typeof showToast === 'function') showToast('Cena uložená', 'success');
+  };
+
+  const cancel = () => {
+    if (committed) return;
+    committed = true;
+    span.textContent = originalText;
+    span.classList.remove('is-editing');
+  };
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+    if (e.key === 'Escape') { e.preventDefault(); cancel(); input.blur(); }
+  });
+  input.addEventListener('blur', commit);
+  // Don't let clicks inside the input bubble up to the card hero / title-row
+  input.addEventListener('click', (e) => e.stopPropagation());
+}
+
+// ---------- STATUS ----------
+// Open a small floating dropdown anchored under the status badge that
+// lets the user jump to any status (forward or backward in the pipeline,
+// plus the two terminal "Stiahnutá / Zamietnutý" options).
+let _statusDropdownEl = null;
+let _statusDropdownClickAway = null;
+
+function closeInlineStatusDropdown() {
+  if (_statusDropdownEl) {
+    _statusDropdownEl.remove();
+    _statusDropdownEl = null;
+  }
+  if (_statusDropdownClickAway) {
+    document.removeEventListener('click', _statusDropdownClickAway, true);
+    _statusDropdownClickAway = null;
+  }
+}
+
+function openInlineStatusDropdown(badge, propId) {
+  // Toggle: click on the same badge twice closes the dropdown
+  if (_statusDropdownEl && _statusDropdownEl.dataset.propId === propId) {
+    closeInlineStatusDropdown();
+    return;
+  }
+  closeInlineStatusDropdown();
+
+  const props = getProperties();
+  const p = props.find(x => x.id === propId);
+  if (!p) return;
+
+  const dd = document.createElement('div');
+  dd.className = 'prop-status-dropdown';
+  dd.dataset.propId = propId;
+  dd.innerHTML = PROP_STATUS_DROPDOWN.map(opt => {
+    const isCurrent = opt.key === p.status ||
+      (opt.key === 'kontakt' && p.status === 'kontaktovany') ||
+      (opt.key === 'stretnutie' && p.status === 'dohodnute') ||
+      (opt.key === 'inzercia' && p.status === 'rozpracovany') ||
+      (opt.key === 'predana' && p.status === 'uzavrety');
+    return '<button class="prop-status-option' + (isCurrent ? ' is-current' : '') +
+      '" data-status="' + opt.key + '">' +
+      '<span class="prop-status-option-dot" style="background:' + opt.color + '"></span>' +
+      '<span class="prop-status-option-icon">' + opt.icon + '</span>' +
+      '<span class="prop-status-option-label">' + opt.label + '</span>' +
+      (isCurrent ? '<svg class="prop-status-option-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : '') +
+      '</button>';
+  }).join('');
+
+  // Position under the badge using fixed coords so it survives card re-flow
+  const r = badge.getBoundingClientRect();
+  dd.style.position = 'fixed';
+  dd.style.top = (r.bottom + 6) + 'px';
+  dd.style.left = r.left + 'px';
+  dd.style.zIndex = '9999';
+  document.body.appendChild(dd);
+
+  // If the dropdown overflows the viewport bottom, flip it above the badge
+  const ddRect = dd.getBoundingClientRect();
+  if (ddRect.bottom > window.innerHeight - 8) {
+    dd.style.top = Math.max(8, r.top - ddRect.height - 6) + 'px';
+  }
+
+  // Wire option click handlers
+  dd.querySelectorAll('.prop-status-option').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const newStatus = btn.dataset.status;
+      closeInlineStatusDropdown();
+      if (newStatus !== p.status) {
+        changePropertyStatus(propId, newStatus);
+      }
+    });
+  });
+
+  _statusDropdownEl = dd;
+  // Close on outside click. Use capture phase so we close before any
+  // bubbling click handlers on the page run.
+  const myClickAway = (e) => {
+    if (!dd.contains(e.target) && e.target !== badge) {
+      closeInlineStatusDropdown();
+    }
+  };
+  _statusDropdownClickAway = myClickAway;
+  // Defer the listener registration so the click that opened the dropdown
+  // doesn't immediately close it. Compare against `myClickAway` (not the
+  // global) so a rapid second open() that overwrote the global doesn't
+  // make us register a stale listener.
+  setTimeout(() => {
+    if (_statusDropdownClickAway === myClickAway) {
+      document.addEventListener('click', myClickAway, true);
+    }
+  }, 0);
+}
+
 function filterProperties() {
   renderProperties();
   // Re-plot map markers if map is the active view
@@ -7207,7 +7385,7 @@ function renderProperties() {
       <div class="prop-card-hero ${photo ? 'has-photo' : ''}" onclick="openPropDetail('${p.id}')" style="cursor:pointer;">
         ${photo ? `<img src="${photo}" class="prop-card-hero-img" />` : `<div class="prop-card-hero-placeholder"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>`}
         <div class="prop-card-hero-overlay">
-          <span class="prop-card-status" style="--st-color:${st.color};--st-bg:${st.bg};">${st.label}</span>
+          <span class="prop-card-status prop-inline-status" title="Klik pre zmenu statusu" onclick="event.stopPropagation();openInlineStatusDropdown(this,'${p.id}');" style="--st-color:${st.color};--st-bg:${st.bg};">${st.label}</span>
           ${photoCount > 1 ? `<span class="prop-card-photo-count">${photoCount} foto</span>` : ''}
         </div>
       </div>
@@ -7217,7 +7395,7 @@ function renderProperties() {
         <!-- Title & Price row -->
         <div class="prop-card-title-row" onclick="openPropDetail('${p.id}')" style="cursor:pointer;">
           <h4 class="prop-card-title">${p.title}</h4>
-          <div class="prop-card-price">${priceStr}</div>
+          <div class="prop-card-price prop-inline-editable" title="Klik pre rýchlu úpravu ceny" onclick="event.stopPropagation();startInlinePriceEdit(this,'${p.id}');">${priceStr}</div>
         </div>
 
         <!-- Location -->
