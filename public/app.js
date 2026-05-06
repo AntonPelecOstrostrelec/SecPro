@@ -1,5 +1,25 @@
+// === JS BUILD VERSION INDICATOR ===
+// If you don't see this badge in the top-left after hard refresh, the
+// browser/CDN is still serving stale app.js.
+const SECPRO_JS_BUILD = 'batch1-2026-05-06';
+console.log('%c[SecPro] JS build:', 'background:#16A34A;color:#fff;padding:2px 6px;border-radius:3px;', SECPRO_JS_BUILD);
+
 // Initialize Lucide icons
 document.addEventListener('DOMContentLoaded', function() {
+  // Build-version chip (auto-hides after 10s)
+  try {
+    const chip = document.createElement('div');
+    chip.textContent = 'JS: ' + SECPRO_JS_BUILD;
+    chip.style.cssText = 'position:fixed;top:8px;left:8px;z-index:99999;' +
+      'background:#16A34A;color:#fff;padding:4px 10px;border-radius:6px;' +
+      'font-family:monospace;font-size:11px;font-weight:700;' +
+      'box-shadow:0 2px 6px rgba(0,0,0,0.3);pointer-events:none;' +
+      'transition:opacity 0.6s;';
+    document.body.appendChild(chip);
+    setTimeout(() => { chip.style.opacity = '0'; }, 10000);
+    setTimeout(() => { chip.remove(); }, 11000);
+  } catch (e) {}
+
   lucide.createIcons();
   restoreSidebarState();
   if (typeof updateHomeStats === 'function') updateHomeStats();
