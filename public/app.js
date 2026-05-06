@@ -1,7 +1,7 @@
 // === JS BUILD VERSION INDICATOR ===
 // If you don't see this badge in the top-left after hard refresh, the
 // browser/CDN is still serving stale app.js.
-const SECPRO_JS_BUILD = 'dup1-2026-05-06';
+const SECPRO_JS_BUILD = 'timeline1-2026-05-06';
 console.log('%c[SecPro] JS build:', 'background:#16A34A;color:#fff;padding:2px 6px;border-radius:3px;', SECPRO_JS_BUILD);
 
 // Initialize Lucide icons
@@ -3178,6 +3178,7 @@ async function publishToLeonis(id) {
 
   p.leonisPublished = true;
   p.leonisPublishedAt = new Date().toISOString();
+  _logActivity(p, 'leones_published', {});
   saveProperties(props);
   renderProperties();
 
@@ -3190,6 +3191,7 @@ async function unpublishFromLeonis(id) {
   if (!p) return;
 
   p.leonisPublished = false;
+  _logActivity(p, 'leones_unpublished', {});
   saveProperties(props);
   renderProperties();
 
@@ -6494,6 +6496,100 @@ function generateViewingDocument(propId) {
   doc.save('prehliadky_' + (p.title || 'nehnutelnost').replace(/\s+/g, '_').slice(0, 30) + '.pdf');
 }
 
+// ─── Activity timeline helpers ────────────────────────────────────
+// Append a typed activity event to a property's history. Events show up
+// in the property detail's Activity timeline next to status changes.
+// Caller is responsible for saving the property afterwards.
+function _logActivity(p, type, meta) {
+  if (!p) return;
+  if (!Array.isArray(p.activity)) p.activity = [];
+  p.activity.push({ type, at: new Date().toISOString(), meta: meta || {} });
+  // Cap at last 200 events so we don't blow up localStorage on busy props
+  if (p.activity.length > 200) p.activity.splice(0, p.activity.length - 200);
+}
+
+// Format an event into a one-liner with icon, label, and optional detail.
+// Status changes come from p.statusHistory (older code path); explicit
+// events come from p.activity. We merge both into a unified timeline.
+function _formatActivityLine(ev) {
+  const dt = new Date(ev.at);
+  if (isNaN(dt.getTime())) return null;
+  const dateStr = dt.toLocaleDateString('sk-SK', { day: 'numeric', month: 'short', year: 'numeric' });
+  const timeStr = dt.toLocaleTimeString('sk-SK', { hour: '2-digit', minute: '2-digit' });
+  const fmt = (price) => price ? Number(price).toLocaleString('sk-SK') + ' €' : '—';
+
+  // Status change (from statusHistory shape)
+  if (ev.from !== undefined && ev.to !== undefined) {
+    const fromLbl = (PROP_STATUS_MAP[ev.from] || {}).label || ev.from || 'Nový';
+    const toLbl = (PROP_STATUS_MAP[ev.to] || {}).label || ev.to;
+    const toMeta = PROP_STATUS_MAP[ev.to] || {};
+    return {
+      icon: '🔁',
+      color: toMeta.color || '#0B2A3C',
+      label: 'Status: ' + fromLbl + ' → ' + toLbl,
+      dateStr, timeStr,
+      ts: dt.getTime(),
+    };
+  }
+  // Explicit activity event
+  switch (ev.type) {
+    case 'created': return { icon: '✨', color: '#16A34A', label: 'Nehnuteľnosť vytvorená', dateStr, timeStr, ts: dt.getTime() };
+    case 'price_changed': return {
+      icon: '💶', color: '#1A7A8A',
+      label: 'Cena: ' + fmt(ev.meta?.from) + ' → ' + fmt(ev.meta?.to),
+      dateStr, timeStr, ts: dt.getTime(),
+    };
+    case 'address_changed': return {
+      icon: '📍', color: '#7C3AED',
+      label: 'Adresa zmenená' + (ev.meta?.to ? ': ' + ev.meta.to : ''),
+      dateStr, timeStr, ts: dt.getTime(),
+    };
+    case 'photo_added': return {
+      icon: '📷', color: '#D97706',
+      label: 'Pridaných ' + (ev.meta?.count || 1) + ' fotiek',
+      dateStr, timeStr, ts: dt.getTime(),
+    };
+    case 'note_changed': return { icon: '📝', color: '#0B2A3C', label: 'Poznámky upravené', dateStr, timeStr, ts: dt.getTime() };
+    case 'leones_published': return { icon: '📤', color: '#0891B2', label: 'Publikované na LEONES', dateStr, timeStr, ts: dt.getTime() };
+    case 'leones_unpublished': return { icon: '📥', color: '#64748B', label: 'Stiahnuté z LEONES', dateStr, timeStr, ts: dt.getTime() };
+    case 'viewing_added': return { icon: '👁️', color: '#9333EA', label: 'Pridaná obhliadka', dateStr, timeStr, ts: dt.getTime() };
+    case 'interested_added': return { icon: '👤', color: '#2563EB', label: 'Pridaný záujemca' + (ev.meta?.name ? ': ' + ev.meta.name : ''), dateStr, timeStr, ts: dt.getTime() };
+    default: return { icon: '•', color: '#64748B', label: ev.type || 'Udalosť', dateStr, timeStr, ts: dt.getTime() };
+  }
+}
+
+// Render a chronological activity timeline (newest first) for a property.
+// Merges p.statusHistory + p.activity + an implicit 'created' at the
+// bottom for properties without an explicit creation event.
+function _renderActivityTimeline(p) {
+  const events = [];
+  // Implicit creation event if not already logged
+  const hasCreated = (p.activity || []).some(e => e.type === 'created');
+  if (!hasCreated && p.createdAt) {
+    events.push({ type: 'created', at: p.createdAt, meta: {} });
+  }
+  if (Array.isArray(p.activity)) events.push(...p.activity);
+  if (Array.isArray(p.statusHistory)) events.push(...p.statusHistory);
+
+  const lines = events.map(_formatActivityLine).filter(Boolean);
+  lines.sort((a, b) => b.ts - a.ts);  // newest first
+
+  if (lines.length === 0) {
+    return '<div class="prop-activity-empty">Žiadna história aktivít</div>';
+  }
+  return '<div class="prop-activity-timeline">' +
+    lines.map(l =>
+      '<div class="prop-activity-item">' +
+        '<div class="prop-activity-icon" style="background:' + l.color + ';">' + l.icon + '</div>' +
+        '<div class="prop-activity-body">' +
+          '<div class="prop-activity-label">' + l.label + '</div>' +
+          '<div class="prop-activity-time">' + l.dateStr + ' · ' + l.timeStr + '</div>' +
+        '</div>' +
+      '</div>'
+    ).join('') +
+  '</div>';
+}
+
 // ─── Duplicate detection helpers ──────────────────────────────────
 // Normalize an address/city string so two equivalent inputs match even
 // with different casing, diacritics, or common Slovak abbreviations.
@@ -6618,11 +6714,29 @@ async function saveProperty() {
     if (prev.nabor) prop.nabor = prev.nabor;
     if (prev.deals) prop.deals = prev.deals;
     if (prev.statusHistory) prop.statusHistory = prev.statusHistory;
+    if (prev.activity) prop.activity = prev.activity;
+    if (prev.reminders) prop.reminders = prev.reminders;
     if (prev.leonisPublished) prop.leonisPublished = prev.leonisPublished;
     if (prev.leonisPublishedAt) prop.leonisPublishedAt = prev.leonisPublishedAt;
+    // Activity log: surface the diffs that matter to the agent
+    if ((prev.price || 0) !== (prop.price || 0)) {
+      _logActivity(prop, 'price_changed', { from: prev.price || 0, to: prop.price || 0 });
+    }
+    if (!addressUnchanged) {
+      _logActivity(prop, 'address_changed', { from: prev.address || '', to: prop.address || '' });
+    }
+    const prevPhotoCount = (prev.photos || []).length;
+    const newPhotoCount = (prop.photos || []).length;
+    if (newPhotoCount > prevPhotoCount) {
+      _logActivity(prop, 'photo_added', { count: newPhotoCount - prevPhotoCount });
+    }
+    if ((prev.notes || '') !== (prop.notes || '')) {
+      _logActivity(prop, 'note_changed', {});
+    }
     props[existingIdx] = prop;
   } else {
     prop.createdAt = new Date().toISOString();
+    _logActivity(prop, 'created', {});
     props.unshift(prop);
   }
   // Keep original photos for LEONIS sync (localStorage save may strip them)
@@ -6877,9 +6991,11 @@ function startInlinePriceEdit(span, propId) {
       span.classList.remove('is-editing');
       return;
     }
-    // Persist
+    // Persist + log activity
+    const oldPrice = p.price || 0;
     p.price = num || null;
     p.updatedAt = new Date().toISOString();
+    _logActivity(p, 'price_changed', { from: oldPrice, to: num || 0 });
     saveProperties(props);
     // Re-render so price label, sorting, map markers all update consistently
     renderProperties();
@@ -8192,6 +8308,11 @@ function openPropDetail(id) {
           <a href="${p.url}" target="_blank" style="color:#1A7A8A;word-break:break-all;">${p.url}</a>
         </div>
       ` : ''}
+
+      <div class="prop-detail-section">
+        <div class="prop-detail-section-title">\u23f1 Hist\u00f3ria aktivity</div>
+        ${_renderActivityTimeline(p)}
+      </div>
 
       <div class="prop-detail-actions">
         <button class="btn btn-primary" onclick="closePropDetail();openPropertyForm('${p.id}')">Upravi\u0165</button>
