@@ -1541,6 +1541,109 @@
       color: #fff;
     }
 
+    /* ─── POI overlay control (top-right, below style switcher) ─── */
+    .map-poi-control {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(11,42,60,0.18);
+      border: 1px solid #E5E9F0;
+      padding: 8px 8px 6px;
+      margin-top: 6px;
+      max-width: 200px;
+    }
+    .map-poi-title {
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: #6B7280;
+      margin-bottom: 6px;
+      padding: 0 2px;
+    }
+    .map-poi-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      margin: 2px;
+      border: 1.5px solid #E5E7EB;
+      border-radius: 999px;
+      background: #fff;
+      font-size: 0.74rem;
+      font-weight: 600;
+      color: #475569;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .map-poi-pill:hover {
+      border-color: var(--poi-color);
+      color: var(--poi-color);
+    }
+    .map-poi-pill.active {
+      background: var(--poi-color);
+      border-color: var(--poi-color);
+      color: #fff;
+    }
+    .poi-pill-icon { font-size: 12px; line-height: 1; }
+    .poi-pill-label { font-size: 0.74rem; }
+
+    /* POI busy banner (bottom-center of map) */
+    .poi-busy {
+      position: absolute;
+      left: 50%;
+      bottom: 16px;
+      transform: translateX(-50%);
+      background: rgba(11, 42, 60, 0.92);
+      color: #fff;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 0.74rem;
+      font-weight: 600;
+      z-index: 999;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    }
+
+    /* POI map markers — small coloured dot with emoji */
+    .poi-pin-bubble {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      color: #fff;
+      border: 2px solid #fff;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.25);
+    }
+    .poi-popup {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 6px;
+    }
+    .poi-popup-icon {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      color: #fff;
+      flex-shrink: 0;
+    }
+    .poi-popup-name {
+      font-size: 0.84rem;
+      font-weight: 700;
+      color: #0B2A3C;
+      line-height: 1.2;
+    }
+    .poi-popup-cat {
+      font-size: 0.7rem;
+      color: #64748B;
+      margin-top: 1px;
+    }
+
     /* ─── Address search bar (above the map, not inside) ────── */
     .prop-map-toolbar {
       margin-bottom: 0.6rem;
