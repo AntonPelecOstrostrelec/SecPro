@@ -122,11 +122,26 @@
     <span class="header-subtitle">Centrum pre moderných maklérov</span>
   </div>
   <div class="header-user" id="headerUser">
+    <button class="header-bell" id="header-bell" onclick="toggleReminderPanel(event)" title="Pripomienky" aria-label="Pripomienky">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+      <span class="header-bell-badge" id="header-bell-badge" style="display:none;">0</span>
+    </button>
     <div class="header-user-trigger" onclick="openProfileModal()" title="Upraviť profil" style="display:flex;align-items:center;gap:0.75rem;cursor:pointer;padding:0.25rem 0.5rem;border-radius:8px;transition:background 0.15s;">
       <span class="header-user-name" id="headerUserName"></span>
       <div class="header-user-avatar" id="headerUserAvatar"></div>
     </div>
     <button class="btn-logout" onclick="handleLogout()">Odhlásiť</button>
+  </div>
+</div>
+
+<!-- Reminder dropdown panel — anchored to the bell, hidden by default -->
+<div id="reminder-panel" class="reminder-panel" style="display:none;">
+  <div class="reminder-panel-header">
+    <div class="reminder-panel-title">⏰ Pripomienky</div>
+    <button class="reminder-panel-close" onclick="closeReminderPanel()" title="Zavrieť">×</button>
+  </div>
+  <div id="reminder-panel-body" class="reminder-panel-body">
+    <!-- populated by JS -->
   </div>
 </div>
 
@@ -4467,6 +4482,6 @@
   </div>
 </div>
 
-<script src="app.js?v=timeline1"></script>
+<script src="app.js?v=remind1"></script>
 </body>
 </html>

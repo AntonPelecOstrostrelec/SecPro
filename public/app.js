@@ -1,7 +1,7 @@
 // === JS BUILD VERSION INDICATOR ===
 // If you don't see this badge in the top-left after hard refresh, the
 // browser/CDN is still serving stale app.js.
-const SECPRO_JS_BUILD = 'timeline1-2026-05-06';
+const SECPRO_JS_BUILD = 'remind1-2026-05-06';
 console.log('%c[SecPro] JS build:', 'background:#16A34A;color:#fff;padding:2px 6px;border-radius:3px;', SECPRO_JS_BUILD);
 
 // Initialize Lucide icons
@@ -6590,7 +6590,272 @@ function _renderActivityTimeline(p) {
   '</div>';
 }
 
-// ─── Duplicate detection helpers ──────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+//  REMINDERS — per-property reminders + header bell + auto-checks
+// ═══════════════════════════════════════════════════════════════
+
+// Add a reminder to a property. Persists immediately + refreshes any
+// open property detail + the header bell badge.
+function addReminder(propertyId, text, dueAt) {
+  const props = getProperties();
+  const p = props.find(x => x.id === propertyId);
+  if (!p) return;
+  if (!Array.isArray(p.reminders)) p.reminders = [];
+  const rem = {
+    id: 'rem_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+    text: (text || '').trim(),
+    dueAt: dueAt,
+    createdAt: new Date().toISOString(),
+    completed: false,
+    completedAt: null,
+    notified: false,
+  };
+  p.reminders.push(rem);
+  saveProperties(props);
+  _refreshReminderUI(propertyId);
+}
+
+function completeReminder(propertyId, reminderId) {
+  const props = getProperties();
+  const p = props.find(x => x.id === propertyId);
+  if (!p || !Array.isArray(p.reminders)) return;
+  const r = p.reminders.find(x => x.id === reminderId);
+  if (!r) return;
+  r.completed = true;
+  r.completedAt = new Date().toISOString();
+  saveProperties(props);
+  _refreshReminderUI(propertyId);
+}
+
+function deleteReminder(propertyId, reminderId) {
+  const props = getProperties();
+  const p = props.find(x => x.id === propertyId);
+  if (!p || !Array.isArray(p.reminders)) return;
+  p.reminders = p.reminders.filter(x => x.id !== reminderId);
+  saveProperties(props);
+  _refreshReminderUI(propertyId);
+}
+
+// Repaint anything that shows reminders. Called after add/complete/delete.
+function _refreshReminderUI(propertyId) {
+  _updateReminderBellCount();
+  // If the panel is open, re-render its list
+  const panel = document.getElementById('reminder-panel');
+  if (panel && panel.style.display !== 'none') _renderReminderPanelBody();
+  // If the property detail modal is open and matches, re-render its list
+  const list = document.getElementById('prop-detail-reminders-list');
+  if (list && propertyId) {
+    const p = getProperties().find(x => x.id === propertyId);
+    if (p) list.innerHTML = _renderReminderListHtml(p);
+  }
+}
+
+// Collect all non-completed reminders across all properties, with due
+// classification (overdue, today, week, later) for grouped UI.
+function _collectActiveReminders() {
+  const now = Date.now();
+  const todayEnd = new Date();
+  todayEnd.setHours(23, 59, 59, 999);
+  const weekEnd = new Date();
+  weekEnd.setDate(weekEnd.getDate() + 7);
+  weekEnd.setHours(23, 59, 59, 999);
+
+  const out = [];
+  for (const p of getProperties()) {
+    if (!Array.isArray(p.reminders)) continue;
+    for (const r of p.reminders) {
+      if (r.completed) continue;
+      const due = new Date(r.dueAt).getTime();
+      if (isNaN(due)) continue;
+      let bucket = 'later';
+      if (due < now) bucket = 'overdue';
+      else if (due <= todayEnd.getTime()) bucket = 'today';
+      else if (due <= weekEnd.getTime()) bucket = 'week';
+      out.push({ reminder: r, property: p, bucket, due });
+    }
+  }
+  out.sort((a, b) => a.due - b.due);
+  return out;
+}
+
+// Update the bell badge count: overdue + today only (those need attention).
+function _updateReminderBellCount() {
+  const badge = document.getElementById('header-bell-badge');
+  const bell = document.getElementById('header-bell');
+  if (!badge || !bell) return;
+  const active = _collectActiveReminders();
+  const urgent = active.filter(r => r.bucket === 'overdue' || r.bucket === 'today').length;
+  if (urgent === 0) {
+    badge.style.display = 'none';
+    bell.classList.remove('has-overdue');
+  } else {
+    badge.style.display = '';
+    badge.textContent = urgent > 99 ? '99+' : String(urgent);
+    bell.classList.toggle('has-overdue', active.some(r => r.bucket === 'overdue'));
+  }
+}
+
+// Render the bell-panel body with grouped reminders.
+function _renderReminderPanelBody() {
+  const body = document.getElementById('reminder-panel-body');
+  if (!body) return;
+  const active = _collectActiveReminders();
+  if (active.length === 0) {
+    body.innerHTML = '<div class="reminder-panel-empty">🎉 Žiadne aktívne pripomienky</div>';
+    return;
+  }
+  const groups = {
+    overdue: { label: 'Po termíne', cls: 'is-overdue', items: [] },
+    today:   { label: 'Dnes',       cls: 'is-today',   items: [] },
+    week:    { label: 'Tento týždeň', cls: 'is-week',  items: [] },
+    later:   { label: 'Neskôr',     cls: 'is-later',   items: [] },
+  };
+  for (const a of active) groups[a.bucket].items.push(a);
+
+  const fmtDue = (dueIso) => {
+    const d = new Date(dueIso);
+    const now = new Date();
+    const sameDay = d.toDateString() === now.toDateString();
+    const opts = sameDay
+      ? { hour: '2-digit', minute: '2-digit' }
+      : { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' };
+    return d.toLocaleString('sk-SK', opts);
+  };
+
+  let html = '';
+  for (const key of ['overdue', 'today', 'week', 'later']) {
+    const g = groups[key];
+    if (g.items.length === 0) continue;
+    html += '<div class="reminder-group ' + g.cls + '">' +
+      '<div class="reminder-group-title">' + g.label + ' · ' + g.items.length + '</div>';
+    for (const { reminder, property } of g.items) {
+      html += '<div class="reminder-item">' +
+        '<button class="reminder-item-check" title="Hotovo" onclick="completeReminder(\'' + property.id + '\',\'' + reminder.id + '\')">' +
+          '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' +
+        '</button>' +
+        '<div class="reminder-item-body" onclick="closeReminderPanel();openPropDetail(\'' + property.id + '\')">' +
+          '<div class="reminder-item-text">' + esc(reminder.text || '(bez textu)') + '</div>' +
+          '<div class="reminder-item-meta">' + esc(property.title || property.address || 'Nehnuteľnosť') + ' · ' + fmtDue(reminder.dueAt) + '</div>' +
+        '</div>' +
+        '<button class="reminder-item-delete" title="Vymazať" onclick="deleteReminder(\'' + property.id + '\',\'' + reminder.id + '\')">×</button>' +
+      '</div>';
+    }
+    html += '</div>';
+  }
+  body.innerHTML = html;
+}
+
+function toggleReminderPanel(event) {
+  if (event) event.stopPropagation();
+  const panel = document.getElementById('reminder-panel');
+  if (!panel) return;
+  if (panel.style.display !== 'none') { closeReminderPanel(); return; }
+  _renderReminderPanelBody();
+  panel.style.display = '';
+  // Anchor under the bell
+  const bell = document.getElementById('header-bell');
+  if (bell) {
+    const r = bell.getBoundingClientRect();
+    panel.style.top = (r.bottom + 8) + 'px';
+    panel.style.right = (window.innerWidth - r.right) + 'px';
+  }
+  // Close on outside click
+  setTimeout(() => {
+    document.addEventListener('click', _reminderPanelClickAway, true);
+  }, 0);
+}
+
+function closeReminderPanel() {
+  const panel = document.getElementById('reminder-panel');
+  if (panel) panel.style.display = 'none';
+  document.removeEventListener('click', _reminderPanelClickAway, true);
+}
+
+function _reminderPanelClickAway(e) {
+  const panel = document.getElementById('reminder-panel');
+  const bell = document.getElementById('header-bell');
+  if (!panel) return;
+  if (panel.contains(e.target)) return;
+  if (bell && bell.contains(e.target)) return;
+  closeReminderPanel();
+}
+
+// Render the per-property reminder list (used inside property detail).
+function _renderReminderListHtml(p) {
+  const reminders = (p.reminders || []).slice().sort((a, b) => {
+    if (a.completed !== b.completed) return a.completed ? 1 : -1;
+    return new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime();
+  });
+  if (reminders.length === 0) {
+    return '<div class="reminder-list-empty">Žiadne pripomienky pre túto nehnuteľnosť</div>';
+  }
+  const now = Date.now();
+  return '<div class="reminder-list">' + reminders.map(r => {
+    const due = new Date(r.dueAt);
+    const overdue = !r.completed && due.getTime() < now;
+    const dueStr = due.toLocaleString('sk-SK', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    return '<div class="reminder-list-item' + (r.completed ? ' is-completed' : '') + (overdue ? ' is-overdue' : '') + '">' +
+      '<button class="reminder-list-check" onclick="completeReminder(\'' + p.id + '\',\'' + r.id + '\')" ' + (r.completed ? 'disabled' : '') + '>' +
+        (r.completed
+          ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>'
+          : '') +
+      '</button>' +
+      '<div class="reminder-list-body">' +
+        '<div class="reminder-list-text">' + esc(r.text || '(bez textu)') + '</div>' +
+        '<div class="reminder-list-due">' + (overdue ? '⚠ ' : '🕓 ') + dueStr + '</div>' +
+      '</div>' +
+      '<button class="reminder-list-delete" onclick="deleteReminder(\'' + p.id + '\',\'' + r.id + '\')" title="Vymazať">×</button>' +
+    '</div>';
+  }).join('') + '</div>';
+}
+
+// Submit a new reminder from the property detail's inline form.
+function submitReminderFromForm(propertyId) {
+  const textInput = document.getElementById('reminder-form-text');
+  const dateInput = document.getElementById('reminder-form-date');
+  if (!textInput || !dateInput) return;
+  const text = (textInput.value || '').trim();
+  const dueAt = dateInput.value;  // ISO local datetime from <input type="datetime-local">
+  if (!text) { showToast('Vyplňte text pripomienky', 'warning'); return; }
+  if (!dueAt) { showToast('Vyplňte dátum a čas', 'warning'); return; }
+  // Convert "2026-05-12T14:00" (local) to a real ISO timestamp
+  const isoDue = new Date(dueAt).toISOString();
+  addReminder(propertyId, text, isoDue);
+  textInput.value = '';
+  dateInput.value = '';
+  showToast('Pripomienka pridaná', 'success');
+}
+
+// Start the auto-check loop. Every 60s scans for newly-due reminders
+// and pops a toast (without spamming — uses .notified flag).
+function _startReminderAutoCheck() {
+  // Initial paint of the bell count
+  _updateReminderBellCount();
+  // Then check every minute
+  setInterval(() => {
+    const now = Date.now();
+    let dirty = false;
+    let firedCount = 0;
+    const props = getProperties();
+    for (const p of props) {
+      if (!Array.isArray(p.reminders)) continue;
+      for (const r of p.reminders) {
+        if (r.completed || r.notified) continue;
+        const due = new Date(r.dueAt).getTime();
+        if (isNaN(due) || due > now) continue;
+        // Just became due (or overdue while page was open)
+        showToast('⏰ ' + (p.title || 'Nehnuteľnosť') + ': ' + (r.text || 'Pripomienka'), 'warning');
+        r.notified = true;
+        dirty = true;
+        firedCount++;
+        if (firedCount >= 3) break;  // don't fire more than 3 toasts at once
+      }
+      if (firedCount >= 3) break;
+    }
+    if (dirty) saveProperties(props);
+    _updateReminderBellCount();
+  }, 60000);
+}
 // Normalize an address/city string so two equivalent inputs match even
 // with different casing, diacritics, or common Slovak abbreviations.
 // "Hlavná č. 12" and "hlavna 12" should produce the same key.
@@ -8310,6 +8575,16 @@ function openPropDetail(id) {
       ` : ''}
 
       <div class="prop-detail-section">
+        <div class="prop-detail-section-title">\u23f0 Pripomienky</div>
+        <div id="prop-detail-reminders-list">${_renderReminderListHtml(p)}</div>
+        <div class="reminder-form">
+          <input type="text" id="reminder-form-text" placeholder="Napr. Zavola\u0165 majite\u013eovi..." maxlength="120" />
+          <input type="datetime-local" id="reminder-form-date" />
+          <button class="btn btn-primary" onclick="submitReminderFromForm('${p.id}')">+ Prida\u0165</button>
+        </div>
+      </div>
+
+      <div class="prop-detail-section">
         <div class="prop-detail-section-title">\u23f1 Hist\u00f3ria aktivity</div>
         ${_renderActivityTimeline(p)}
       </div>
@@ -8386,7 +8661,11 @@ function exportPropertiesCSV() {
 }
 
 // Initialize properties view when page loads
-document.addEventListener('DOMContentLoaded', () => { renderProperties(); });
+document.addEventListener('DOMContentLoaded', () => {
+  renderProperties();
+  // Start the reminder auto-check loop (paints bell count + every 60s scan)
+  if (typeof _startReminderAutoCheck === 'function') _startReminderAutoCheck();
+});
 
 // ==================== AI GENERATION ====================
 
