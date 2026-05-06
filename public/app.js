@@ -13816,6 +13816,22 @@ function _markRemoteRequestSent(channel) {
   if (typeof renderProperties === 'function') renderProperties();
 }
 
+// After a successful send, close the composer AND the underlying náborový
+// list modal — the agent's job is done; the document is sent and locked
+// pending client signature. Tiny delay so the browser has time to actually
+// open Gmail / Outlook / mailto target before our modal teardown runs.
+function _emailComposerCloseAfterSend() {
+  setTimeout(() => {
+    try { closeEmailComposer(); } catch (e) {}
+    try {
+      const naborModal = document.getElementById('naborModal');
+      if (naborModal && naborModal.style.display !== 'none') {
+        closeNaborModal();
+      }
+    } catch (e) {}
+  }, 250);
+}
+
 async function emailComposerOpenInGmail() {
   const data = await _emailComposerPrepareForSend(); if (!data) return;
   const url = 'https://mail.google.com/mail/?view=cm&fs=1'
@@ -13825,6 +13841,7 @@ async function emailComposerOpenInGmail() {
   window.open(url, '_blank');
   _rememberEmailSendChannel('gmail');
   _markRemoteRequestSent('gmail');
+  _emailComposerCloseAfterSend();
 }
 async function emailComposerOpenInOutlook() {
   const data = await _emailComposerPrepareForSend(); if (!data) return;
@@ -13835,6 +13852,7 @@ async function emailComposerOpenInOutlook() {
   window.open(url, '_blank');
   _rememberEmailSendChannel('outlook');
   _markRemoteRequestSent('outlook');
+  _emailComposerCloseAfterSend();
 }
 async function emailComposerOpenInMailto() {
   const data = await _emailComposerPrepareForSend(); if (!data) return;
@@ -13844,6 +13862,7 @@ async function emailComposerOpenInMailto() {
   window.location.href = url;
   _rememberEmailSendChannel('mailto');
   _markRemoteRequestSent('mailto');
+  _emailComposerCloseAfterSend();
 }
 async function emailComposerOpenInWhatsApp() {
   const data = await _emailComposerPrepareForSend(); if (!data) return;
@@ -13854,6 +13873,7 @@ async function emailComposerOpenInWhatsApp() {
   window.open(url, '_blank');
   _rememberEmailSendChannel('whatsapp');
   _markRemoteRequestSent('whatsapp');
+  _emailComposerCloseAfterSend();
 }
 async function emailComposerCopy() {
   const data = await _emailComposerPrepareForSend(); if (!data) return;
@@ -13882,6 +13902,7 @@ async function emailComposerCopy() {
   }
   _rememberEmailSendChannel('copy');
   _markRemoteRequestSent('copy');
+  _emailComposerCloseAfterSend();
 }
 
 // Build a lightweight, Gmail-paste-friendly HTML email.
