@@ -1574,7 +1574,50 @@
             <input type="checkbox" id="prop-select-all-cb" onchange="selectAllVisibleProps(this.checked)" />
             <span>Vybrať všetky</span>
           </label>
+          <!-- Sort dropdown — to the right of count -->
+          <div class="prop-sort-wrap">
+            <svg class="prop-sort-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M7 12h10"/><path d="M10 18h4"/></svg>
+            <select id="prop-sort" onchange="filterProperties()">
+              <option value="created-desc">Najnovšie</option>
+              <option value="created-asc">Najstaršie</option>
+              <option value="price-desc">Najdrahšie</option>
+              <option value="price-asc">Najlacnejšie</option>
+              <option value="ppm-desc">Cena/m² najvyššia</option>
+              <option value="ppm-asc">Cena/m² najnižšia</option>
+              <option value="stagnation-desc">Najdlhšie v statuse</option>
+              <option value="title-asc">Názov A→Z</option>
+            </select>
+          </div>
         </div>
+      </div>
+
+      <!-- Quick filter chips — one-click presets that apply common filters -->
+      <div class="prop-quick-chips" id="prop-quick-chips">
+        <button class="prop-quick-chip" data-chip="aktivne" onclick="toggleQuickChip(this)">
+          <span class="prop-quick-chip-dot" style="background:#16A34A;"></span>
+          Aktívne
+        </button>
+        <button class="prop-quick-chip" data-chip="bez-majitela" onclick="toggleQuickChip(this)">
+          <span class="prop-quick-chip-dot" style="background:#F59E0B;"></span>
+          Bez majiteľa
+        </button>
+        <button class="prop-quick-chip" data-chip="bez-fotiek" onclick="toggleQuickChip(this)">
+          <span class="prop-quick-chip-dot" style="background:#7C3AED;"></span>
+          Bez fotiek
+        </button>
+        <button class="prop-quick-chip" data-chip="stagnujuce" onclick="toggleQuickChip(this)">
+          <span class="prop-quick-chip-dot" style="background:#DC2626;"></span>
+          Stagnujúce >14 dní
+        </button>
+        <button class="prop-quick-chip" data-chip="bez-leones" onclick="toggleQuickChip(this)">
+          <span class="prop-quick-chip-dot" style="background:#0891B2;"></span>
+          Nepublikované
+        </button>
+        <button class="prop-quick-chip" data-chip="predane-mesiac" onclick="toggleQuickChip(this)">
+          <span class="prop-quick-chip-dot" style="background:#16A34A;"></span>
+          Predané tento mesiac
+        </button>
+        <button class="prop-quick-chip-clear" id="prop-quick-clear" onclick="clearQuickChips()" style="display:none;" title="Zrušiť všetky chip filtre">×</button>
       </div>
 
       <!-- View toggle: Grid / Map -->
@@ -4424,6 +4467,6 @@
   </div>
 </div>
 
-<script src="app.js?v=batch1"></script>
+<script src="app.js?v=chips1"></script>
 </body>
 </html>

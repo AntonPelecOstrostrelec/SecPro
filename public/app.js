@@ -1,7 +1,7 @@
 // === JS BUILD VERSION INDICATOR ===
 // If you don't see this badge in the top-left after hard refresh, the
 // browser/CDN is still serving stale app.js.
-const SECPRO_JS_BUILD = 'batch1-2026-05-06';
+const SECPRO_JS_BUILD = 'chips1-2026-05-06';
 console.log('%c[SecPro] JS build:', 'background:#16A34A;color:#fff;padding:2px 6px;border-radius:3px;', SECPRO_JS_BUILD);
 
 // Initialize Lucide icons
@@ -6947,6 +6947,7 @@ function _getFilteredProps() {
     if (search && !((p.title || '') + ' ' + (p.address || '') + ' ' + (p.city || '') + ' ' + (p.owner || '') + ' ' + (p.district || '')).toLowerCase().includes(search)) return false;
     if (typeFilters.length && !typeFilters.includes(p.type)) return false;
     if (statusFilters.length && !statusFilters.includes(p.status)) return false;
+    if (typeof _matchesQuickChips === 'function' && !_matchesQuickChips(p)) return false;
     return true;
   });
 }
@@ -7240,6 +7241,113 @@ function filterProperties() {
   // Re-plot map markers if map is the active view
   if (_propView === 'map' && _propertiesMap) {
     plotPropertyMarkers();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  QUICK FILTER CHIPS + SORTING
+// ═══════════════════════════════════════════════════════════════
+
+// Active quick-filter chips. Multiple can be active at once — they
+// AND together (e.g. "Aktívne" + "Bez fotiek" = active props missing photos).
+const _activeQuickChips = new Set();
+
+// Toggle a quick chip on/off and re-render. Also surfaces the global
+// "×" clear button when any chip is active.
+function toggleQuickChip(btn) {
+  const key = btn.dataset.chip;
+  if (_activeQuickChips.has(key)) {
+    _activeQuickChips.delete(key);
+    btn.classList.remove('is-active');
+  } else {
+    _activeQuickChips.add(key);
+    btn.classList.add('is-active');
+  }
+  const clearBtn = document.getElementById('prop-quick-clear');
+  if (clearBtn) clearBtn.style.display = _activeQuickChips.size > 0 ? '' : 'none';
+  filterProperties();
+}
+
+function clearQuickChips() {
+  _activeQuickChips.clear();
+  document.querySelectorAll('.prop-quick-chip.is-active').forEach(b => b.classList.remove('is-active'));
+  const clearBtn = document.getElementById('prop-quick-clear');
+  if (clearBtn) clearBtn.style.display = 'none';
+  filterProperties();
+}
+
+// Predicate: does property `p` match the active quick-chip filters?
+// Returns true when no chips are active (no-op).
+function _matchesQuickChips(p) {
+  if (_activeQuickChips.size === 0) return true;
+  const now = Date.now();
+
+  for (const chip of _activeQuickChips) {
+    if (chip === 'aktivne') {
+      if (INACTIVE_STATUSES.includes(p.status) || p.status === 'zamietnuty') return false;
+    } else if (chip === 'bez-majitela') {
+      const owner = (p.owner || p.ownerName || '').trim();
+      if (owner) return false;
+    } else if (chip === 'bez-fotiek') {
+      if (p.photos && p.photos.length > 0) return false;
+    } else if (chip === 'stagnujuce') {
+      // "In current status > 14 days". Use last status change from history,
+      // or fall back to updatedAt / createdAt.
+      let since = p.createdAt;
+      if (p.statusHistory && p.statusHistory.length > 0) {
+        since = p.statusHistory[p.statusHistory.length - 1].at;
+      } else if (p.updatedAt) {
+        since = p.updatedAt;
+      }
+      if (!since) return false;
+      const daysInStatus = (now - new Date(since).getTime()) / 86400000;
+      if (daysInStatus < 14) return false;
+      // Don't flag terminal/completed properties as stagnating
+      if (INACTIVE_STATUSES.includes(p.status) || p.status === 'zamietnuty') return false;
+    } else if (chip === 'bez-leones') {
+      if (p.leonisPublished) return false;
+      // Only show properties that COULD be published (active ones)
+      if (INACTIVE_STATUSES.includes(p.status) || p.status === 'zamietnuty') return false;
+    } else if (chip === 'predane-mesiac') {
+      if (p.status !== 'predana' && p.status !== 'uzavrety') return false;
+      // Use updatedAt as a proxy for "sold date" — set when status changed to predana
+      const soldAt = p.updatedAt || p.createdAt;
+      if (!soldAt) return false;
+      const d = new Date(soldAt);
+      const nowDate = new Date();
+      if (d.getMonth() !== nowDate.getMonth() || d.getFullYear() !== nowDate.getFullYear()) return false;
+    }
+  }
+  return true;
+}
+
+// Sort comparator factory — returns a fn for the current sort dropdown value.
+function _propSortFn() {
+  const select = document.getElementById('prop-sort');
+  const mode = (select && select.value) || 'created-desc';
+  const cmpDate = (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+  const cmpPrice = (a, b) => (Number(a.price) || 0) - (Number(b.price) || 0);
+  const ppm = (p) => {
+    const price = Number(p.price) || 0;
+    const size = Number(p.size) || 0;
+    return size > 0 ? (price / size) : 0;
+  };
+  const lastStatusChange = (p) => {
+    if (p.statusHistory && p.statusHistory.length > 0) {
+      return new Date(p.statusHistory[p.statusHistory.length - 1].at).getTime();
+    }
+    return new Date(p.updatedAt || p.createdAt || 0).getTime();
+  };
+  switch (mode) {
+    case 'created-asc':     return (a, b) => -cmpDate(a, b);
+    case 'price-desc':      return (a, b) => -cmpPrice(a, b);
+    case 'price-asc':       return cmpPrice;
+    case 'ppm-desc':        return (a, b) => ppm(b) - ppm(a);
+    case 'ppm-asc':         return (a, b) => ppm(a) - ppm(b);
+    case 'stagnation-desc': return (a, b) => lastStatusChange(a) - lastStatusChange(b); // oldest = most stagnant
+    case 'title-asc':       return (a, b) => (a.title || '').localeCompare(b.title || '', 'sk');
+    case 'created-desc':
+    default:                return cmpDate;
   }
 }
 
@@ -7677,8 +7785,11 @@ function renderProperties() {
     if (search && !(p.title + ' ' + p.address + ' ' + p.city + ' ' + p.owner + ' ' + p.district).toLowerCase().includes(search)) return false;
     if (typeFilters.length && !typeFilters.includes(p.type)) return false;
     if (statusFilters.length && !statusFilters.includes(p.status)) return false;
+    if (!_matchesQuickChips(p)) return false;
     return true;
   });
+  // Apply sort dropdown
+  filtered.sort(_propSortFn());
 
   const grid = document.getElementById('prop-grid');
   const empty = document.getElementById('prop-empty');

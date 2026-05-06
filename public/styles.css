@@ -839,6 +839,100 @@
       box-shadow: 0 0 0 3px rgba(26, 122, 138, 0.35), 0 2px 6px rgba(11, 42, 60, 0.18);
     }
 
+    /* ─── Sort dropdown (right of count) ─── */
+    .prop-sort-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-left: auto;
+      padding: 4px 6px 4px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #FAFBFC;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .prop-sort-wrap:hover {
+      border-color: rgba(26, 122, 138, 0.4);
+      background: #fff;
+    }
+    .prop-sort-icon {
+      color: #64748B;
+      flex-shrink: 0;
+    }
+    .prop-sort-wrap select {
+      appearance: none;
+      -webkit-appearance: none;
+      border: none;
+      background: transparent;
+      padding: 4px 22px 4px 4px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #0B2A3C;
+      cursor: pointer;
+      font-family: inherit;
+      outline: none;
+      background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="6" viewBox="0 0 10 6" fill="none" stroke="%2364748B" stroke-width="2"><polyline points="1 1 5 5 9 1"/></svg>');
+      background-repeat: no-repeat;
+      background-position: right 6px center;
+    }
+
+    /* ─── Quick filter chips ─── */
+    .prop-quick-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 0.85rem;
+      align-items: center;
+    }
+    .prop-quick-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 999px;
+      background: #fff;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #475569;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      font-family: inherit;
+    }
+    .prop-quick-chip:hover {
+      border-color: rgba(26, 122, 138, 0.4);
+      color: #1A7A8A;
+      background: #F0F9F7;
+    }
+    .prop-quick-chip.is-active {
+      background: #0B2A3C;
+      border-color: #0B2A3C;
+      color: #fff;
+      box-shadow: 0 2px 6px rgba(11, 42, 60, 0.2);
+    }
+    .prop-quick-chip-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .prop-quick-chip-clear {
+      width: 26px;
+      height: 26px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      border: none;
+      background: rgba(220, 38, 38, 0.1);
+      color: #DC2626;
+      font-size: 1rem;
+      line-height: 1;
+      cursor: pointer;
+      transition: background-color 0.15s;
+    }
+    .prop-quick-chip-clear:hover { background: rgba(220, 38, 38, 0.2); }
+
     /* "Vybrať všetky" in the filter bar — sits next to the count */
     .prop-select-all {
       display: inline-flex;
