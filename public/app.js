@@ -1,7 +1,7 @@
 // === JS BUILD VERSION INDICATOR ===
 // If you don't see this badge in the top-left after hard refresh, the
 // browser/CDN is still serving stale app.js.
-const SECPRO_JS_BUILD = 'chips1-2026-05-06';
+const SECPRO_JS_BUILD = 'dup1-2026-05-06';
 console.log('%c[SecPro] JS build:', 'background:#16A34A;color:#fff;padding:2px 6px;border-radius:3px;', SECPRO_JS_BUILD);
 
 // Initialize Lucide icons
@@ -6494,6 +6494,38 @@ function generateViewingDocument(propId) {
   doc.save('prehliadky_' + (p.title || 'nehnutelnost').replace(/\s+/g, '_').slice(0, 30) + '.pdf');
 }
 
+// ─── Duplicate detection helpers ──────────────────────────────────
+// Normalize an address/city string so two equivalent inputs match even
+// with different casing, diacritics, or common Slovak abbreviations.
+// "Hlavná č. 12" and "hlavna 12" should produce the same key.
+function _normalizeAddress(s) {
+  if (!s) return '';
+  return s
+    .toLowerCase()
+    .replace(/\bul\.?\s?/g, '')      // "ul." or "ul "
+    .replace(/\bnám\.?\s?/g, 'nam ')  // keep token but drop dot
+    .replace(/\bč\.?\s?/g, '')       // "č." (number marker)
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')  // strip diacritics
+    .replace(/[.,\-/()]/g, ' ')      // punctuation → space
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Returns the existing property with a matching address+city, or null.
+// Skips the property being edited so editing your own doesn't trip the
+// alert.
+function _findDuplicateProperty(addr, city, excludeId) {
+  const normAddr = _normalizeAddress(addr);
+  const normCity = _normalizeAddress(city);
+  if (!normAddr || !normCity) return null;  // need at least both filled
+  const props = getProperties();
+  return props.find(p => {
+    if (excludeId && p.id === excludeId) return false;
+    return _normalizeAddress(p.address) === normAddr &&
+           _normalizeAddress(p.city) === normCity;
+  }) || null;
+}
+
 async function saveProperty() {
   const title = document.getElementById('prop-title').value.trim();
   const city = document.getElementById('prop-city').value.trim();
@@ -6504,6 +6536,42 @@ async function saveProperty() {
   if (!city) { secAlert('Vyplňte mesto / obec'); return; }
   if (!phone) { secAlert('Vyplňte telefónne číslo'); return; }
   if (!priceVal) { secAlert('Vyplňte cenu'); return; }
+
+  // Duplicate detection — only when adding a new property (or when the
+  // address itself was changed during editing). Two-step confirm so the
+  // user can either open the existing one or push through the duplicate.
+  const editId = document.getElementById('prop-edit-id').value;
+  const newAddress = document.getElementById('prop-address').value.trim();
+  const dup = _findDuplicateProperty(newAddress, city, editId || null);
+  if (dup) {
+    const dupStatus = (PROP_STATUS_MAP[dup.status] || {}).label || dup.status;
+    const dupDate = dup.createdAt ? new Date(dup.createdAt).toLocaleDateString('sk-SK') : '';
+    const proceed = await secConfirm({
+      title: 'Podobná nehnuteľnosť už existuje',
+      message: '„' + (dup.title || 'Bez názvu') + '" — ' +
+        (dup.address ? dup.address + ', ' : '') + dup.city + '\n' +
+        '(Status: ' + dupStatus + (dupDate ? ', vytvorené: ' + dupDate : '') + ')\n\n' +
+        'Naozaj chcete pridať novú nehnuteľnosť na tej istej adrese?',
+      type: 'warning',
+      ok: 'Pridať aj tak',
+      cancel: 'Zrušiť',
+    });
+    if (!proceed) {
+      // Offer to jump to the existing one
+      const open = await secConfirm({
+        title: 'Otvoriť existujúcu?',
+        message: 'Chcete namiesto toho otvoriť existujúcu nehnuteľnosť „' + (dup.title || 'Bez názvu') + '"?',
+        ok: 'Otvoriť',
+        cancel: 'Nie',
+      });
+      if (open) {
+        // Close the form modal first so the detail view isn't covered
+        _closePropertyFormNow();
+        if (typeof openPropDetail === 'function') openPropDetail(dup.id);
+      }
+      return;
+    }
+  }
 
   // Collect photos + categories from preview (data URLs)
   const photoCards = Array.from(document.querySelectorAll('#prop-photo-preview .pm-card')).slice(0, 10);
