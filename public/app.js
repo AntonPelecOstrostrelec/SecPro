@@ -6868,20 +6868,40 @@ async function _doRefreshPOILayer() {
 
   let totalCount = 0;
   const summary = [];
+  let firstCoord = null;
   results.forEach(({ cat, pois }) => {
     summary.push(POI_CATEGORIES[cat].label + ':' + (pois?.length || 0));
     if (pois && pois.length) {
+      if (!firstCoord) firstCoord = pois[0];
       _plotPOIs(cat, pois);
       totalCount += pois.length;
     }
   });
 
-  _poiDiag('Hotovo: ' + summary.join(', ') + ' = ' + totalCount + ' markerov');
-  if (totalCount === 0) {
-    setTimeout(() => _hidePOIBusy(), 4000);
-  } else {
-    setTimeout(() => _hidePOIBusy(), 1800);
-  }
+  // === Render-pipeline sanity check ===
+  // If totalCount > 0 but the user sees nothing, it means the markers landed
+  // in a layer that's not on the map, or some other render-side issue. Add a
+  // fixed test marker at the map center every refresh — if THIS doesn't show
+  // up either, the layer/pane is the bug. Different colour & label so we can
+  // tell it apart from real POIs.
+  const center = _propertiesMap.getCenter();
+  const testIcon = L.divIcon({
+    className: 'poi-test-pin',
+    html: '<div style="width:32px;height:32px;border-radius:50%;background:#FF00FF;border:3px solid #fff;box-shadow:0 0 0 2px #FF00FF,0 4px 12px rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:900;">T</div>',
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+  });
+  const testMarker = L.marker([center.lat, center.lng], { icon: testIcon });
+  testMarker.bindPopup('TEST PIN — ak vidíš toto, render funguje. POI markery by mali byť ostatné farebné kruhy.');
+  _propMapPOILayer.addLayer(testMarker);
+
+  const layerOnMap = _propertiesMap.hasLayer(_propMapPOILayer);
+  const layerCount = _propMapPOILayer.getLayers().length;
+  const coordStr = firstCoord ? (firstCoord.lat.toFixed(4) + ',' + firstCoord.lng.toFixed(4)) : '—';
+  _poiDiag('✓ Hotovo: ' + summary.join(', ') + ' | Spolu ' + totalCount +
+    ' (+1 TEST). Layer-na-mape: ' + (layerOnMap ? 'ÁNO' : 'NIE') +
+    ', Layer-členov: ' + layerCount + ', 1.POI: ' + coordStr);
+  // Don't auto-hide — keep banner visible so user can read state
 }
 
 // Visible diagnostic banner — replaces the silent busy indicator with
