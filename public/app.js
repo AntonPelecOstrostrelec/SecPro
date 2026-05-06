@@ -6729,7 +6729,168 @@ let _propMapActiveStyle = 'light';
 let _propMapStyleControl = null;
 let _propMapSearchControl = null;
 let _propMapSearchMarker = null;
+let _propMapPOIControl = null;
+let _propMapPOIActive = {};         // { mhd: true, schools: false, ... }
+let _propMapPOILayer = null;        // L.layerGroup holding visible POI markers
+let _propMapPOICache = {};          // { 'mhd:bbox-key': [poi, poi, ...] }
+let _propMapPOIDebounce = null;
 let _geocodeInProgress = false;
+
+// POI categories — Overpass tag queries per category, with brand colour + emoji
+const POI_CATEGORIES = {
+  mhd: {
+    label: 'MHD',
+    icon: '🚇',
+    color: '#2563EB',
+    overpass: ['node["highway"="bus_stop"]', 'node["railway"="tram_stop"]', 'node["public_transport"="stop_position"]', 'node["amenity"="bus_station"]'],
+  },
+  schools: {
+    label: 'Školy',
+    icon: '🏫',
+    color: '#D97706',
+    overpass: ['node["amenity"="school"]', 'way["amenity"="school"]', 'node["amenity"="kindergarten"]', 'way["amenity"="kindergarten"]', 'node["amenity"="university"]', 'way["amenity"="university"]'],
+  },
+  shops: {
+    label: 'Obchody',
+    icon: '🛒',
+    color: '#7C3AED',
+    overpass: ['node["shop"="supermarket"]', 'way["shop"="supermarket"]', 'node["shop"="convenience"]', 'node["shop"="mall"]', 'way["shop"="mall"]'],
+  },
+  health: {
+    label: 'Zdravie',
+    icon: '🏥',
+    color: '#DC2626',
+    overpass: ['node["amenity"="hospital"]', 'way["amenity"="hospital"]', 'node["amenity"="clinic"]', 'node["amenity"="doctors"]', 'node["amenity"="pharmacy"]'],
+  },
+  parks: {
+    label: 'Parky',
+    icon: '🌳',
+    color: '#16A34A',
+    overpass: ['way["leisure"="park"]', 'node["leisure"="playground"]', 'way["leisure"="playground"]'],
+  },
+};
+
+// Toggle a POI category. When turning on, fetch + plot for current bounds;
+// when off, clear that category's markers.
+function togglePOICategory(key) {
+  if (!POI_CATEGORIES[key]) return;
+  _propMapPOIActive[key] = !_propMapPOIActive[key];
+  // Update button visual state
+  document.querySelectorAll('.map-poi-pill').forEach(b => {
+    b.classList.toggle('active', !!_propMapPOIActive[b.dataset.poi]);
+  });
+  refreshPOILayer();
+}
+
+// Refresh which POIs are shown — handles both adding new categories and
+// removing toggled-off ones. Throttles by debouncing 350ms.
+function refreshPOILayer() {
+  if (_propMapPOIDebounce) clearTimeout(_propMapPOIDebounce);
+  _propMapPOIDebounce = setTimeout(_doRefreshPOILayer, 350);
+}
+
+async function _doRefreshPOILayer() {
+  if (!_propertiesMap || !_propMapPOILayer) return;
+  _propMapPOILayer.clearLayers();
+
+  const activeCats = Object.keys(_propMapPOIActive).filter(k => _propMapPOIActive[k]);
+  if (activeCats.length === 0) {
+    _hidePOIBusy();
+    return;
+  }
+
+  // Don't query at low zoom — would return thousands of POIs
+  const zoom = _propertiesMap.getZoom();
+  if (zoom < 12) {
+    _showPOIBusy('Priblížte mapu pre zobrazenie POI (zoom ≥ 12)');
+    return;
+  }
+
+  const b = _propertiesMap.getBounds();
+  // Round bbox so cache hits across small pans
+  const roundedKey = (b.getSouth().toFixed(2) + ',' + b.getWest().toFixed(2) + ',' + b.getNorth().toFixed(2) + ',' + b.getEast().toFixed(2));
+
+  for (const cat of activeCats) {
+    const cacheKey = cat + ':' + roundedKey;
+    let pois = _propMapPOICache[cacheKey];
+    if (!pois) {
+      _showPOIBusy('Načítavam POI: ' + POI_CATEGORIES[cat].label + '...');
+      pois = await _fetchPOIsForCategory(cat, b);
+      _propMapPOICache[cacheKey] = pois || [];
+    }
+    if (pois && pois.length) _plotPOIs(cat, pois);
+  }
+  _hidePOIBusy();
+}
+
+async function _fetchPOIsForCategory(cat, bounds) {
+  const def = POI_CATEGORIES[cat];
+  if (!def) return [];
+  const south = bounds.getSouth().toFixed(5);
+  const west = bounds.getWest().toFixed(5);
+  const north = bounds.getNorth().toFixed(5);
+  const east = bounds.getEast().toFixed(5);
+  const queries = def.overpass.map(sel => sel + '(' + south + ',' + west + ',' + north + ',' + east + ');').join('');
+  const ql = '[out:json][timeout:25];(' + queries + ');out center 200;';
+  try {
+    const r = await fetch('https://overpass-api.de/api/interpreter', {
+      method: 'POST',
+      body: 'data=' + encodeURIComponent(ql),
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    });
+    if (!r.ok) return [];
+    const data = await r.json();
+    const out = [];
+    for (const el of (data.elements || [])) {
+      const lat = el.lat || (el.center && el.center.lat);
+      const lng = el.lon || (el.center && el.center.lon);
+      if (!isFinite(lat) || !isFinite(lng)) continue;
+      out.push({
+        lat, lng,
+        name: (el.tags && (el.tags.name || el.tags['name:sk'])) || POI_CATEGORIES[cat].label,
+        kind: (el.tags && (el.tags.amenity || el.tags.shop || el.tags.leisure || el.tags.highway || el.tags.railway)) || cat,
+      });
+    }
+    return out;
+  } catch (e) {
+    console.warn('[SecPro] POI fetch failed for', cat, e);
+    return [];
+  }
+}
+
+function _plotPOIs(cat, pois) {
+  const def = POI_CATEGORIES[cat];
+  pois.forEach(poi => {
+    const m = L.marker([poi.lat, poi.lng], {
+      icon: L.divIcon({
+        className: 'poi-pin',
+        html: '<div class="poi-pin-bubble" style="background:' + def.color + ';">' + def.icon + '</div>',
+        iconSize: [22, 22],
+        iconAnchor: [11, 11],
+        popupAnchor: [0, -11],
+      }),
+      keyboard: false,
+    });
+    m.bindPopup('<div class="poi-popup"><span class="poi-popup-icon" style="background:' + def.color + ';">' + def.icon + '</span><div><div class="poi-popup-name">' + esc(poi.name) + '</div><div class="poi-popup-cat">' + esc(def.label) + '</div></div></div>', { maxWidth: 220 });
+    _propMapPOILayer.addLayer(m);
+  });
+}
+
+function _showPOIBusy(text) {
+  let el = document.getElementById('poi-busy');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'poi-busy';
+    el.className = 'poi-busy';
+    document.getElementById('prop-map-wrap').appendChild(el);
+  }
+  el.textContent = text;
+  el.style.display = '';
+}
+function _hidePOIBusy() {
+  const el = document.getElementById('poi-busy');
+  if (el) el.style.display = 'none';
+}
 
 // Switch the basemap tile style — light / dark / satellite. The other layers
 // stay loaded (Leaflet caches tiles) so subsequent switches are instant.
@@ -6870,6 +7031,34 @@ function initPropertiesMap() {
       return div;
     };
     _propMapStyleControl.addTo(_propertiesMap);
+
+    // POI overlay layer + control (top-right, below style switcher)
+    _propMapPOILayer = L.layerGroup().addTo(_propertiesMap);
+    _propMapPOIControl = L.control({ position: 'topright' });
+    _propMapPOIControl.onAdd = function() {
+      const div = L.DomUtil.create('div', 'map-poi-control');
+      const pills = Object.keys(POI_CATEGORIES).map(key => {
+        const cat = POI_CATEGORIES[key];
+        return '<button class="map-poi-pill" data-poi="' + key + '" title="' + cat.label + '" style="--poi-color:' + cat.color + ';">' +
+          '<span class="poi-pill-icon">' + cat.icon + '</span>' +
+          '<span class="poi-pill-label">' + cat.label + '</span>' +
+        '</button>';
+      }).join('');
+      div.innerHTML = '<div class="map-poi-title">POI v okolí</div>' + pills;
+      L.DomEvent.disableClickPropagation(div);
+      L.DomEvent.disableScrollPropagation(div);
+      div.querySelectorAll('.map-poi-pill').forEach(btn => {
+        btn.addEventListener('click', () => togglePOICategory(btn.dataset.poi));
+      });
+      return div;
+    };
+    _propMapPOIControl.addTo(_propertiesMap);
+
+    // Re-fetch POIs when the user pans / zooms — only if any category is active
+    _propertiesMap.on('moveend', () => {
+      const anyActive = Object.values(_propMapPOIActive).some(Boolean);
+      if (anyActive) refreshPOILayer();
+    });
 
     // Address search box (top-left, below zoom control)
     _propMapSearchControl = L.control({ position: 'topleft' });
@@ -7059,9 +7248,10 @@ function _makePropertyMarkerPopup(p) {
   const photo = (p.photos && p.photos[0]) || '';
   const price = p.price ? Number(p.price).toLocaleString('sk-SK') + ' €' : 'Bez ceny';
   const hasGeo = !!(p.geo && p.geo.lat && p.geo.lng);
-  // Google Maps directions URL — opens native nav app on mobile, web Maps on desktop
-  const navUrl = hasGeo
-    ? 'https://www.google.com/maps/dir/?api=1&destination=' + p.geo.lat + ',' + p.geo.lng
+  // Open the location on Google Maps (not directions) — agent can switch to
+  // Street View / directions / panorama from there.
+  const gmapsUrl = hasGeo
+    ? 'https://www.google.com/maps/search/?api=1&query=' + p.geo.lat + ',' + p.geo.lng
     : null;
   // Google Street View URL — opens the panoramic view at the property's location
   const streetUrl = hasGeo
@@ -7077,9 +7267,9 @@ function _makePropertyMarkerPopup(p) {
       (p.address || p.city ? '<div class="map-popup-loc">' + esc([p.address, p.city].filter(Boolean).join(', ')) + '</div>' : '') +
       '<div class="map-popup-actions">' +
         '<button class="map-popup-btn map-popup-btn-primary" onclick="openPropDetail(\'' + p.id + '\');_propertiesMap && _propertiesMap.closePopup();">Otvoriť detail</button>' +
-        (navUrl ? '<a class="map-popup-btn map-popup-btn-secondary" href="' + navUrl + '" target="_blank" rel="noopener" title="Navigovať cez Google Maps">' +
-          '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>' +
-          'Navigovať' +
+        (gmapsUrl ? '<a class="map-popup-btn map-popup-btn-secondary" href="' + gmapsUrl + '" target="_blank" rel="noopener" title="Otvoriť v Google Maps">' +
+          '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>' +
+          'Google Maps' +
         '</a>' : '') +
       '</div>' +
       (streetUrl ? '<a class="map-popup-streetview" href="' + streetUrl + '" target="_blank" rel="noopener" title="Otvoriť Google Street View">' +
