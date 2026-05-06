@@ -1064,6 +1064,13 @@
       color: #0B2A3C;
     }
     .card-menu-item:hover svg { color: #0B2A3C; }
+    .card-menu-primary {
+      color: #0B2A3C;
+      font-weight: 600;
+    }
+    .card-menu-primary svg { color: #1A7A8A; }
+    .card-menu-primary:hover { background: #E5F5F1; }
+    .card-menu-primary:hover svg { color: #0B2A3C; }
     .card-menu-warn { color: #92400E; }
     .card-menu-warn svg { color: #92400E; }
     .card-menu-warn:hover {

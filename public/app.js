@@ -6579,6 +6579,14 @@ function openCardMenu(btn, propId) {
   const isCompleted = p.status === 'predana';
 
   const items = [];
+  // Edit — primary, always visible at the top
+  items.push({
+    cls: 'card-menu-item card-menu-primary',
+    icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>',
+    label: 'Upraviť údaje',
+    onClick: `closeCardMenu();openPropertyForm('${propId}');`,
+  });
+  items.push({ divider: true });
   if (!isTerminal && !isCompleted) {
     items.push({
       cls: 'card-menu-item card-menu-warn',
@@ -6595,7 +6603,6 @@ function openCardMenu(btn, propId) {
       onClick: `closeCardMenu();advanceProperty('${propId}', 'novy');`,
     });
   }
-  items.push({ divider: true });
   items.push({
     cls: 'card-menu-item card-menu-danger',
     icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>',
@@ -6847,8 +6854,7 @@ function renderProperties() {
           ${viewCount ? `<button onclick="openProtocolModal('${p.id}')" class="pca-btn" style="color:#1A7A8A;" title="Protokol s podpisom"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button>` : ''}
           ${viewCount ? `<button onclick="generateViewingDocument('${p.id}')" class="pca-btn pca-doc" title="Zápisnica PDF"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></button>` : ''}
           ${p.url ? `<a href="${p.url}" target="_blank" class="pca-btn pca-link" title="Inzerát"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>` : ''}
-          <button onclick="openPropertyForm('${p.id}')" class="pca-btn pca-edit" title="Upraviť"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-          <button onclick="event.stopPropagation();openCardMenu(this, '${p.id}');" class="pca-btn pca-more" title="Ďalšie akcie" aria-label="Ďalšie akcie"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg></button>
+          <button onclick="event.stopPropagation();openCardMenu(this, '${p.id}');" class="pca-btn pca-more" title="Akcie" aria-label="Akcie"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg></button>
         </div>
       </div>
     </div>`;
