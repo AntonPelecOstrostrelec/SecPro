@@ -767,13 +767,194 @@
       overflow: hidden;
       border: 1px solid rgba(0,0,0,0.06);
       box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03);
-      transition: transform 0.25s ease, box-shadow 0.25s ease;
+      transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.2s ease;
       display: flex;
       flex-direction: column;
+      position: relative;
     }
     .prop-card-v2:hover {
       transform: translateY(-3px);
       box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+    }
+    .prop-card-v2.is-selected {
+      border-color: #1A7A8A;
+      box-shadow: 0 0 0 2px rgba(26, 122, 138, 0.4), 0 4px 12px rgba(26, 122, 138, 0.15);
+    }
+    /* Selection checkbox — top-left of card, hover-revealed unless any
+       card in the grid is already selected (then they all stay visible). */
+    .prop-card-select {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      width: 26px;
+      height: 26px;
+      z-index: 5;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+    }
+    .prop-card-v2:hover .prop-card-select,
+    .prop-card-v2.is-selected .prop-card-select,
+    #prop-grid.has-selection .prop-card-select {
+      opacity: 1;
+    }
+    .prop-card-select-box {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.95);
+      border: 2px solid #CBD5E1;
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgba(11, 42, 60, 0.18);
+      backdrop-filter: blur(4px);
+      transition: all 0.15s ease;
+    }
+    .prop-card-select-box svg {
+      width: 14px;
+      height: 14px;
+      color: #fff;
+      opacity: 0;
+      transform: scale(0.7);
+      transition: opacity 0.12s, transform 0.12s;
+    }
+    .prop-card-select:hover .prop-card-select-box {
+      border-color: #1A7A8A;
+      background: #fff;
+    }
+    .prop-card-v2.is-selected .prop-card-select-box {
+      background: #1A7A8A;
+      border-color: #1A7A8A;
+    }
+    .prop-card-v2.is-selected .prop-card-select-box svg {
+      opacity: 1;
+      transform: scale(1);
+    }
+    /* Keyboard focus ring on the visual checkbox */
+    .prop-card-select:focus-visible {
+      outline: none;
+    }
+    .prop-card-select:focus-visible .prop-card-select-box {
+      box-shadow: 0 0 0 3px rgba(26, 122, 138, 0.35), 0 2px 6px rgba(11, 42, 60, 0.18);
+    }
+
+    /* "Vybrať všetky" in the filter bar — sits next to the count */
+    .prop-select-all {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: 12px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: #475569;
+      transition: background-color 0.15s;
+      user-select: none;
+    }
+    .prop-select-all:hover {
+      background-color: #F1F5F9;
+    }
+    .prop-select-all input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: #1A7A8A;
+      cursor: pointer;
+      margin: 0;
+    }
+
+    /* Sticky bottom toolbar — appears with slide-up when 1+ selected */
+    .prop-bulk-toolbar {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #0B2A3C;
+      color: #fff;
+      border-radius: 14px;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 12px 32px rgba(11, 42, 60, 0.45), 0 4px 10px rgba(11, 42, 60, 0.25);
+      z-index: 9000;
+      animation: prop-bulk-slide 0.22s ease-out;
+      max-width: calc(100vw - 32px);
+      flex-wrap: wrap;
+    }
+    @keyframes prop-bulk-slide {
+      from { transform: translate(-50%, 16px); opacity: 0; }
+      to   { transform: translate(-50%, 0); opacity: 1; }
+    }
+    .prop-bulk-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding-right: 12px;
+      border-right: 1px solid rgba(255, 255, 255, 0.15);
+    }
+    .prop-bulk-count {
+      font-size: 0.85rem;
+      font-weight: 700;
+    }
+    .prop-bulk-clear {
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      border-radius: 50%;
+      color: #fff;
+      font-size: 1.1rem;
+      line-height: 1;
+      cursor: pointer;
+      transition: background-color 0.15s;
+    }
+    .prop-bulk-clear:hover { background-color: rgba(255, 255, 255, 0.22); }
+    .prop-bulk-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .prop-bulk-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 12px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      color: #fff;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+    .prop-bulk-btn:hover {
+      background: rgba(255, 255, 255, 0.18);
+      border-color: rgba(255, 255, 255, 0.28);
+    }
+    .prop-bulk-btn.prop-bulk-danger {
+      background: rgba(220, 38, 38, 0.18);
+      border-color: rgba(220, 38, 38, 0.4);
+    }
+    .prop-bulk-btn.prop-bulk-danger:hover {
+      background: rgba(220, 38, 38, 0.32);
+      border-color: rgba(220, 38, 38, 0.7);
+    }
+    /* Bulk-status dropdown anchored to its button — same look as inline */
+    .prop-bulk-status-dropdown { min-width: 220px; }
+
+    @media (max-width: 640px) {
+      .prop-bulk-toolbar { padding: 8px 10px; gap: 8px; bottom: 14px; }
+      .prop-bulk-btn { padding: 6px 8px; font-size: 0.74rem; }
+      .prop-bulk-btn svg { display: none; }
     }
     .prop-card-hero {
       position: relative;

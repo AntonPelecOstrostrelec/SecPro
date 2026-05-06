@@ -1570,6 +1570,10 @@
             </div>
           </div>
           <span class="filter-count" id="prop-count"></span>
+          <label class="prop-select-all" title="Vybrať / zrušiť všetky viditeľné nehnuteľnosti (Ctrl+A)">
+            <input type="checkbox" id="prop-select-all-cb" onchange="selectAllVisibleProps(this.checked)" />
+            <span>Vybrať všetky</span>
+          </label>
         </div>
       </div>
 
@@ -1602,6 +1606,36 @@
           <span class="ec-spinner"></span><span id="prop-map-progress-text">Lokalizujem nehnuteľnosti...</span>
         </div>
         <div id="prop-map" style="width:100%;height:calc(100vh - 360px);min-height:480px;border-radius:12px;border:1px solid var(--border);overflow:hidden;"></div>
+      </div>
+
+      <!-- Sticky bulk-action toolbar (shown only when 1+ properties are selected) -->
+      <div id="prop-bulk-toolbar" class="prop-bulk-toolbar" style="display:none;">
+        <div class="prop-bulk-info">
+          <span class="prop-bulk-count" id="prop-bulk-count">0 vybrané</span>
+          <button class="prop-bulk-clear" onclick="clearPropSelection()" title="Zrušiť výber (Esc)">×</button>
+        </div>
+        <div class="prop-bulk-actions">
+          <button class="prop-bulk-btn" onclick="bulkChangeStatus(this)" title="Zmeniť status pre všetky vybrané">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/><polyline points="9 12 11 14 15 10"/></svg>
+            Zmeniť status
+          </button>
+          <button class="prop-bulk-btn" onclick="bulkLeonisPublish()" title="Publikovať vybrané na LEONES">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+            Publikovať
+          </button>
+          <button class="prop-bulk-btn" onclick="bulkLeonisUnpublish()" title="Stiahnuť vybrané z LEONES">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 10 12 15 7 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Stiahnuť
+          </button>
+          <button class="prop-bulk-btn" onclick="bulkExportCsv()" title="Exportovať vybrané do CSV súboru">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
+            Exportovať CSV
+          </button>
+          <button class="prop-bulk-btn prop-bulk-danger" onclick="bulkDelete()" title="Vymazať všetky vybrané (s potvrdením)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+            Vymazať
+          </button>
+        </div>
       </div>
 
       <!-- Empty state -->

@@ -21,6 +21,29 @@ document.addEventListener('DOMContentLoaded', function() {
       inp.addEventListener('blur', restore);
     }
   });
+
+  // Bulk-select keyboard shortcuts: Esc clears selection, Ctrl/Cmd+A
+  // selects all visible. Only active when on the properties page and
+  // the user isn't typing into an input/textarea/contenteditable.
+  document.addEventListener('keydown', function(e) {
+    const propsPage = document.getElementById('page-myproperties');
+    if (!propsPage || !propsPage.classList.contains('active')) return;
+    const tag = (e.target && e.target.tagName) || '';
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target && e.target.isContentEditable)) return;
+
+    if (e.key === 'Escape' && _selectedPropIds && _selectedPropIds.size > 0) {
+      e.preventDefault();
+      clearPropSelection();
+    } else if ((e.ctrlKey || e.metaKey) && (e.key === 'a' || e.key === 'A')) {
+      e.preventDefault();
+      selectAllVisibleProps(true);
+    } else if ((e.key === ' ' || e.key === 'Enter') && e.target && e.target.classList && e.target.classList.contains('prop-card-select')) {
+      // Space / Enter on focused card checkbox toggles selection
+      e.preventDefault();
+      const id = e.target.closest('.prop-card-v2')?.dataset.propId;
+      if (id) togglePropSelect(e, id);
+    }
+  });
 });
 
 // ==================== NAVIGATION ====================
@@ -6885,6 +6908,313 @@ function openInlineStatusDropdown(badge, propId) {
   }, 0);
 }
 
+// ═══════════════════════════════════════════════════════════════
+//  BULK / BATCH ACTIONS — multi-select + sticky toolbar
+// ═══════════════════════════════════════════════════════════════
+
+const _selectedPropIds = new Set();
+let _lastSelectedPropId = null;     // anchor for Shift+click range select
+
+// Compute the same filtered list renderProperties shows. Kept tiny so
+// we can re-derive on demand without storing it as global state (avoids
+// stale data after edits).
+function _getFilteredProps() {
+  const props = getProperties();
+  const search = (document.getElementById('prop-filter-search')?.value || '').toLowerCase();
+  const typeFilters = (typeof msGetValues === 'function') ? msGetValues('ms-prop-type') : [];
+  const statusFilters = (typeof msGetValues === 'function') ? msGetValues('ms-prop-status') : [];
+  return props.filter(p => {
+    if (search && !((p.title || '') + ' ' + (p.address || '') + ' ' + (p.city || '') + ' ' + (p.owner || '') + ' ' + (p.district || '')).toLowerCase().includes(search)) return false;
+    if (typeFilters.length && !typeFilters.includes(p.type)) return false;
+    if (statusFilters.length && !statusFilters.includes(p.status)) return false;
+    return true;
+  });
+}
+
+// Toggle selection for one property. Handles Shift+click for range select
+// (anchored on the last clicked card) and plain click for single toggle.
+function togglePropSelect(event, id) {
+  if (event && event.shiftKey && _lastSelectedPropId && _lastSelectedPropId !== id) {
+    // Range select: toggle every card between the anchor and this one
+    // to the same state as this card (after toggling it).
+    const filtered = _getFilteredProps();
+    const ids = filtered.map(p => p.id);
+    const a = ids.indexOf(_lastSelectedPropId);
+    const b = ids.indexOf(id);
+    if (a >= 0 && b >= 0) {
+      const [from, to] = a < b ? [a, b] : [b, a];
+      // Decide direction: if the just-clicked card was already selected,
+      // unselect range. Otherwise select range.
+      const select = !_selectedPropIds.has(id);
+      for (let i = from; i <= to; i++) {
+        if (select) _selectedPropIds.add(ids[i]);
+        else _selectedPropIds.delete(ids[i]);
+      }
+    }
+  } else {
+    if (_selectedPropIds.has(id)) _selectedPropIds.delete(id);
+    else _selectedPropIds.add(id);
+  }
+  _lastSelectedPropId = id;
+  _refreshPropSelectionUI();
+}
+
+// Update only the visual state of cards + toolbar — much cheaper than a
+// full renderProperties on every checkbox toggle.
+function _refreshPropSelectionUI() {
+  // Toggle .is-selected on every card in the grid (visual state — the
+  // .prop-card-select-box CSS rule reflects it).
+  const grid = document.getElementById('prop-grid');
+  if (grid) {
+    grid.querySelectorAll('.prop-card-v2').forEach(card => {
+      const id = card.dataset.propId;
+      const sel = !!id && _selectedPropIds.has(id);
+      card.classList.toggle('is-selected', sel);
+      const box = card.querySelector('.prop-card-select');
+      if (box) box.setAttribute('aria-checked', sel ? 'true' : 'false');
+    });
+  }
+  // Update toolbar
+  const toolbar = document.getElementById('prop-bulk-toolbar');
+  const countEl = document.getElementById('prop-bulk-count');
+  const n = _selectedPropIds.size;
+  if (toolbar) toolbar.style.display = n > 0 ? '' : 'none';
+  if (countEl) countEl.textContent = n + ' ' + _pluralizeProps(n);
+  // "Select all" tri-state checkbox
+  const selectAll = document.getElementById('prop-select-all-cb');
+  if (selectAll) {
+    const visible = _getFilteredProps().map(p => p.id);
+    const allSelected = visible.length > 0 && visible.every(id => _selectedPropIds.has(id));
+    const noneSelected = visible.every(id => !_selectedPropIds.has(id));
+    selectAll.checked = allSelected;
+    selectAll.indeterminate = !allSelected && !noneSelected;
+  }
+  // Tag the grid so CSS can show all checkboxes (not just on hover) when
+  // anything is selected — feels more like Gmail and prevents the user
+  // from "losing" their selection visually while skimming the list.
+  if (grid) grid.classList.toggle('has-selection', n > 0);
+}
+
+// Slovak pluralization — returns the right form of "vybraná / nehnuteľnosť"
+// for the given count (1, 2-4, 5+). Used in count labels and confirmations.
+function _pluralizeProps(n, kind) {
+  // kind: 'sel' (vybraná/é/ých) | 'noun' (nehnuteľnosť/i/í) | default 'sel'
+  const k = kind || 'sel';
+  if (k === 'noun') {
+    if (n === 1) return 'nehnuteľnosť';
+    if (n >= 2 && n <= 4) return 'nehnuteľnosti';
+    return 'nehnuteľností';
+  }
+  if (n === 1) return 'vybraná';
+  if (n >= 2 && n <= 4) return 'vybrané';
+  return 'vybraných';
+}
+
+function selectAllVisibleProps(checked) {
+  const visible = _getFilteredProps().map(p => p.id);
+  if (checked) {
+    visible.forEach(id => _selectedPropIds.add(id));
+  } else {
+    visible.forEach(id => _selectedPropIds.delete(id));
+  }
+  _lastSelectedPropId = null;
+  _refreshPropSelectionUI();
+}
+
+function clearPropSelection() {
+  _selectedPropIds.clear();
+  _lastSelectedPropId = null;
+  _refreshPropSelectionUI();
+}
+
+// Returns selected IDs that still exist in the data — guards against
+// running an action on properties that were deleted in another tab.
+function _getValidSelectedProps() {
+  const props = getProperties();
+  const valid = props.filter(p => _selectedPropIds.has(p.id));
+  return valid;
+}
+
+// ──────────── BULK: Change status ────────────
+// Opens a dropdown anchored to the toolbar button. Picking a status
+// applies it to every selected property via changePropertyStatus, which
+// preserves AML gating and status history per item.
+function bulkChangeStatus(btn) {
+  const selected = _getValidSelectedProps();
+  if (selected.length === 0) return;
+  closeInlineStatusDropdown();
+
+  const dd = document.createElement('div');
+  dd.className = 'prop-status-dropdown prop-bulk-status-dropdown';
+  dd.dataset.bulk = '1';
+  dd.innerHTML = PROP_STATUS_DROPDOWN.map(opt =>
+    '<button class="prop-status-option" data-status="' + opt.key + '">' +
+      '<span class="prop-status-option-dot" style="background:' + opt.color + '"></span>' +
+      '<span class="prop-status-option-icon">' + opt.icon + '</span>' +
+      '<span class="prop-status-option-label">' + opt.label + '</span>' +
+    '</button>'
+  ).join('');
+
+  const r = btn.getBoundingClientRect();
+  dd.style.position = 'fixed';
+  dd.style.bottom = (window.innerHeight - r.top + 6) + 'px';
+  dd.style.left = r.left + 'px';
+  dd.style.zIndex = '9999';
+  document.body.appendChild(dd);
+
+  const close = () => { dd.remove(); document.removeEventListener('click', clickAway, true); };
+  const clickAway = (e) => { if (!dd.contains(e.target) && e.target !== btn) close(); };
+
+  dd.querySelectorAll('.prop-status-option').forEach(opt => {
+    opt.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const newStatus = opt.dataset.status;
+      const statusLabel = opt.querySelector('.prop-status-option-label').textContent;
+      close();
+      if (!await secConfirm({
+        title: 'Hromadná zmena statusu',
+        message: 'Zmeniť status "' + statusLabel + '" pri ' + selected.length + ' nehnuteľnostiach?',
+        ok: 'Zmeniť',
+      })) return;
+      // Apply sequentially — changePropertyStatus is async (AML modal can pop)
+      let changed = 0;
+      for (const p of selected) {
+        if (p.status === newStatus) continue;
+        await changePropertyStatus(p.id, newStatus);
+        changed++;
+      }
+      clearPropSelection();
+      showToast(changed > 0 ? ('Status zmenený pri ' + changed + ' nehnuteľnostiach') : 'Žiadne zmeny', 'success');
+    });
+  });
+
+  setTimeout(() => document.addEventListener('click', clickAway, true), 0);
+}
+
+// ──────────── BULK: LEONES publish ────────────
+async function bulkLeonisPublish() {
+  const selected = _getValidSelectedProps();
+  if (selected.length === 0) return;
+  const toPublish = selected.filter(p => !p.leonisPublished && !INACTIVE_STATUSES.includes(p.status));
+  if (toPublish.length === 0) {
+    showToast('Vybrané nehnuteľnosti sú už publikované alebo neaktívne', 'warning');
+    return;
+  }
+  if (!await secConfirm({
+    title: 'Hromadné publikovanie',
+    message: 'Publikovať ' + toPublish.length + ' nehnuteľností na LEONES?',
+    ok: 'Publikovať',
+  })) return;
+
+  for (const p of toPublish) {
+    try { await publishToLeonis(p.id); } catch (e) { /* keep going */ }
+  }
+  clearPropSelection();
+  showToast('Publikovaných ' + toPublish.length + ' nehnuteľností', 'success');
+}
+
+// ──────────── BULK: LEONES unpublish ────────────
+async function bulkLeonisUnpublish() {
+  const selected = _getValidSelectedProps();
+  if (selected.length === 0) return;
+  const toUnpublish = selected.filter(p => p.leonisPublished);
+  if (toUnpublish.length === 0) {
+    showToast('Žiadna z vybraných nie je publikovaná', 'warning');
+    return;
+  }
+  if (!await secConfirm({
+    title: 'Hromadné stiahnutie',
+    message: 'Stiahnuť ' + toUnpublish.length + ' nehnuteľností z LEONES?',
+    ok: 'Stiahnuť',
+  })) return;
+
+  for (const p of toUnpublish) {
+    try { await unpublishFromLeonis(p.id); } catch (e) { /* keep going */ }
+  }
+  clearPropSelection();
+  showToast('Stiahnutých ' + toUnpublish.length + ' nehnuteľností', 'success');
+}
+
+// ──────────── BULK: CSV export ────────────
+function bulkExportCsv() {
+  const selected = _getValidSelectedProps();
+  if (selected.length === 0) return;
+
+  // Quote a CSV cell — wraps in quotes if it contains comma, quote, or newline.
+  const q = (val) => {
+    const s = (val == null) ? '' : String(val);
+    if (s.includes(',') || s.includes('"') || s.includes('\n') || s.includes('\r')) {
+      return '"' + s.replace(/"/g, '""') + '"';
+    }
+    return s;
+  };
+  const fmtDate = (iso) => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleDateString('sk-SK');
+  };
+  const headers = ['ID', 'Názov', 'Typ', 'Status', 'Mesto', 'Okres', 'Adresa', 'Cena (€)', 'Veľkosť (m²)', 'Izby', 'Stav', 'Majiteľ', 'Telefón', 'Email', 'URL inzerátu', 'Vytvorené', 'LEONES'];
+  const rows = selected.map(p => [
+    p.id,
+    p.title || '',
+    PROP_TYPE_MAP[p.type] || p.type || '',
+    (PROP_STATUS_MAP[p.status] || {}).label || p.status || '',
+    p.city || '',
+    p.district || '',
+    p.address || '',
+    p.price || '',
+    p.size || '',
+    p.rooms || '',
+    PROP_CONDITION_MAP[p.condition] || '',
+    p.owner || p.ownerName || '',
+    p.phone || '',
+    p.email || '',
+    p.url || '',
+    fmtDate(p.createdAt),
+    p.leonisPublished ? 'Áno' : 'Nie',
+  ].map(q).join(','));
+
+  // BOM so Excel detects UTF-8 (otherwise Slovak diacritics break).
+  const csv = '﻿' + headers.map(q).join(',') + '\r\n' + rows.join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const today = new Date().toISOString().slice(0, 10);
+  a.href = url;
+  a.download = 'nehnutelnosti-' + today + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  showToast('Exportovaných ' + selected.length + ' nehnuteľností do CSV', 'success');
+}
+
+// ──────────── BULK: Delete ────────────
+async function bulkDelete() {
+  const selected = _getValidSelectedProps();
+  if (selected.length === 0) return;
+  if (!await secConfirm({
+    title: 'Vymazať ' + selected.length + ' ' + _pluralizeProps(selected.length, 'noun') + '?',
+    message: 'Naozaj chcete vymazať vybrané nehnuteľnosti? Túto akciu nie je možné vrátiť späť.',
+    type: 'danger',
+    ok: 'Vymazať všetky',
+  })) return;
+
+  const ids = new Set(selected.map(p => p.id));
+  // Best-effort unpublish from LEONES first so we don't leave dangling listings
+  for (const p of selected) {
+    if (p.leonisPublished) {
+      try { await removeFromLeonis(p.id); } catch (e) { /* ignore */ }
+    }
+  }
+  const remaining = getProperties().filter(p => !ids.has(p.id));
+  saveProperties(remaining);
+  clearPropSelection();
+  renderProperties();
+  showToast('Vymazaných ' + selected.length + ' nehnuteľností', 'success');
+}
+
 function filterProperties() {
   renderProperties();
   // Re-plot map markers if map is the active view
@@ -7380,7 +7710,18 @@ function renderProperties() {
     const viewCount = (p.viewings || []).length;
     const photoCount = (p.photos || []).length;
 
-    return `<div class="prop-card-v2">
+    const isSel = _selectedPropIds.has(p.id);
+    return `<div class="prop-card-v2 ${isSel ? 'is-selected' : ''}" data-prop-id="${p.id}">
+      <!-- Selection checkbox (hover-revealed unless something is selected).
+           Pure visual — state lives in _selectedPropIds, the box just
+           reflects it. Avoids double-fire when wrapping a real <input>. -->
+      <div class="prop-card-select" role="checkbox" tabindex="0"
+           aria-checked="${isSel ? 'true' : 'false'}"
+           title="Vybrať (Shift+klik = rozsah)"
+           onclick="event.stopPropagation();togglePropSelect(event,'${p.id}');">
+        <span class="prop-card-select-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+      </div>
+
       <!-- Photo / Header -->
       <div class="prop-card-hero ${photo ? 'has-photo' : ''}" onclick="openPropDetail('${p.id}')" style="cursor:pointer;">
         ${photo ? `<img src="${photo}" class="prop-card-hero-img" />` : `<div class="prop-card-hero-placeholder"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>`}
