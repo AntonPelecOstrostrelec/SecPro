@@ -1559,6 +1559,27 @@
       color: #6B7280;
       margin-bottom: 6px;
       padding: 0 2px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .map-poi-refresh {
+      width: 18px;
+      height: 18px;
+      border: none;
+      background: transparent;
+      border-radius: 4px;
+      color: #94A3B8;
+      cursor: pointer;
+      font-size: 12px;
+      line-height: 1;
+      padding: 0;
+      transition: all 0.15s;
+    }
+    .map-poi-refresh:hover {
+      background: #F1F5F9;
+      color: #1A7A8A;
+      transform: rotate(180deg);
     }
     .map-poi-pill {
       display: inline-flex;

@@ -1,7 +1,7 @@
 // === JS BUILD VERSION INDICATOR ===
 // If you don't see this badge in the top-left after hard refresh, the
 // browser/CDN is still serving stale app.js.
-const SECPRO_JS_BUILD = 'poi-back1-2026-05-07';
+const SECPRO_JS_BUILD = 'poi-back2-2026-05-07';
 console.log('%c[SecPro] JS build:', 'background:#16A34A;color:#fff;padding:2px 6px;border-radius:3px;', SECPRO_JS_BUILD);
 
 // Initialize Lucide icons
@@ -7911,24 +7911,37 @@ async function _doRefreshPOILayer() {
 
   const b = _propertiesMap.getBounds();
   const sizePx = _propertiesMap.getSize();
-  if (sizePx.x === 0 || sizePx.y === 0 || b.getNorth() === b.getSouth()) {
+  // isFinite catches NaN — equality === doesn't (NaN === NaN is false), which
+  // would otherwise let bad bounds through and cause Overpass to receive
+  // "(NaN,NaN,NaN,NaN)" queries that always return 0 elements.
+  const south = b.getSouth(), west = b.getWest(), north = b.getNorth(), east = b.getEast();
+  const validBox = isFinite(south) && isFinite(west) && isFinite(north) && isFinite(east) && north > south && east > west;
+  if (sizePx.x === 0 || sizePx.y === 0 || !validBox) {
+    console.warn('[SecPro POI] Invalid map state — size:', sizePx, 'bbox:', { south, west, north, east });
     _showPOIBusy('Mapa sa ešte načítava... skúste znova o chvíľu');
+    showToast('Mapa nie je ešte pripravená — počkajte sekundu a skúste znova', 'warning');
     return;
   }
   // Round bbox so cache hits across small pans
-  const roundedKey = (b.getSouth().toFixed(2) + ',' + b.getWest().toFixed(2) + ',' + b.getNorth().toFixed(2) + ',' + b.getEast().toFixed(2));
+  const roundedKey = south.toFixed(2) + ',' + west.toFixed(2) + ',' + north.toFixed(2) + ',' + east.toFixed(2);
 
   _showPOIBusy('Načítavam ' + activeCats.map(c => POI_CATEGORIES[c].label).join(', ') + '...');
 
   // Fetch all categories in parallel — Overpass handles 5 small queries
   // way faster than 5 sequential awaits, and the user gets all pins at once.
+  // Only cache NON-EMPTY results — caching [] would lock the user into
+  // permanent zero results if the first attempt happened to fail (NaN bbox,
+  // Overpass timeout, network blip).
   const fetches = activeCats.map(async (cat) => {
     const cacheKey = cat + ':' + roundedKey;
-    if (_propMapPOICache[cacheKey]) {
-      return { cat, pois: _propMapPOICache[cacheKey] };
+    const cached = _propMapPOICache[cacheKey];
+    if (cached && cached.length > 0) {
+      return { cat, pois: cached };
     }
     const pois = await _fetchPOIsForCategory(cat, b);
-    _propMapPOICache[cacheKey] = pois || [];
+    if (Array.isArray(pois) && pois.length > 0) {
+      _propMapPOICache[cacheKey] = pois;
+    }
     return { cat, pois: pois || [] };
   });
 
@@ -7988,18 +8001,27 @@ async function _fetchPOIsForCategory(cat, bounds) {
       return [];
     }
     const data = await r.json();
+    const elements = data.elements || [];
     const out = [];
-    for (const el of (data.elements || [])) {
+    let skippedNoCoords = 0;
+    for (const el of elements) {
       const lat = (typeof el.lat === 'number') ? el.lat : (el.center && el.center.lat);
       const lng = (typeof el.lon === 'number') ? el.lon : (el.center && el.center.lon);
-      if (!isFinite(lat) || !isFinite(lng)) continue;
+      if (!isFinite(lat) || !isFinite(lng)) { skippedNoCoords++; continue; }
       out.push({
         lat, lng,
         name: (el.tags && (el.tags.name || el.tags['name:sk'])) || POI_CATEGORIES[cat].label,
         kind: (el.tags && (el.tags.amenity || el.tags.shop || el.tags.leisure || el.tags.highway || el.tags.railway)) || cat,
       });
     }
-    console.log('[SecPro POI]', cat, '→', out.length, 'items');
+    console.log('[SecPro POI]', cat, '→', out.length, 'items (raw:', elements.length, 'skipped no-coords:', skippedNoCoords, ')');
+    if (out.length === 0 && elements.length === 0) {
+      // Truly empty Overpass response — log full response so we can debug
+      console.warn('[SecPro POI] EMPTY response for', cat, 'bbox=', south, west, north, east, 'response=', data);
+    } else if (out.length === 0 && elements.length > 0) {
+      // Got elements but parser dropped them all — log first 2 to see why
+      console.warn('[SecPro POI] All', elements.length, 'elements skipped for', cat, 'sample:', elements.slice(0, 2));
+    }
     return out;
   } catch (e) {
     console.warn('[SecPro] POI fetch failed for', cat, e);
@@ -8194,12 +8216,23 @@ function initPropertiesMap() {
           '<span class="poi-pill-label">' + cat.label + '</span>' +
         '</button>';
       }).join('');
-      div.innerHTML = '<div class="map-poi-title">POI v okolí</div>' + pills;
+      div.innerHTML =
+        '<div class="map-poi-title">POI v okolí ' +
+          '<button class="map-poi-refresh" type="button" title="Vyčistiť cache + obnoviť">↻</button>' +
+        '</div>' + pills;
       L.DomEvent.disableClickPropagation(div);
       L.DomEvent.disableScrollPropagation(div);
       div.querySelectorAll('.map-poi-pill').forEach(btn => {
         btn.addEventListener('click', () => togglePOICategory(btn.dataset.poi));
       });
+      const refreshBtn = div.querySelector('.map-poi-refresh');
+      if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => {
+          _propMapPOICache = {};   // wipe cache so a stale empty doesn't haunt us
+          showToast('POI cache vyčistená — fetchujem znova...', 'info');
+          _doRefreshPOILayer();
+        });
+      }
       return div;
     };
     _propMapPOIControl.addTo(_propertiesMap);
