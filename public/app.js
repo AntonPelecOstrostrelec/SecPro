@@ -6565,6 +6565,29 @@ async function changePropertyStatus(id, newStatus) {
   }
 }
 
+// Wraps advanceProperty(id, 'stiahnuta') in a clear confirmation prompt so
+// the agent doesn't accidentally withdraw a live listing with one click.
+async function confirmWithdrawProperty(id) {
+  const props = getProperties();
+  const p = props.find(x => x.id === id);
+  if (!p) return;
+  const titleStr = p.title || 'túto nehnuteľnosť';
+  const ok = await secConfirm({
+    title: 'Stiahnuť nehnuteľnosť z ponuky?',
+    message:
+      'Chcete stiahnuť "' + titleStr + '" z aktívnej ponuky?\n\n' +
+      '• Status sa zmení na "Stiahnutá"\n' +
+      '• Ak je nehnuteľnosť publikovaná na LEONES, automaticky sa odpublikuje\n' +
+      '• Záujemcovia ju už neuvidia\n\n' +
+      'Neskôr ju môžete obnoviť tlačidlom "Obnoviť" na karte.',
+    type: 'warning',
+    ok: 'Áno, stiahnuť',
+    cancel: 'Zrušiť',
+  });
+  if (!ok) return;
+  advanceProperty(id, 'stiahnuta');
+}
+
 function advanceProperty(id, forceTo) {
   const props = getProperties();
   const p = props.find(x => x.id === id);
@@ -6741,7 +6764,7 @@ function renderProperties() {
           ${viewCount ? `<button onclick="generateViewingDocument('${p.id}')" class="pca-btn pca-doc" title="Zápisnica PDF"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></button>` : ''}
           ${p.url ? `<a href="${p.url}" target="_blank" class="pca-btn pca-link" title="Inzerát"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>` : ''}
           <button onclick="openPropertyForm('${p.id}')" class="pca-btn pca-edit" title="Upraviť"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-          ${!isTerminal && !isCompleted ? `<button onclick="advanceProperty('${p.id}', 'stiahnuta')" class="pca-btn pca-cancel" title="Stiahnuť"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>` : ''}
+          ${!isTerminal && !isCompleted ? `<button onclick="confirmWithdrawProperty('${p.id}')" class="pca-btn pca-cancel" title="Stiahnuť z ponuky"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>` : ''}
           <button onclick="deleteProperty('${p.id}')" class="pca-btn pca-delete" title="Zmazať"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>
         </div>
       </div>
