@@ -1,7 +1,7 @@
 // === JS BUILD VERSION INDICATOR ===
 // If you don't see this badge in the top-left after hard refresh, the
 // browser/CDN is still serving stale app.js.
-const SECPRO_JS_BUILD = 'i18n-calcB-2026-05-15';
+const SECPRO_JS_BUILD = 'i18n-sweep-2026-05-15';
 console.log('%c[SecPro] JS build:', 'background:#16A34A;color:#fff;padding:2px 6px;border-radius:3px;', SECPRO_JS_BUILD);
 
 // Initialize Lucide icons
@@ -1463,7 +1463,7 @@ function saveAnalysis(type) {
     data = { inputs: collectMetInputs(), sums: metLastData.sums, totalInput: metLastData.totalInput };
     autoName = 'Porovnanie bánk - ' + fmt(metLastData.totalInput) + ' EUR';
   }
-  if (!data) { showToast('Najprv spravte výpočet!', true); return; }
+  if (!data) { showToast((window.t ? t('sw.najprv_spravte_vypocet') : 'Najprv spravte výpočet!'), true); return; }
   // Remove schedule arrays to save space
   if (data.result && data.result.schedule) delete data.result.schedule;
   const hist = getHistory();
@@ -1474,7 +1474,7 @@ function saveAnalysis(type) {
       hist[idx].data = data;
       hist[idx].date = now;
       setHistory(hist);
-      showToast('Analýza aktualizovaná!');
+      showToast((window.t ? t('sw.analyza_aktualizovana') : 'Analýza aktualizovaná!'));
       return;
     }
   }
@@ -1484,7 +1484,7 @@ function saveAnalysis(type) {
   setHistory(hist);
   updateSaveBtnLabel(type, true);
   showNewAnalysisBtn(type, true);
-  showToast('Analýza uložená!');
+  showToast((window.t ? t('sw.analyza_ulozena') : 'Analýza uložená!'));
 }
 
 function collectMhInputs() {
@@ -1580,7 +1580,7 @@ function loadAnalysis(id) {
   const entry = hist.find(e => e.id === id);
   if (!entry) return;
   const inputs = entry.data.inputs;
-  if (!inputs) { showToast('Chyba: dáta nie sú dostupné', true); return; }
+  if (!inputs) { showToast((window.t ? t('sw.chyba_data_nie_su_dostupne') : 'Chyba: dáta nie sú dostupné'), true); return; }
   window.activeHistoryId = id;
 
   if (entry.type === 'mhypoteka') {
@@ -1612,7 +1612,7 @@ function loadAnalysis(id) {
   }
   updateSaveBtnLabel(entry.type, true);
   showNewAnalysisBtn(entry.type, true);
-  showToast('Analýza načítaná!');
+  showToast((window.t ? t('sw.analyza_nacitana') : 'Analýza načítaná!'));
 }
 
 function updateSaveBtnLabel(type, isUpdate) {
@@ -1659,7 +1659,7 @@ function startNewAnalysis(type) {
   if (type === 'mhypoteka-rovne') { document.getElementById('rs-results').innerHTML = ''; document.getElementById('rs-save-btn').style.display = 'none'; rsLastData = null; }
   if (type === 'mhypoteka-klesajuce') { document.getElementById('ks-results').innerHTML = ''; document.getElementById('ks-save-btn').style.display = 'none'; ksLastData = null; }
   if (type === 'metodika') { document.querySelectorAll('.met-input').forEach(function(inp) { inp.value = 0; }); calcMetodika(); metLastData = null; }
-  showToast('Pripravené na novú analýzu');
+  showToast((window.t ? t('sw.pripravene_na_novu_analyzu') : 'Pripravené na novú analýzu'));
 }
 
 function showModal(title, desc, currentVal, onSave) {
@@ -3667,7 +3667,7 @@ async function dealAddFiles(event) {
       break;
     }
     if (f.size > MAX_BYTES) {
-      showToast('Súbor "' + f.name + '" je väčší ako 5 MB', 'warning');
+      showToast((window.t ? t('sw.subor') : 'Súbor "') + f.name + '" je väčší ako 5 MB', 'warning');
       continue;
     }
     try {
@@ -3788,7 +3788,7 @@ function saveDealFromEditor() {
   saveProperties(props);
   closeDealStatusEditor();
   if (typeof renderProperties === 'function') renderProperties();
-  showToast('Stav obchodu uložený ✓', 'success');
+  showToast((window.t ? t('sw.stav_obchodu_ulozeny') : 'Stav obchodu uložený ✓'), 'success');
 }
 
 // Legacy status mapping (backward compat)
@@ -4457,7 +4457,7 @@ async function closePropertyForm() {
   if (_propFormIsDirty()) {
     const ok = await secConfirm({
       title: 'Neuložené zmeny',
-      message: 'V inzeráte máte neuložené zmeny. Naozaj ich chcete zahodiť?',
+      message: (window.t ? t('sw.v_inzerate_mate_neulozene_zmeny_naoz') : 'V inzeráte máte neuložené zmeny. Naozaj ich chcete zahodiť?'),
       type: 'warning',
       ok: 'Zahodiť zmeny',
       cancel: 'Pokračovať v úpravách',
@@ -4754,7 +4754,7 @@ function refreshViewingPersonSelect() {
 
 function addInterestedParty() {
   const name = document.getElementById('ii-new-name').value.trim();
-  if (!name) { secAlert('Vyplňte meno záujemcu.'); return; }
+  if (!name) { secAlert((window.t ? t('sw.vyplnte_meno_zaujemcu') : 'Vyplňte meno záujemcu.')); return; }
   tempInterested.push({
     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
     name,
@@ -4822,8 +4822,8 @@ function renderInterestedList() {
 function addViewing() {
   const dateVal = document.getElementById('vi-new-date').value;
   const personIdx = document.getElementById('vi-new-person').value;
-  if (!dateVal) { secAlert('Vyplňte dátum prehliadky.'); return; }
-  if (personIdx === '') { secAlert('Vyberte záujemcu.'); return; }
+  if (!dateVal) { secAlert((window.t ? t('sw.vyplnte_datum_prehliadky') : 'Vyplňte dátum prehliadky.')); return; }
+  if (personIdx === '') { secAlert((window.t ? t('sw.vyberte_zaujemcu') : 'Vyberte záujemcu.')); return; }
   const person = tempInterested[parseInt(personIdx)];
   tempViewings.push({
     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
@@ -4980,7 +4980,7 @@ function refreshQuickViewingPersonSelect(p) {
 function quickAddInterested() {
   const propId = document.getElementById('quick-prop-id').value;
   const name = document.getElementById('qi-name').value.trim();
-  if (!name) { secAlert('Vyplňte meno záujemcu.'); return; }
+  if (!name) { secAlert((window.t ? t('sw.vyplnte_meno_zaujemcu') : 'Vyplňte meno záujemcu.')); return; }
 
   const props = getProperties();
   const pIdx = props.findIndex(x => x.id === propId);
@@ -5011,8 +5011,8 @@ function quickAddViewing() {
   const propId = document.getElementById('quick-prop-id').value;
   const dateVal = document.getElementById('qv-date').value;
   const personIdx = document.getElementById('qv-person').value;
-  if (!dateVal) { secAlert('Vyplňte dátum prehliadky.'); return; }
-  if (personIdx === '') { secAlert('Vyberte záujemcu.'); return; }
+  if (!dateVal) { secAlert((window.t ? t('sw.vyplnte_datum_prehliadky') : 'Vyplňte dátum prehliadky.')); return; }
+  if (personIdx === '') { secAlert((window.t ? t('sw.vyberte_zaujemcu') : 'Vyberte záujemcu.')); return; }
 
   const props = getProperties();
   const pIdx = props.findIndex(x => x.id === propId);
@@ -5266,7 +5266,7 @@ async function saveNabor(opts) {
   const prefix = type === 'byt' ? 'nb' : 'nd';
   const formData = _naborReadFormData(prefix);
   if (!formData) {
-    if (!opts.silent) showToast('Nepodarilo sa prečítať údaje', 'error');
+    if (!opts.silent) showToast((window.t ? t('sw.nepodarilo_sa_precitat_udaje') : 'Nepodarilo sa prečítať údaje'), 'error');
     return;
   }
 
@@ -5553,7 +5553,7 @@ async function unlockNabor(propId) {
   }
   if (typeof renderProperties === 'function') renderProperties();
 
-  showToast('Dokument je znova editovateľný. Po úprave odošlite klientovi nový odkaz na podpis.', 'info');
+  showToast((window.t ? t('sw.dokument_je_znova_editovatelny_po_up') : 'Dokument je znova editovateľný. Po úprave odošlite klientovi nový odkaz na podpis.'), 'info');
 }
 
 function _applyNaborLockState(p) {
@@ -6329,13 +6329,13 @@ function generateProtocolPDF() {
   const clientName = document.getElementById('proto-client-name').value.trim();
   const notes = document.getElementById('proto-notes').value.trim();
 
-  if (!brokerName) { secAlert('Vyplňte meno makléra.'); return; }
-  if (!clientName) { secAlert('Vyplňte meno záujemcu.'); return; }
+  if (!brokerName) { secAlert((window.t ? t('sw.vyplnte_meno_maklera') : 'Vyplňte meno makléra.')); return; }
+  if (!clientName) { secAlert((window.t ? t('sw.vyplnte_meno_zaujemcu') : 'Vyplňte meno záujemcu.')); return; }
 
   const brokerPad = sigPads['sig-broker'];
   const clientPad = sigPads['sig-client'];
-  if (!brokerPad || brokerPad.isEmpty()) { secAlert('Chýba podpis makléra.'); return; }
-  if (!clientPad || clientPad.isEmpty()) { secAlert('Chýba podpis záujemcu.'); return; }
+  if (!brokerPad || brokerPad.isEmpty()) { secAlert((window.t ? t('sw.chyba_podpis_maklera') : 'Chýba podpis makléra.')); return; }
+  if (!clientPad || clientPad.isEmpty()) { secAlert((window.t ? t('sw.chyba_podpis_zaujemcu') : 'Chýba podpis záujemcu.')); return; }
 
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF('p', 'mm', 'a4');
@@ -7016,9 +7016,9 @@ async function saveProperty() {
   const priceVal = document.getElementById('prop-price').value;
 
   if (!title) { secAlert((window.t ? t('pp.fill_name') : 'Vyplňte názov nehnuteľnosti')); return; }
-  if (!city) { secAlert('Vyplňte mesto / obec'); return; }
-  if (!phone) { secAlert('Vyplňte telefónne číslo'); return; }
-  if (!priceVal) { secAlert('Vyplňte cenu'); return; }
+  if (!city) { secAlert((window.t ? t('sw.vyplnte_mesto_obec') : 'Vyplňte mesto / obec')); return; }
+  if (!phone) { secAlert((window.t ? t('sw.vyplnte_telefonne_cislo') : 'Vyplňte telefónne číslo')); return; }
+  if (!priceVal) { secAlert((window.t ? t('sw.vyplnte_cenu') : 'Vyplňte cenu')); return; }
 
   // Duplicate detection — only when adding a new property (or when the
   // address itself was changed during editing). Two-step confirm so the
@@ -7043,7 +7043,7 @@ async function saveProperty() {
       // Offer to jump to the existing one
       const open = await secConfirm({
         title: 'Otvoriť existujúcu?',
-        message: 'Chcete namiesto toho otvoriť existujúcu nehnuteľnosť „' + (dup.title || 'Bez názvu') + '"?',
+        message: (window.t ? t('sw.chcete_namiesto_toho_otvorit_existuj') : 'Chcete namiesto toho otvoriť existujúcu nehnuteľnosť „') + (dup.title || 'Bez názvu') + '"?',
         ok: 'Otvoriť',
         cancel: 'Nie',
       });
@@ -7133,7 +7133,7 @@ async function saveProperty() {
     saveProperties(props);
   } catch (e) {
     if (e.name === 'QuotaExceededError' && prop.photos.length > 0) {
-      if (await secConfirm({ message: 'Fotografie sú príliš veľké pre úložisko prehliadača.\n\nUložiť nehnuteľnosť bez fotiek?', type: 'warning', ok: 'Uložiť bez fotiek' })) {
+      if (await secConfirm({ message: (window.t ? t('sw.fotografie_su_prilis_velke_pre_ulozi') : 'Fotografie sú príliš veľké pre úložisko prehliadača.\n\nUložiť nehnuteľnosť bez fotiek?'), type: 'warning', ok: 'Uložiť bez fotiek' })) {
         prop.photos = [];
         if (existingIdx >= 0) props[existingIdx] = prop;
         else props[0] = prop;
@@ -7665,7 +7665,7 @@ function bulkChangeStatus(btn) {
       close();
       if (!await secConfirm({
         title: 'Hromadná zmena statusu',
-        message: 'Zmeniť status "' + statusLabel + '" pri ' + selected.length + ' nehnuteľnostiach?',
+        message: (window.t ? t('sw.zmenit_status') : 'Zmeniť status "') + statusLabel + '" pri ' + selected.length + ' nehnuteľnostiach?',
         ok: 'Zmeniť',
       })) return;
       // Apply sequentially — changePropertyStatus is async (AML modal can pop)
@@ -7694,7 +7694,7 @@ async function bulkLeonisPublish() {
   }
   if (!await secConfirm({
     title: 'Hromadné publikovanie',
-    message: 'Publikovať ' + toPublish.length + ' nehnuteľností na LEONES?',
+    message: (window.t ? t('sw.publikovat') : 'Publikovať ') + toPublish.length + ' nehnuteľností na LEONES?',
     ok: 'Publikovať',
   })) return;
 
@@ -7711,12 +7711,12 @@ async function bulkLeonisUnpublish() {
   if (selected.length === 0) return;
   const toUnpublish = selected.filter(p => p.leonisPublished);
   if (toUnpublish.length === 0) {
-    showToast('Žiadna z vybraných nie je publikovaná', 'warning');
+    showToast((window.t ? t('sw.ziadna_z_vybranych_nie_je_publikovan') : 'Žiadna z vybraných nie je publikovaná'), 'warning');
     return;
   }
   if (!await secConfirm({
     title: 'Hromadné stiahnutie',
-    message: 'Stiahnuť ' + toUnpublish.length + ' nehnuteľností z LEONES?',
+    message: (window.t ? t('sw.stiahnut') : 'Stiahnuť ') + toUnpublish.length + ' nehnuteľností z LEONES?',
     ok: 'Stiahnuť',
   })) return;
 
@@ -7788,7 +7788,7 @@ async function bulkDelete() {
   if (selected.length === 0) return;
   if (!await secConfirm({
     title: 'Vymazať ' + selected.length + ' ' + _pluralizeProps(selected.length, 'noun') + '?',
-    message: 'Naozaj chcete vymazať vybrané nehnuteľnosti? Túto akciu nie je možné vrátiť späť.',
+    message: (window.t ? t('sw.naozaj_chcete_vymazat_vybrane_nehnut') : 'Naozaj chcete vymazať vybrané nehnuteľnosti? Túto akciu nie je možné vrátiť späť.'),
     type: 'danger',
     ok: 'Vymazať všetky',
   })) return;
@@ -8041,7 +8041,7 @@ async function _doRefreshPOILayer() {
   if (sizePx.x === 0 || sizePx.y === 0 || !validBox) {
     console.warn('[SecPro POI] Invalid map state — size:', sizePx, 'bbox:', { south, west, north, east });
     _showPOIBusy('Mapa sa ešte načítava... skúste znova o chvíľu');
-    showToast('Mapa nie je ešte pripravená — počkajte sekundu a skúste znova', 'warning');
+    showToast((window.t ? t('sw.mapa_nie_je_este_pripravena_pockajte') : 'Mapa nie je ešte pripravená — počkajte sekundu a skúste znova'), 'warning');
     return;
   }
   // Round bbox so cache hits across small pans
@@ -8147,7 +8147,7 @@ async function _fetchPOIsForCategory(cat, bounds) {
     return out;
   } catch (e) {
     console.warn('[SecPro] POI fetch failed for', cat, e);
-    showToast('Sieťová chyba pri načítaní ' + def.label, 'error');
+    showToast((window.t ? t('sw.sietova_chyba_pri_nacitani') : 'Sieťová chyba pri načítaní ') + def.label, 'error');
     return [];
   }
 }
@@ -8216,12 +8216,12 @@ async function _doMapSearch(query) {
   const url = 'https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(q) + '&format=json&limit=1';
   try {
     const r = await fetch(url, { headers: { 'Accept-Language': 'sk' } });
-    if (!r.ok) { showToast('Adresu sa nepodarilo nájsť', 'warning'); return; }
+    if (!r.ok) { showToast((window.t ? t('sw.adresu_sa_nepodarilo_najst') : 'Adresu sa nepodarilo nájsť'), 'warning'); return; }
     const data = await r.json();
-    if (!data || !data.length) { showToast('Adresu sa nepodarilo nájsť', 'warning'); return; }
+    if (!data || !data.length) { showToast((window.t ? t('sw.adresu_sa_nepodarilo_najst') : 'Adresu sa nepodarilo nájsť'), 'warning'); return; }
     const lat = parseFloat(data[0].lat);
     const lng = parseFloat(data[0].lon);
-    if (!isFinite(lat) || !isFinite(lng)) { showToast('Adresu sa nepodarilo nájsť', 'warning'); return; }
+    if (!isFinite(lat) || !isFinite(lng)) { showToast((window.t ? t('sw.adresu_sa_nepodarilo_najst') : 'Adresu sa nepodarilo nájsť'), 'warning'); return; }
     // Make sure Leaflet has the right size before any pan/zoom — flyTo
     // throws "Invalid LatLng (NaN)" if the map container size isn't
     // properly known yet (it does an unproject internally).
@@ -8244,7 +8244,7 @@ async function _doMapSearch(query) {
     _propMapSearchMarker.bindPopup('<b>' + esc(data[0].display_name || query) + '</b>').openPopup();
   } catch (e) {
     console.error('[SecPro] map search error:', e);
-    showToast('Chyba pri vyhľadávaní adresy', 'error');
+    showToast((window.t ? t('sw.chyba_pri_vyhladavani_adresy') : 'Chyba pri vyhľadávaní adresy'), 'error');
   }
 }
 
@@ -9275,8 +9275,8 @@ function renderAiPageSampleAds() {
 function addSampleAdFromPage() {
   const textarea = document.getElementById('ai-page-new-sample');
   const text = textarea.value.trim();
-  if (!text) { secAlert('Vložte text inzerátu'); return; }
-  if (text.length < 50) { secAlert('Text je príliš krátky (min. 50 znakov).'); return; }
+  if (!text) { secAlert((window.t ? t('sw.vlozte_text_inzeratu') : 'Vložte text inzerátu')); return; }
+  if (text.length < 50) { secAlert((window.t ? t('sw.text_je_prilis_kratky_min_50_znakov') : 'Text je príliš krátky (min. 50 znakov).')); return; }
   const ads = getSampleAds();
   ads.push(text);
   saveSampleAdsData(ads);
@@ -9364,8 +9364,8 @@ function renderSampleAdsList() {
 function addSampleAd() {
   const textarea = document.getElementById('new-sample-ad');
   const text = textarea.value.trim();
-  if (!text) { secAlert('Vložte text inzerátu'); return; }
-  if (text.length < 50) { secAlert('Text je príliš krátky. Vložte celý text inzerátu (aspoň 50 znakov).'); return; }
+  if (!text) { secAlert((window.t ? t('sw.vlozte_text_inzeratu') : 'Vložte text inzerátu')); return; }
+  if (text.length < 50) { secAlert((window.t ? t('sw.text_je_prilis_kratky_vlozte_cely_te') : 'Text je príliš krátky. Vložte celý text inzerátu (aspoň 50 znakov).')); return; }
 
   const ads = getSampleAds();
   ads.push(text);
@@ -9868,7 +9868,7 @@ function saveClient() {
 async function deleteClient(id, ev) {
   if (ev) ev.stopPropagation();
   const ok = (typeof secConfirm === 'function')
-    ? await secConfirm({ message: 'Naozaj chcete odstrániť tohto klienta?', type: 'danger', ok: 'Odstrániť' })
+    ? await secConfirm({ message: (window.t ? t('sw.naozaj_chcete_odstranit_tohto_klient') : 'Naozaj chcete odstrániť tohto klienta?'), type: 'danger', ok: 'Odstrániť' })
     : confirm('Naozaj chcete odstrániť tohto klienta?');
   if (!ok) return;
   saveClients(getClients().filter(c => c.id !== id));
@@ -10210,7 +10210,7 @@ function closeContactForm() {
 
 function saveContact() {
   const name = document.getElementById('contact-name').value.trim();
-  if (!name) { secAlert('Vyplňte meno kontaktu.'); return; }
+  if (!name) { secAlert((window.t ? t('sw.vyplnte_meno_kontaktu') : 'Vyplňte meno kontaktu.')); return; }
 
   const editId = document.getElementById('contact-edit-id').value;
   const contacts = getContacts();
@@ -10249,7 +10249,7 @@ function saveContact() {
 }
 
 async function deleteContact(id) {
-  if (!await secConfirm({ message: 'Naozaj chcete odstrániť tento kontakt?', type: 'danger', ok: 'Odstrániť' })) return;
+  if (!await secConfirm({ message: (window.t ? t('sw.naozaj_chcete_odstranit_tento_kontak') : 'Naozaj chcete odstrániť tento kontakt?'), type: 'danger', ok: 'Odstrániť' })) return;
   const contacts = getContacts().filter(c => c.id !== id);
   saveContacts(contacts);
   renderContacts();
@@ -10358,7 +10358,7 @@ function esc(str) {
 
 function exportContactsCSV() {
   const contacts = getContacts();
-  if (contacts.length === 0) { secAlert('Žiadne kontakty na export.'); return; }
+  if (contacts.length === 0) { secAlert((window.t ? t('sw.ziadne_kontakty_na_export') : 'Žiadne kontakty na export.')); return; }
   const headers = ['Meno','Telefón','E-mail','Firma','Kategória','Status','Adresa','Poznámka','Vytvorený'];
   const rows = contacts.map(c => [
     c.name, c.phone, c.email, c.company,
@@ -10608,7 +10608,7 @@ async function secureFetch(url, options) {
     _redirectingToLogin = true;
     clearSession();
     document.getElementById('loginOverlay').classList.remove('hidden');
-    showToast('Relácia vypršala. Prihláste sa znova.', 'warning');
+    showToast((window.t ? t('sw.relacia_vyprsala_prihlaste_sa_znova') : 'Relácia vypršala. Prihláste sa znova.'), 'warning');
     setTimeout(() => { _redirectingToLogin = false; }, 3000);
   }
   return res;
@@ -10646,7 +10646,7 @@ async function _flushSaves() {
       if (attempt < 2) await new Promise(r => setTimeout(r, 2000));
     }
     if (!success) {
-      showToast('Ukladanie zlyhalo. Dáta sú uložené lokálne.', 'warning');
+      showToast((window.t ? t('sw.ukladanie_zlyhalo_data_su_ulozene_lo') : 'Ukladanie zlyhalo. Dáta sú uložené lokálne.'), 'warning');
     }
   }
 }
@@ -11110,7 +11110,7 @@ async function handleProfileAvatarUpload(ev) {
     _refreshProfileAvatarPreview();
   } catch (e) {
     console.error('Avatar upload failed', e);
-    if (typeof showToast === 'function') showToast('Nepodarilo sa načítať fotku', 'error');
+    if (typeof showToast === 'function') showToast((window.t ? t('sw.nepodarilo_sa_nacitat_fotku') : 'Nepodarilo sa načítať fotku'), 'error');
   }
   ev.target.value = '';
 }
@@ -11123,7 +11123,7 @@ function removeProfileAvatar() {
 function saveProfile() {
   const name = document.getElementById('profile-name').value.trim();
   if (!name) {
-    if (typeof showToast === 'function') showToast('Zadajte celé meno', 'error');
+    if (typeof showToast === 'function') showToast((window.t ? t('sw.zadajte_cele_meno') : 'Zadajte celé meno'), 'error');
     else alert('Zadajte celé meno');
     return;
   }
@@ -11422,7 +11422,7 @@ async function amlAutoCheck() {
   }
 
   if (!name || name.length < 2) {
-    secAlert('Najprv vyplňte meno klienta.');
+    secAlert((window.t ? t('sw.najprv_vyplnte_meno_klienta') : 'Najprv vyplňte meno klienta.'));
     return;
   }
 
@@ -11610,11 +11610,11 @@ function saveAml() {
   // Validate required fields
   if (clientType === 'fo') {
     if (!document.getElementById('aml-fo-firstname').value.trim() || !document.getElementById('aml-fo-lastname').value.trim()) {
-      secAlert('Meno a priezvisko sú povinné.'); return;
+      secAlert((window.t ? t('sw.meno_a_priezvisko_su_povinne') : 'Meno a priezvisko sú povinné.')); return;
     }
   } else {
     if (!document.getElementById('aml-po-name').value.trim()) {
-      secAlert('Obchodné meno je povinné.'); return;
+      secAlert((window.t ? t('sw.obchodne_meno_je_povinne') : 'Obchodné meno je povinné.')); return;
     }
   }
 
@@ -11935,7 +11935,7 @@ function closeAmlDetail() { document.getElementById('aml-detail-modal').style.di
 function editAmlFromDetail() { const id = amlDetailId; if (id) { closeAmlDetail(); openAmlForm(id); } }
 async function deleteAmlFromDetail() {
   if (!amlDetailId) return;
-  if (!await secConfirm({ message: 'Naozaj vymazať toto AML preverenie?', type: 'danger', ok: 'Vymazať' })) return;
+  if (!await secConfirm({ message: (window.t ? t('sw.naozaj_vymazat_toto_aml_preverenie') : 'Naozaj vymazať toto AML preverenie?'), type: 'danger', ok: 'Vymazať' })) return;
   const records = getAmlRecords().filter(x => x.id !== amlDetailId);
   saveAmlRecords(records);
   closeAmlDetail();
@@ -11963,7 +11963,7 @@ function approveAml() {
 
 function exportAmlCSV() {
   const records = getAmlRecords();
-  if (!records.length) { secAlert('Žiadne záznamy na export.'); return; }
+  if (!records.length) { secAlert((window.t ? t('sw.ziadne_zaznamy_na_export') : 'Žiadne záznamy na export.')); return; }
   const headers = ['Meno/Názov','Typ','IČO','Status','Riziko','Skóre','PEP','Účel','Hodnota','Pôvod prostriedkov','Dátum'];
   const rows = records.map(r => [
     '"' + getAmlDisplayName(r).replace(/"/g,'""') + '"',
@@ -14922,7 +14922,7 @@ async function confirmSignaturePad() {
   closeSignaturePad(true);
   _sigPadState = null;
   try { onConfirm(dataUrl, entry); } catch (e) { console.error(e); }
-  if (typeof showToast === 'function') showToast('Podpis zaznamenaný', 'success');
+  if (typeof showToast === 'function') showToast((window.t ? t('sw.podpis_zaznamenany') : 'Podpis zaznamenaný'), 'success');
 }
 
 // ==================== SIGNATURES HISTORY PAGE ====================
@@ -15000,7 +15000,7 @@ function viewSignatureEntry(id) {
 
 async function deleteSignatureEntry(id) {
   const ok = (typeof secConfirm === 'function')
-    ? await secConfirm({ message: 'Naozaj chcete vymazať tento záznam podpisu? Audit stopa bude stratená.', type: 'danger', ok: 'Vymazať' })
+    ? await secConfirm({ message: (window.t ? t('sw.naozaj_chcete_vymazat_tento_zaznam_p') : 'Naozaj chcete vymazať tento záznam podpisu? Audit stopa bude stratená.'), type: 'danger', ok: 'Vymazať' })
     : confirm('Vymazať tento podpis?');
   if (!ok) return;
   saveSignatures(getSignatures().filter(s => s.id !== id));
@@ -15162,7 +15162,7 @@ function renderRemoteSignatures(items) {
 
 function copyText(text) {
   navigator.clipboard.writeText(text).then(() => {
-    showToast('Link skopírovaný do schránky!', 'success');
+    showToast((window.t ? t('sw.link_skopirovany_do_schranky') : 'Link skopírovaný do schránky!'), 'success');
   }).catch(() => {
     // Fallback
     const inp = document.createElement('input');
@@ -15171,7 +15171,7 @@ function copyText(text) {
     inp.select();
     document.execCommand('copy');
     document.body.removeChild(inp);
-    showToast('Link skopírovaný!', 'success');
+    showToast((window.t ? t('sw.link_skopirovany') : 'Link skopírovaný!'), 'success');
   });
 }
 
@@ -15182,7 +15182,7 @@ async function viewRemoteSignature(token) {
     const r = await secureFetch('/api/sign/list?detail=' + token, {
       headers: { 'Authorization': 'Bearer ' + sessionToken },
     });
-    if (!r.ok) { showToast('Nepodarilo sa načítať podpis', 'error'); return; }
+    if (!r.ok) { showToast((window.t ? t('sw.nepodarilo_sa_nacitat_podpis') : 'Nepodarilo sa načítať podpis'), 'error'); return; }
     const data = await r.json();
     const rec = data.record;
     if (!rec) return;
@@ -15204,7 +15204,7 @@ async function viewRemoteSignature(token) {
       ${rec.signatureDataUrl ? '<div class="row" style="margin-top:1rem;"><b>Podpis:</b></div><img src="' + rec.signatureDataUrl + '" />' : ''}
     </div></body></html>`);
   } catch (e) {
-    showToast('Chyba pri načítaní', 'error');
+    showToast((window.t ? t('sw.chyba_pri_nacitani') : 'Chyba pri načítaní'), 'error');
   }
 }
 
@@ -15255,7 +15255,7 @@ async function submitRemoteSignRequest() {
   const signerName = document.getElementById('rs-signer-name').value.trim();
 
   if (!signerName) {
-    showToast('Vyplňte meno klienta', 'warning');
+    showToast((window.t ? t('sw.vyplnte_meno_klienta') : 'Vyplňte meno klienta'), 'warning');
     return;
   }
 
@@ -15267,7 +15267,7 @@ async function submitRemoteSignRequest() {
   const expiresInHours = parseInt((document.getElementById('rs-expires-select')?.value) || '48');
 
   const token = getStoredToken();
-  if (!token) { showToast('Nie ste prihlásený', 'error'); return; }
+  if (!token) { showToast((window.t ? t('sw.nie_ste_prihlaseny') : 'Nie ste prihlásený'), 'error'); return; }
 
   btn.disabled = true;
   btn.textContent = 'Vytváram...';
@@ -16056,7 +16056,7 @@ async function _emailComposerEnsureLink() {
 
   const token = (typeof getStoredToken === 'function') ? getStoredToken() : null;
   if (!token) {
-    showToast('Nie ste prihlásený', 'error');
+    showToast((window.t ? t('sw.nie_ste_prihlaseny') : 'Nie ste prihlásený'), 'error');
     return null;
   }
 
@@ -16068,7 +16068,7 @@ async function _emailComposerEnsureLink() {
   const expiresInHours = parseInt(document.getElementById('ec-expires').value);
 
   if (!signerName) {
-    showToast('Vyplňte meno klienta', 'warning');
+    showToast((window.t ? t('sw.vyplnte_meno_klienta') : 'Vyplňte meno klienta'), 'warning');
     return null;
   }
 
@@ -16266,7 +16266,7 @@ async function emailComposerCopy() {
           'text/html':  new Blob([html], { type: 'text/html' }),
         })
       ]);
-      showToast('Skopírované — vložte do Gmail/Outlook compose ✓', 'success');
+      showToast((window.t ? t('sw.skopirovane_vlozte_do_gmail_outlook_') : 'Skopírované — vložte do Gmail/Outlook compose ✓'), 'success');
     } else {
       // Older browser fallback
       if (typeof copyText === 'function') copyText(text);
@@ -16355,7 +16355,7 @@ async function emailComposerCopySigningLinkOnly() {
   const url = await _emailComposerEnsureLink();
   if (!url) return;
   if (typeof copyText === 'function') copyText(url);
-  showToast('Odkaz skopírovaný do schránky ✓', 'success');
+  showToast((window.t ? t('sw.odkaz_skopirovany_do_schranky') : 'Odkaz skopírovaný do schránky ✓'), 'success');
 }
 
 function _rememberEmailSendChannel(ch) {
