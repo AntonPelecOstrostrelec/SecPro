@@ -16,7 +16,7 @@ module.exports = async (req, res) => {
   if (handleCors(req, res, 'POST, OPTIONS')) return;
 
   const { KV_URL, KV_TOKEN, ok } = getKV();
-  if (!ok) return res.status(500).json({ error: 'Server nie je nakonfigurovaný (KV)' });
+  if (!ok) return res.status(500).json({ error: 'Server nie je nakonfigurovaný (KV)', errorKey: 'auth.error.server_misconfigured' });
 
   const { action } = req.body || {};
   const RATE_LIMIT_MSG = 'Príliš veľa pokusov. Skúste znova neskôr.';
@@ -51,11 +51,11 @@ module.exports = async (req, res) => {
       case 'verify-reset-code': return await handleVerifyResetCode(req, res, KV_URL, KV_TOKEN);
       case 'update-prefs':      return await handleUpdatePrefs(req, res, KV_URL, KV_TOKEN);
       default:
-        return res.status(400).json({ error: 'Neznáma akcia: ' + action });
+        return res.status(400).json({ error: 'Neznáma akcia: ' + action , errorKey: 'auth.error.unknown_action' });
     }
   } catch (err) {
     console.error('auth top-level error:', action, err.message, err.stack);
-    return res.status(500).json({ error: 'Interná chyba servera.', detail: err.message });
+    return res.status(500).json({ error: 'Interná chyba servera.', errorKey: 'auth.error.server' , detail: err.message });
   }
 };
 
@@ -63,7 +63,7 @@ module.exports = async (req, res) => {
 async function handleRegister(req, res, KV_URL, KV_TOKEN) {
   const { name, email, password } = req.body;
   if (!name || !email || !password) {
-    return res.status(400).json({ error: 'Meno, email a heslo sú povinné.' });
+    return res.status(400).json({ error: 'Meno, email a heslo sú povinné.', errorKey: 'auth.error.required_fields_register' });
   }
 
   const emailLower = email.trim().toLowerCase();
@@ -105,7 +105,7 @@ async function handleRegister(req, res, KV_URL, KV_TOKEN) {
     return genericResponse();
   } catch (err) {
     console.error('auth register error:', err.message);
-    return res.status(500).json({ error: 'Chyba servera pri registrácii.' });
+    return res.status(500).json({ error: 'Chyba servera pri registrácii.', errorKey: 'auth.error.server_register' });
   }
 }
 
@@ -113,7 +113,7 @@ async function handleRegister(req, res, KV_URL, KV_TOKEN) {
 async function handleLogin(req, res, KV_URL, KV_TOKEN) {
   const { email, password, remember } = req.body;
   if (!email || !password) {
-    return res.status(400).json({ error: 'Email a heslo sú povinné.' });
+    return res.status(400).json({ error: 'Email a heslo sú povinné.', errorKey: 'auth.error.required_fields' });
   }
 
   const emailLower = email.trim().toLowerCase();
@@ -121,20 +121,20 @@ async function handleLogin(req, res, KV_URL, KV_TOKEN) {
 
   // Allowlist guard — same generic error to avoid enumeration
   if (!isAllowedEmail(emailLower)) {
-    return res.status(401).json({ error: 'Nesprávny e-mail alebo heslo.' });
+    return res.status(401).json({ error: 'Nesprávny e-mail alebo heslo.', errorKey: 'auth.error.wrong_credentials' });
   }
 
   try {
     const user = await kvGet(KV_URL, KV_TOKEN, userKey);
     if (!user) {
-      return res.status(401).json({ error: 'Nesprávny e-mail alebo heslo.' });
+      return res.status(401).json({ error: 'Nesprávny e-mail alebo heslo.', errorKey: 'auth.error.wrong_credentials' });
     }
 
     const bcryptMatch = await bcrypt.compare(password, user.passwordHash);
     if (!bcryptMatch) {
       const sha256 = crypto.createHash('sha256').update(password).digest('hex');
       if (sha256 !== user.passwordHash) {
-        return res.status(401).json({ error: 'Nesprávny e-mail alebo heslo.' });
+        return res.status(401).json({ error: 'Nesprávny e-mail alebo heslo.', errorKey: 'auth.error.wrong_credentials' });
       }
       // SHA-256 matched — migrate to bcrypt
       user.passwordHash = await bcrypt.hash(password, 12);
@@ -163,26 +163,26 @@ async function handleLogin(req, res, KV_URL, KV_TOKEN) {
     });
   } catch (err) {
     console.error('auth login error:', err.message);
-    return res.status(500).json({ error: 'Chyba servera pri prihlásení.' });
+    return res.status(500).json({ error: 'Chyba servera pri prihlásení.', errorKey: 'auth.error.server_login' });
   }
 }
 
 // ── UPDATE USER PREFS (language, future settings) ──
 async function handleUpdatePrefs(req, res, KV_URL, KV_TOKEN) {
   const { token, language } = req.body;
-  if (!token) return res.status(401).json({ error: 'Token chýba.' });
+  if (!token) return res.status(401).json({ error: 'Token chýba.', errorKey: 'auth.error.token_missing' });
 
   try {
     const session = await kvGet(KV_URL, KV_TOKEN, `session:${token}`);
-    if (!session) return res.status(401).json({ error: 'Sedenie vypršalo.' });
+    if (!session) return res.status(401).json({ error: 'Sedenie vypršalo.', errorKey: 'auth.error.session_expired' });
     if (new Date(session.expiresAt) < new Date()) {
       await kvDel(KV_URL, KV_TOKEN, `session:${token}`);
-      return res.status(401).json({ error: 'Sedenie vypršalo.' });
+      return res.status(401).json({ error: 'Sedenie vypršalo.', errorKey: 'auth.error.session_expired' });
     }
 
     const userKey = `user:${session.email}`;
     const user = await kvGet(KV_URL, KV_TOKEN, userKey);
-    if (!user) return res.status(404).json({ error: 'Účet nenájdený.' });
+    if (!user) return res.status(404).json({ error: 'Účet nenájdený.', errorKey: 'auth.error.account_not_found' });
 
     // Whitelist of pref fields — only allow known keys to be saved
     if (language && ['sk', 'en'].includes(language)) {
@@ -194,22 +194,22 @@ async function handleUpdatePrefs(req, res, KV_URL, KV_TOKEN) {
     return res.status(200).json({ success: true, user: { language: user.language || 'sk' } });
   } catch (err) {
     console.error('auth update-prefs error:', err.message);
-    return res.status(500).json({ error: 'Chyba servera.' });
+    return res.status(500).json({ error: 'Chyba servera.', errorKey: 'auth.error.server' });
   }
 }
 
 // ── SESSION VALIDATE ──
 async function handleSession(req, res, KV_URL, KV_TOKEN) {
   const { token } = req.body;
-  if (!token) return res.status(401).json({ error: 'Token chýba.' });
+  if (!token) return res.status(401).json({ error: 'Token chýba.', errorKey: 'auth.error.token_missing' });
 
   try {
     const session = await kvGet(KV_URL, KV_TOKEN, `session:${token}`);
-    if (!session) return res.status(401).json({ error: 'Sedenie vypršalo alebo neexistuje.' });
+    if (!session) return res.status(401).json({ error: 'Sedenie vypršalo alebo neexistuje.', errorKey: 'auth.error.session_invalid' });
 
     if (new Date(session.expiresAt) < new Date()) {
       await kvDel(KV_URL, KV_TOKEN, `session:${token}`);
-      return res.status(401).json({ error: 'Sedenie vypršalo.' });
+      return res.status(401).json({ error: 'Sedenie vypršalo.', errorKey: 'auth.error.session_expired' });
     }
 
     // Pull fresh language from user record (session is cached, prefs may have changed)
@@ -226,7 +226,7 @@ async function handleSession(req, res, KV_URL, KV_TOKEN) {
     });
   } catch (err) {
     console.error('auth session error:', err.message);
-    return res.status(500).json({ error: 'Chyba servera pri overení sedenia.' });
+    return res.status(500).json({ error: 'Chyba servera pri overení sedenia.', errorKey: 'auth.error.server_session' });
   }
 }
 
@@ -299,10 +299,45 @@ async function handleResetPw(req, res, KV_URL, KV_TOKEN) {
   }
 }
 
+// ── Reset email template (SK + EN) ──
+function renderResetEmail(code, lang) {
+  const isEn = lang === 'en';
+  const subject = isEn ? 'SecPro — Password reset code' : 'SecPro — Kód na obnovenie hesla';
+  const heading = isEn ? 'Password reset code' : 'Kód na obnovenie hesla';
+  const intro = isEn ? 'Use the code below to reset your password:' : 'Použite kód nižšie na obnovenie hesla:';
+  const expiry = isEn
+    ? 'This code is valid for 10 minutes. If you did not request a reset, you can safely ignore this email.'
+    : 'Kód platí 10 minút. Ak ste o reset nepožiadali, môžete tento email ignorovať.';
+  const tagline = isEn
+    ? 'SecPro · The workbench for modern real estate agents'
+    : 'SecPro · Centrum pre moderných maklérov';
+  const logoB64 = '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';
+  const html = `
+    <div style="font-family:'Helvetica Neue',Arial,sans-serif;max-width:480px;margin:0 auto;background:#fff;border-radius:14px;overflow:hidden;border:1px solid #E5E9F0">
+      <div style="background:linear-gradient(135deg,#0B2A3C 0%,#1A7A8A 100%);padding:24px;text-align:center;color:#fff">
+        <img src="data:image/png;base64,${logoB64}" alt="SecPro" width="48" height="48" style="display:block;margin:0 auto 12px;">
+        <div style="font-size:22px;font-weight:700;letter-spacing:1px">SECPRO</div>
+      </div>
+      <div style="padding:32px 24px;text-align:center">
+        <h2 style="color:#0B2A3C;margin:0 0 8px;font-size:20px;font-weight:600">${heading}</h2>
+        <p style="color:#666;margin:0 0 24px;font-size:14px">${intro}</p>
+        <div style="background:#f0f2f5;border-radius:12px;padding:24px;text-align:center;margin-bottom:24px">
+          <span style="font-size:36px;font-weight:700;letter-spacing:10px;color:#0B2A3C;font-family:'SF Mono',Menlo,monospace">${code}</span>
+        </div>
+        <p style="color:#999;font-size:13px;margin:0">${expiry}</p>
+      </div>
+      <div style="background:#FAFBFC;padding:16px;text-align:center;color:#999;font-size:12px;border-top:1px solid #E5E9F0">
+        ${tagline}
+      </div>
+    </div>
+  `;
+  return { subject, html };
+}
+
 // ── SEND RESET CODE (email via Resend) ──
 async function handleSendResetCode(req, res) {
   const { email } = req.body;
-  if (!email) return res.status(400).json({ error: 'Email is required' });
+  if (!email) return res.status(400).json({ error: 'Email is required', errorKey: 'auth.error.email_required' , errorKey: 'auth.error.email_required' });
 
   // Allowlist guard — pretend success to avoid leaking who's allowed
   if (!isAllowedEmail(email)) {
@@ -325,6 +360,18 @@ async function handleSendResetCode(req, res) {
   const signature = crypto.createHmac('sha256', RESET_SECRET).update(payloadB64).digest('hex');
   const token = payloadB64 + '.' + signature;
 
+  // Detect the user's language preference for email rendering
+  let userLang = 'sk';
+  try {
+    const { KV_URL: KU, KV_TOKEN: KT, ok } = getKV();
+    if (ok) {
+      const user = await kvGet(KU, KT, `user:${email.trim().toLowerCase()}`);
+      if (user && user.language) userLang = user.language;
+    }
+  } catch {}
+
+  const { subject, html } = renderResetEmail(code, userLang);
+
   try {
     const emailRes = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -335,27 +382,8 @@ async function handleSendResetCode(req, res) {
       body: JSON.stringify({
         from: 'SecPro <onboarding@resend.dev>',
         to: [email],
-        subject: 'SecPro — Password reset code',
-        html: `
-          <div style="font-family:'Helvetica Neue',Arial,sans-serif;max-width:480px;margin:0 auto;background:#fff;border-radius:14px;overflow:hidden;border:1px solid #E5E9F0">
-            <div style="background:linear-gradient(135deg,#0B2A3C 0%,#1A7A8A 100%);padding:24px;text-align:center;color:#fff">
-              <img src="data:image/png;base64,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"
-                   alt="SecPro" width="48" height="48" style="display:block;margin:0 auto 12px;">
-              <div style="font-size:22px;font-weight:700;letter-spacing:1px">SECPRO</div>
-            </div>
-            <div style="padding:32px 24px;text-align:center">
-              <h2 style="color:#0B2A3C;margin:0 0 8px;font-size:20px;font-weight:600">Password reset code</h2>
-              <p style="color:#666;margin:0 0 24px;font-size:14px">Use the code below to reset your password:</p>
-              <div style="background:#f0f2f5;border-radius:12px;padding:24px;text-align:center;margin-bottom:24px">
-                <span style="font-size:36px;font-weight:700;letter-spacing:10px;color:#0B2A3C;font-family:'SF Mono',Menlo,monospace">${code}</span>
-              </div>
-              <p style="color:#999;font-size:13px;margin:0">This code is valid for 10 minutes. If you did not request a reset, you can safely ignore this email.</p>
-            </div>
-            <div style="background:#FAFBFC;padding:16px;text-align:center;color:#999;font-size:12px;border-top:1px solid #E5E9F0">
-              SecPro · The workbench for modern real estate agents
-            </div>
-          </div>
-        `,
+        subject,
+        html,
       }),
     });
 
@@ -400,12 +428,12 @@ async function handleVerifyResetCode(req, res, KV_URL, KV_TOKEN) {
   }
 
   if (Date.now() > payload.exp) {
-    return res.status(400).json({ error: 'Kód vypršal. Požiadajte o nový.' });
+    return res.status(400).json({ error: 'Kód vypršal. Požiadajte o nový.', errorKey: 'auth.error.code_expired' });
   }
 
   const codeHash = crypto.createHash('sha256').update(code.trim()).digest('hex');
   if (codeHash !== payload.codeHash) {
-    return res.status(400).json({ error: 'Nesprávny kód.' });
+    return res.status(400).json({ error: 'Nesprávny kód.', errorKey: 'auth.error.code_wrong' });
   }
 
   if (newPassword && KV_URL && KV_TOKEN) {

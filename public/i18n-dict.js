@@ -1902,6 +1902,17 @@ window.__I18N_DICT = {
     'calm.cisty_prijem_domacnosti': 'Čistý príjem domácnosti',
     'calm.akceptovany_prijem': 'Akceptovaný príjem',
 
+    // ── Pass 5: backend errorKey ──
+    'auth.error.server_misconfigured': 'Server nie je nakonfigurovaný (KV)',
+    'auth.error.unknown_action': 'Neznáma akcia: ',
+    'auth.error.server_register': 'Chyba servera pri registrácii.',
+    'auth.error.server_login': 'Chyba servera pri prihlásení.',
+    'auth.error.token_missing': 'Token chýba.',
+    'auth.error.session_invalid': 'Sedenie vypršalo alebo neexistuje.',
+    'auth.error.account_not_found': 'Účet nenájdený.',
+    'auth.error.server_session': 'Chyba servera pri overení sedenia.',
+    'auth.error.email_required': 'Email is required',
+
   },
 
   en: {
@@ -3796,6 +3807,17 @@ window.__I18N_DICT = {
     'calm.cisty_prijem': 'Net income',
     'calm.cisty_prijem_domacnosti': 'Net household income',
     'calm.akceptovany_prijem': 'Accepted income',
+
+    // ── Pass 5: backend errorKey ──
+    'auth.error.server_misconfigured': 'Server not configured (KV).',
+    'auth.error.unknown_action': 'Unknown action.',
+    'auth.error.server_register': 'Server error during registration.',
+    'auth.error.server_login': 'Server error during sign-in.',
+    'auth.error.token_missing': 'Token missing.',
+    'auth.error.session_invalid': 'Session expired or does not exist.',
+    'auth.error.account_not_found': 'Account not found.',
+    'auth.error.server_session': 'Server error during session check.',
+    'auth.error.email_required': 'Email is required.',
 
   },
 };

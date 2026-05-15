@@ -140,6 +140,16 @@ const fmt = (n) => new Intl.NumberFormat('sk-SK', { minimumFractionDigits: 2, ma
 const fmtInt = (n) => new Intl.NumberFormat('sk-SK', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
 const fmtDec = (n, d) => n.toFixed(d).replace('.', ',');
 
+// Backend error -> display string. Prefers `errorKey` (i18n) over raw `error`.
+function errMsg(data, fallback) {
+  if (!data) return fallback || (window.t ? t('toast.error_generic') : 'Niečo sa pokazilo.');
+  if (data.errorKey && window.t) {
+    const translated = t(data.errorKey);
+    if (translated !== data.errorKey) return translated;
+  }
+  return data.error || fallback || (window.t ? t('toast.error_generic') : 'Niečo sa pokazilo.');
+}
+
 let charts = {};
 function getOrCreateChart(canvasId, config) {
   if (charts[canvasId]) charts[canvasId].destroy();
@@ -10803,7 +10813,7 @@ async function handleRegister(e) {
     const data = await res.json();
 
     if (!res.ok) {
-      showLoginError(data.error || 'Registrácia zlyhala.');
+      showLoginError(errMsg(data, 'Registrácia zlyhala.'));
       return;
     }
 
@@ -10839,7 +10849,7 @@ async function handleLogin(e) {
     const data = await res.json();
 
     if (!res.ok) {
-      showLoginError(data.error || 'Prihlásenie zlyhalo.');
+      showLoginError(errMsg(data, 'Prihlásenie zlyhalo.'));
       return;
     }
 
@@ -10880,7 +10890,7 @@ async function handleForgotSendCode(e) {
     const data = await res.json();
 
     if (!res.ok) {
-      showLoginError((data.error || 'Nepodarilo sa odoslať kód.') + (data.detail ? ' (' + data.detail + ')' : ''));
+      showLoginError(errMsg(data, 'Nepodarilo sa odoslať kód.') + (data.detail ? ' (' + data.detail + ')' : ''));
       btn.textContent = 'Odoslať kód';
       btn.disabled = false;
       return;
@@ -10916,7 +10926,7 @@ async function handleForgotVerify(e) {
     const data = await res.json();
 
     if (!res.ok) {
-      showLoginError(data.error || 'Overenie zlyhalo.');
+      showLoginError(errMsg(data, 'Overenie zlyhalo.'));
       return;
     }
 
@@ -13064,7 +13074,7 @@ async function orsrSearch(type) {
     loadingEl.style.display = 'none';
 
     if (!res.ok) {
-      orsrShowError(data.error || 'Chyba pri vyhľadávaní');
+      orsrShowError(errMsg(data, 'Chyba pri vyhľadávaní'));
       return;
     }
 
@@ -13135,7 +13145,7 @@ async function orsrLoadDetail(id, sid, name) {
     loadingEl.style.display = 'none';
 
     if (!res.ok) {
-      orsrShowError(data.error || 'Chyba pri načítaní detailu');
+      orsrShowError(errMsg(data, 'Chyba pri načítaní detailu'));
       return;
     }
 
@@ -15300,7 +15310,7 @@ async function submitRemoteSignRequest() {
         expiresAt: data.expiresAt,
       });
     } else {
-      showToast(data.error || 'Chyba pri vytváraní', 'error');
+      showToast(errMsg(data, 'Chyba pri vytváraní'), 'error');
       btn.disabled = false;
       btn.textContent = 'Pokračovať na email →';
     }
@@ -16104,7 +16114,7 @@ async function _emailComposerEnsureLink() {
     });
     const data = await r.json();
     if (!data.ok) {
-      showToast(data.error || 'Chyba pri vytváraní odkazu', 'error');
+      showToast(errMsg(data, 'Chyba pri vytváraní odkazu'), 'error');
       return null;
     }
     _emailComposerCtx.signUrl = data.signUrl;
