@@ -1,7 +1,7 @@
 // === JS BUILD VERSION INDICATOR ===
 // If you don't see this badge in the top-left after hard refresh, the
 // browser/CDN is still serving stale app.js.
-const SECPRO_JS_BUILD = 'i18n-p5a-2026-05-15';
+const SECPRO_JS_BUILD = 'i18n-p5b-2026-05-15';
 console.log('%c[SecPro] JS build:', 'background:#16A34A;color:#fff;padding:2px 6px;border-radius:3px;', SECPRO_JS_BUILD);
 
 // Initialize Lucide icons
@@ -6505,7 +6505,7 @@ function generateViewingDocument(propId) {
   if (!p) return;
   const viewings = p.viewings || [];
   const interested = p.interested || [];
-  if (viewings.length === 0) { secAlert('Táto nehnuteľnosť nemá žiadne prehliadky.'); return; }
+  if (viewings.length === 0) { secAlert((window.t ? t('pp.no_viewings') : 'Táto nehnuteľnosť nemá žiadne prehliadky.')); return; }
 
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF('p', 'mm', 'a4');
@@ -6626,41 +6626,41 @@ function _formatActivityLine(ev) {
 
   // Status change (from statusHistory shape)
   if (ev.from !== undefined && ev.to !== undefined) {
-    const fromLbl = (PROP_STATUS_MAP[ev.from] || {}).label || ev.from || 'Nový';
-    const toLbl = (PROP_STATUS_MAP[ev.to] || {}).label || ev.to;
+    const fromLbl = ev.from ? propStatusLabel(ev.from) : (ev.from || '');
+    const toLbl = ev.to ? propStatusLabel(ev.to) : (ev.to || '');
     const toMeta = PROP_STATUS_MAP[ev.to] || {};
     return {
       icon: '🔁',
       color: toMeta.color || '#0B2A3C',
-      label: 'Status: ' + fromLbl + ' → ' + toLbl,
+      label: (window.t ? t('pa.status_prefix') : 'Status') + ': ' + fromLbl + ' → ' + toLbl,
       dateStr, timeStr,
       ts: dt.getTime(),
     };
   }
   // Explicit activity event
   switch (ev.type) {
-    case 'created': return { icon: '✨', color: '#16A34A', label: 'Nehnuteľnosť vytvorená', dateStr, timeStr, ts: dt.getTime() };
+    case 'created': return { icon: '✨', color: '#16A34A', label: (window.t ? t('pa.created') : 'Nehnuteľnosť vytvorená'), dateStr, timeStr, ts: dt.getTime() };
     case 'price_changed': return {
       icon: '💶', color: '#1A7A8A',
-      label: 'Cena: ' + fmt(ev.meta?.from) + ' → ' + fmt(ev.meta?.to),
+      label: (window.t ? t('pa.price') : 'Cena') + ': ' + fmt(ev.meta?.from) + ' → ' + fmt(ev.meta?.to),
       dateStr, timeStr, ts: dt.getTime(),
     };
     case 'address_changed': return {
       icon: '📍', color: '#7C3AED',
-      label: 'Adresa zmenená' + (ev.meta?.to ? ': ' + ev.meta.to : ''),
+      label: (window.t ? t('pa.address') : 'Adresa zmenená') + (ev.meta?.to ? ': ' + ev.meta.to : ''),
       dateStr, timeStr, ts: dt.getTime(),
     };
     case 'photo_added': return {
       icon: '📷', color: '#D97706',
-      label: 'Pridaných ' + (ev.meta?.count || 1) + ' fotiek',
+      label: (window.t ? t('pa.photos') : 'Pridaných {n} fotiek').replace('{n}', ev.meta?.count || 1),
       dateStr, timeStr, ts: dt.getTime(),
     };
-    case 'note_changed': return { icon: '📝', color: '#0B2A3C', label: 'Poznámky upravené', dateStr, timeStr, ts: dt.getTime() };
-    case 'leones_published': return { icon: '📤', color: '#0891B2', label: 'Publikované na LEONES', dateStr, timeStr, ts: dt.getTime() };
-    case 'leones_unpublished': return { icon: '📥', color: '#64748B', label: 'Stiahnuté z LEONES', dateStr, timeStr, ts: dt.getTime() };
-    case 'viewing_added': return { icon: '👁️', color: '#9333EA', label: 'Pridaná obhliadka', dateStr, timeStr, ts: dt.getTime() };
-    case 'interested_added': return { icon: '👤', color: '#2563EB', label: 'Pridaný záujemca' + (ev.meta?.name ? ': ' + ev.meta.name : ''), dateStr, timeStr, ts: dt.getTime() };
-    default: return { icon: '•', color: '#64748B', label: ev.type || 'Udalosť', dateStr, timeStr, ts: dt.getTime() };
+    case 'note_changed': return { icon: '📝', color: '#0B2A3C', label: (window.t ? t('pa.note') : 'Poznámky upravené'), dateStr, timeStr, ts: dt.getTime() };
+    case 'leones_published': return { icon: '📤', color: '#0891B2', label: (window.t ? t('pa.leones_pub') : 'Publikované na LEONES'), dateStr, timeStr, ts: dt.getTime() };
+    case 'leones_unpublished': return { icon: '📥', color: '#64748B', label: (window.t ? t('pa.leones_unpub') : 'Stiahnuté z LEONES'), dateStr, timeStr, ts: dt.getTime() };
+    case 'viewing_added': return { icon: '👁️', color: '#9333EA', label: (window.t ? t('pa.viewing') : 'Pridaná obhliadka'), dateStr, timeStr, ts: dt.getTime() };
+    case 'interested_added': return { icon: '👤', color: '#2563EB', label: (window.t ? t('pa.interested') : 'Pridaný záujemca') + (ev.meta?.name ? ': ' + ev.meta.name : ''), dateStr, timeStr, ts: dt.getTime() };
+    default: return { icon: '•', color: '#64748B', label: ev.type || (window.t ? t('pa.event') : 'Udalosť'), dateStr, timeStr, ts: dt.getTime() };
   }
 }
 
@@ -6807,14 +6807,14 @@ function _renderReminderPanelBody() {
   if (!body) return;
   const active = _collectActiveReminders();
   if (active.length === 0) {
-    body.innerHTML = '<div class="reminder-panel-empty">🎉 Žiadne aktívne pripomienky</div>';
+    body.innerHTML = '<div class="reminder-panel-empty">' + (window.t ? t('rm.panel_empty') : '🎉 Žiadne aktívne pripomienky') + '</div>';
     return;
   }
   const groups = {
-    overdue: { label: 'Po termíne', cls: 'is-overdue', items: [] },
-    today:   { label: 'Dnes',       cls: 'is-today',   items: [] },
-    week:    { label: 'Tento týždeň', cls: 'is-week',  items: [] },
-    later:   { label: 'Neskôr',     cls: 'is-later',   items: [] },
+    overdue: { label: (window.t ? t('rm.grp.overdue') : 'Po termíne'), cls: 'is-overdue', items: [] },
+    today:   { label: (window.t ? t('rm.grp.today') : 'Dnes'), cls: 'is-today',   items: [] },
+    week:    { label: (window.t ? t('rm.grp.week') : 'Tento týždeň'), cls: 'is-week',  items: [] },
+    later:   { label: (window.t ? t('rm.grp.later') : 'Neskôr'), cls: 'is-later',   items: [] },
   };
   for (const a of active) groups[a.bucket].items.push(a);
 
@@ -6836,14 +6836,14 @@ function _renderReminderPanelBody() {
       '<div class="reminder-group-title">' + g.label + ' · ' + g.items.length + '</div>';
     for (const { reminder, property } of g.items) {
       html += '<div class="reminder-item">' +
-        '<button class="reminder-item-check" title="Hotovo" onclick="completeReminder(\'' + property.id + '\',\'' + reminder.id + '\')">' +
+        '<button class="reminder-item-check" title="' + (window.t ? t('rm.done_tip') : 'Hotovo') + '" onclick="completeReminder(\'' + property.id + '\',\'' + reminder.id + '\')">' +
           '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' +
         '</button>' +
         '<div class="reminder-item-body" onclick="closeReminderPanel();openPropDetail(\'' + property.id + '\')">' +
-          '<div class="reminder-item-text">' + esc(reminder.text || '(bez textu)') + '</div>' +
-          '<div class="reminder-item-meta">' + esc(property.title || property.address || 'Nehnuteľnosť') + ' · ' + fmtDue(reminder.dueAt) + '</div>' +
+          '<div class="reminder-item-text">' + esc(reminder.text || (window.t ? t('rm.no_text') : '(bez textu)')) + '</div>' +
+          '<div class="reminder-item-meta">' + esc(property.title || property.address || (window.t ? t('rm.untitled_prop') : 'Nehnuteľnosť')) + ' · ' + fmtDue(reminder.dueAt) + '</div>' +
         '</div>' +
-        '<button class="reminder-item-delete" title="Vymazať" onclick="deleteReminder(\'' + property.id + '\',\'' + reminder.id + '\')">×</button>' +
+        '<button class="reminder-item-delete" title="' + (window.t ? t('rm.del_tip') : 'Vymazať') + '" onclick="deleteReminder(\'' + property.id + '\',\'' + reminder.id + '\')">×</button>' +
       '</div>';
     }
     html += '</div>';
@@ -6893,7 +6893,7 @@ function _renderReminderListHtml(p) {
     return new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime();
   });
   if (reminders.length === 0) {
-    return '<div class="reminder-list-empty">Žiadne pripomienky pre túto nehnuteľnosť</div>';
+    return '<div class="reminder-list-empty">' + (window.t ? t('rm.list_empty') : 'Žiadne pripomienky pre túto nehnuteľnosť') + '</div>';
   }
   const now = Date.now();
   return '<div class="reminder-list">' + reminders.map(r => {
@@ -6907,10 +6907,10 @@ function _renderReminderListHtml(p) {
           : '') +
       '</button>' +
       '<div class="reminder-list-body">' +
-        '<div class="reminder-list-text">' + esc(r.text || '(bez textu)') + '</div>' +
+        '<div class="reminder-list-text">' + esc(r.text || (window.t ? t('rm.no_text') : '(bez textu)')) + '</div>' +
         '<div class="reminder-list-due">' + (overdue ? '⚠ ' : '🕓 ') + dueStr + '</div>' +
       '</div>' +
-      '<button class="reminder-list-delete" onclick="deleteReminder(\'' + p.id + '\',\'' + r.id + '\')" title="Vymazať">×</button>' +
+      '<button class="reminder-list-delete" onclick="deleteReminder(\'' + p.id + '\',\'' + r.id + '\')" title="' + (window.t ? t('rm.del_tip') : 'Vymazať') + '">×</button>' +
     '</div>';
   }).join('') + '</div>';
 }
@@ -6922,14 +6922,14 @@ function submitReminderFromForm(propertyId) {
   if (!textInput || !dateInput) return;
   const text = (textInput.value || '').trim();
   const dueAt = dateInput.value;  // ISO local datetime from <input type="datetime-local">
-  if (!text) { showToast('Vyplňte text pripomienky', 'warning'); return; }
-  if (!dueAt) { showToast('Vyplňte dátum a čas', 'warning'); return; }
+  if (!text) { showToast((window.t ? t('rm.fill_text') : 'Vyplňte text pripomienky'), 'warning'); return; }
+  if (!dueAt) { showToast(window.t ? t('rm.fill_date') : 'Vyplňte dátum a čas', 'warning'); return; }
   // Convert "2026-05-12T14:00" (local) to a real ISO timestamp
   const isoDue = new Date(dueAt).toISOString();
   addReminder(propertyId, text, isoDue);
   textInput.value = '';
   dateInput.value = '';
-  showToast('Pripomienka pridaná', 'success');
+  showToast((window.t ? t('rm.added') : 'Pripomienka pridaná'), 'success');
 }
 
 // Start the auto-check loop. Every 60s scans for newly-due reminders
@@ -6950,7 +6950,7 @@ function _startReminderAutoCheck() {
         const due = new Date(r.dueAt).getTime();
         if (isNaN(due) || due > now) continue;
         // Just became due (or overdue while page was open)
-        showToast('⏰ ' + (p.title || 'Nehnuteľnosť') + ': ' + (r.text || 'Pripomienka'), 'warning');
+        showToast('⏰ ' + (p.title || (window.t ? t('rm.untitled_prop') : 'Nehnuteľnosť')) + ': ' + (r.text || (window.t ? t('rm.fallback_rem') : 'Pripomienka')), 'warning');
         r.notified = true;
         dirty = true;
         firedCount++;
@@ -6999,7 +6999,7 @@ async function saveProperty() {
   const phone = document.getElementById('prop-phone').value.trim();
   const priceVal = document.getElementById('prop-price').value;
 
-  if (!title) { secAlert('Vyplňte názov nehnuteľnosti'); return; }
+  if (!title) { secAlert((window.t ? t('pp.fill_name') : 'Vyplňte názov nehnuteľnosti')); return; }
   if (!city) { secAlert('Vyplňte mesto / obec'); return; }
   if (!phone) { secAlert('Vyplňte telefónne číslo'); return; }
   if (!priceVal) { secAlert('Vyplňte cenu'); return; }
@@ -7141,7 +7141,7 @@ async function saveProperty() {
 }
 
 async function deleteProperty(id) {
-  if (!await secConfirm({ message: 'Naozaj chcete odstrániť túto nehnuteľnosť?', type: 'danger', ok: 'Odstrániť' })) return;
+  if (!await secConfirm({ message: (window.t ? t('pp.delete_confirm') : 'Naozaj chcete odstrániť túto nehnuteľnosť?'), type: 'danger', ok: (window.t ? t('pp.delete_ok') : 'Odstrániť') })) return;
   const props = getProperties().filter(x => x.id !== id);
   saveProperties(props);
   renderProperties();
@@ -7353,7 +7353,7 @@ function startInlinePriceEdit(span, propId) {
       // Invalid → revert + toast
       span.textContent = originalText;
       span.classList.remove('is-editing');
-      showToast('Neplatná cena', 'error');
+      showToast((window.t ? t('pp.invalid_price') : 'Neplatná cena'), 'error');
       return;
     }
     // No change → just revert visual without saving
@@ -7370,7 +7370,7 @@ function startInlinePriceEdit(span, propId) {
     saveProperties(props);
     // Re-render so price label, sorting, map markers all update consistently
     renderProperties();
-    if (typeof showToast === 'function') showToast('Cena uložená', 'success');
+    if (typeof showToast === 'function') showToast((window.t ? t('pp.price_saved') : 'Cena uložená'), 'success');
   };
 
   const cancel = () => {
@@ -7660,7 +7660,7 @@ function bulkChangeStatus(btn) {
         changed++;
       }
       clearPropSelection();
-      showToast(changed > 0 ? ('Status zmenený pri ' + changed + ' nehnuteľnostiach') : 'Žiadne zmeny', 'success');
+      showToast(changed > 0 ? (window.t ? t('pb.status_changed') : 'Status zmenený pri {n} nehnuteľnostiach').replace('{n}', changed) : (window.t ? t('pb.no_changes') : 'Žiadne zmeny'), 'success');
     });
   });
 
@@ -7673,7 +7673,7 @@ async function bulkLeonisPublish() {
   if (selected.length === 0) return;
   const toPublish = selected.filter(p => !p.leonisPublished && !INACTIVE_STATUSES.includes(p.status));
   if (toPublish.length === 0) {
-    showToast('Vybrané nehnuteľnosti sú už publikované alebo neaktívne', 'warning');
+    showToast((window.t ? t('pb.already_pub') : 'Vybrané nehnuteľnosti sú už publikované alebo neaktívne'), 'warning');
     return;
   }
   if (!await secConfirm({
@@ -7686,7 +7686,7 @@ async function bulkLeonisPublish() {
     try { await publishToLeonis(p.id); } catch (e) { /* keep going */ }
   }
   clearPropSelection();
-  showToast('Publikovaných ' + toPublish.length + ' nehnuteľností', 'success');
+  showToast((window.t ? t('pb.published_n') : 'Publikovaných {n} nehnuteľností').replace('{n}', toPublish.length), 'success');
 }
 
 // ──────────── BULK: LEONES unpublish ────────────
@@ -7708,7 +7708,7 @@ async function bulkLeonisUnpublish() {
     try { await unpublishFromLeonis(p.id); } catch (e) { /* keep going */ }
   }
   clearPropSelection();
-  showToast('Stiahnutých ' + toUnpublish.length + ' nehnuteľností', 'success');
+  showToast((window.t ? t('pb.unpublished_n') : 'Stiahnutých {n} nehnuteľností').replace('{n}', toUnpublish.length), 'success');
 }
 
 // ──────────── BULK: CSV export ────────────
@@ -7763,7 +7763,7 @@ function bulkExportCsv() {
   a.click();
   document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 1000);
-  showToast('Exportovaných ' + selected.length + ' nehnuteľností do CSV', 'success');
+  showToast((window.t ? t('pb.exported_n') : 'Exportovaných {n} nehnuteľností do CSV').replace('{n}', selected.length), 'success');
 }
 
 // ──────────── BULK: Delete ────────────
@@ -7788,7 +7788,7 @@ async function bulkDelete() {
   saveProperties(remaining);
   clearPropSelection();
   renderProperties();
-  showToast('Vymazaných ' + selected.length + ' nehnuteľností', 'success');
+  showToast((window.t ? t('pb.deleted_n') : 'Vymazaných {n} nehnuteľností').replace('{n}', selected.length), 'success');
 }
 
 function filterProperties() {
@@ -8003,7 +8003,7 @@ async function _doRefreshPOILayer() {
   // city level so the feature does something useful immediately.
   const zoom = _propertiesMap.getZoom();
   if (zoom < 11) {
-    showToast('Priblížil som mapu — POI sa zobrazujú od mestského zoomu.', 'info');
+    showToast((window.t ? t('poi.zoom_hint') : 'Priblížil som mapu — POI sa zobrazujú od mestského zoomu.'), 'info');
     _propertiesMap.setZoom(13, { animate: true });
     // moveend will trigger another refresh once the zoom settles
     return;
@@ -8056,7 +8056,7 @@ async function _doRefreshPOILayer() {
     results = await Promise.all(fetches);
   } catch (e) {
     console.error('[SecPro POI] fetch error:', e);
-    showToast('Chyba pri načítavaní POI', 'error');
+    showToast((window.t ? t('poi.load_err') : 'Chyba pri načítavaní POI'), 'error');
     _hidePOIBusy();
     return;
   }
@@ -8078,7 +8078,7 @@ async function _doRefreshPOILayer() {
   _hidePOIBusy();
 
   if (totalCount === 0) {
-    showToast('V tomto výseku sa nenašli žiadne POI — skúste posunúť mapu alebo zväčšiť výsek', 'warning');
+    showToast((window.t ? t('poi.none_found') : 'V tomto výseku sa nenašli žiadne POI — skúste posunúť mapu alebo zväčšiť výsek'), 'warning');
   } else {
     console.log('[SecPro POI] plotted', totalCount, 'POIs across', activeCats.length, 'categories at zoom', zoom);
   }
@@ -8335,7 +8335,7 @@ function initPropertiesMap() {
       if (refreshBtn) {
         refreshBtn.addEventListener('click', () => {
           _propMapPOICache = {};   // wipe cache so a stale empty doesn't haunt us
-          showToast('POI cache vyčistená — fetchujem znova...', 'info');
+          showToast((window.t ? t('poi.cache_cleared') : 'POI cache vyčistená — fetchujem znova...'), 'info');
           _doRefreshPOILayer();
         });
       }
@@ -8862,8 +8862,8 @@ function openPropDetail(id) {
   detailPhotos = p.photos || [];
   detailPhotoIdx = 0;
 
-  const typeName = PROP_TYPE_MAP[p.type] || p.type;
-  const condName = PROP_CONDITION_MAP[p.condition] || '';
+  const typeName = propTypeLabel(p.type);
+  const condName = p.condition ? propConditionLabel(p.condition) : '';
   const priceStr = p.price ? p.price.toLocaleString('sk-SK') + ' \u20AC' : '\u2014';
   const st = PROP_STATUS_MAP[p.status] || PROP_STATUS_MAP['novy'];
   const dateStr = p.createdAt ? new Date(p.createdAt).toLocaleDateString('sk-SK') : '';
@@ -8887,12 +8887,12 @@ function openPropDetail(id) {
       </div>`;
 
   const fields = [];
-  if (typeName) fields.push({ label: 'Typ', value: typeName });
-  if (p.size) fields.push({ label: 'V\u00fdmera', value: p.size + ' m\u00B2' });
-  if (p.rooms) fields.push({ label: 'Izby', value: p.rooms });
-  if (p.floor) fields.push({ label: 'Poschodie', value: p.floor });
-  if (p.year) fields.push({ label: 'Rok v\u00fdstavby', value: p.year });
-  if (condName) fields.push({ label: 'Stav', value: condName });
+  if (typeName) fields.push({ label: (window.t ? t('pd.field.type') : 'Typ'), value: typeName });
+  if (p.size) fields.push({ label: (window.t ? t('pd.field.area') : 'V\u00fdmera'), value: p.size + ' m\u00B2' });
+  if (p.rooms) fields.push({ label: (window.t ? t('pd.field.rooms') : 'Izby'), value: p.rooms });
+  if (p.floor) fields.push({ label: (window.t ? t('pd.field.floor') : 'Poschodie'), value: p.floor });
+  if (p.year) fields.push({ label: (window.t ? t('pd.field.year') : 'Rok v\u00fdstavby'), value: p.year });
+  if (condName) fields.push({ label: (window.t ? t('pd.field.condition') : 'Stav'), value: condName });
 
   const modal = document.getElementById('prop-detail-modal');
   modal.innerHTML = `
@@ -8901,7 +8901,7 @@ function openPropDetail(id) {
       <div class="prop-detail-header">
         <div>
           <h2 class="prop-detail-title">${p.title}</h2>
-          <span class="prop-card-status" style="--st-color:${st.color};--st-bg:${st.bg};margin-top:6px;display:inline-block;">${st.label}</span>
+          <span class="prop-card-status" style="--st-color:${st.color};--st-bg:${st.bg};margin-top:6px;display:inline-block;">${esc(propStatusLabel(p.status))}</span>
         </div>
         <div class="prop-detail-price">${priceStr}</div>
       </div>
@@ -8913,7 +8913,7 @@ function openPropDetail(id) {
 
       ${fields.length ? `
         <div class="prop-detail-section">
-          <div class="prop-detail-section-title">Parametre</div>
+          <div class="prop-detail-section-title">${window.t ? t('pd.sec.params') : 'Parametre'}</div>
           <div class="prop-detail-grid">
             ${fields.map(f => `<div class="prop-detail-field">
               <div class="prop-detail-field-label">${f.label}</div>
@@ -8925,14 +8925,14 @@ function openPropDetail(id) {
 
       ${p.description ? `
         <div class="prop-detail-section">
-          <div class="prop-detail-section-title">Popis</div>
+          <div class="prop-detail-section-title">${window.t ? t('pd.sec.desc') : 'Popis'}</div>
           <div class="prop-detail-desc">${p.description}</div>
         </div>
       ` : ''}
 
       ${(p.owner || p.phone || p.email) ? `
         <div class="prop-detail-section">
-          <div class="prop-detail-section-title">Kontakt na vlastn\u00edka</div>
+          <div class="prop-detail-section-title">${window.t ? t('pd.sec.owner') : 'Kontakt na vlastn\u00edka'}</div>
           <div class="prop-detail-owner-card">
             <div class="prop-detail-owner-avatar">${initials}</div>
             <div>
@@ -8948,44 +8948,44 @@ function openPropDetail(id) {
 
       <div class="prop-detail-section" id="prop-detail-clients-section">
         <div class="prop-detail-section-title" style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;">
-          <span>\ud83d\udc65 Klienti</span>
-          <button class="btn btn-primary" style="font-size:0.75rem;padding:5px 12px;" onclick="openClientPicker('${p.id}')">+ Priradi\u0165 klienta</button>
+          <span>${window.t ? t('pd.sec.clients') : '\ud83d\udc65 Klienti'}</span>
+          <button class="btn btn-primary" style="font-size:0.75rem;padding:5px 12px;" onclick="openClientPicker('${p.id}')">${window.t ? t('pd.assign_client') : '+ Priradi\u0165 klienta'}</button>
         </div>
         <div id="prop-detail-clients-list" style="margin-top:0.5rem;">${_renderLinkedClientsHtml(p.id)}</div>
       </div>
 
       ${p.notes ? `
         <div class="prop-detail-section">
-          <div class="prop-detail-section-title">Intern\u00e9 pozn\u00e1mky</div>
+          <div class="prop-detail-section-title">${window.t ? t('pd.sec.notes') : 'Intern\u00e9 pozn\u00e1mky'}</div>
           <div class="prop-card-notes" style="margin:0;">${p.notes}</div>
         </div>
       ` : ''}
 
       ${p.url ? `
         <div class="prop-detail-section">
-          <div class="prop-detail-section-title">Odkaz na inzer\u00e1t</div>
+          <div class="prop-detail-section-title">${window.t ? t('pd.sec.listing') : 'Odkaz na inzer\u00e1t'}</div>
           <a href="${p.url}" target="_blank" style="color:#1A7A8A;word-break:break-all;">${p.url}</a>
         </div>
       ` : ''}
 
       <div class="prop-detail-section">
-        <div class="prop-detail-section-title">\u23f0 Pripomienky</div>
+        <div class="prop-detail-section-title">${window.t ? t('pd.sec.reminders') : '\u23f0 Pripomienky'}</div>
         <div id="prop-detail-reminders-list">${_renderReminderListHtml(p)}</div>
         <div class="reminder-form">
-          <input type="text" id="reminder-form-text" placeholder="Napr. Zavola\u0165 majite\u013eovi..." maxlength="120" />
+          <input type="text" id="reminder-form-text" placeholder="${window.t ? t('pd.reminder_ph') : 'Napr. Zavola\u0165 majite\u013eovi...'}" maxlength="120" />
           <input type="datetime-local" id="reminder-form-date" />
-          <button class="btn btn-primary" onclick="submitReminderFromForm('${p.id}')">+ Prida\u0165</button>
+          <button class="btn btn-primary" onclick="submitReminderFromForm('${p.id}')">${window.t ? t('pd.add') : '+ Prida\u0165'}</button>
         </div>
       </div>
 
       <div class="prop-detail-section">
-        <div class="prop-detail-section-title">\u23f1 Hist\u00f3ria aktivity</div>
+        <div class="prop-detail-section-title">${window.t ? t('pd.sec.activity') : '\u23f1 Hist\u00f3ria aktivity'}</div>
         ${_renderActivityTimeline(p)}
       </div>
 
       <div class="prop-detail-actions">
-        <button class="btn btn-primary" onclick="closePropDetail();openPropertyForm('${p.id}')">Upravi\u0165</button>
-        <button class="btn" style="background:#f0f0f0;color:#333;" onclick="closePropDetail()">Zavrie\u0165</button>
+        <button class="btn btn-primary" onclick="closePropDetail();openPropertyForm('${p.id}')">${window.t ? t('pd.edit') : 'Upravi\u0165'}</button>
+        <button class="btn" style="background:#f0f0f0;color:#333;" onclick="closePropDetail()">${window.t ? t('pd.close') : 'Zavrie\u0165'}</button>
       </div>
     </div>
   `;
@@ -9023,7 +9023,7 @@ function renderDetailGallery() {
 
 function exportPropertiesCSV() {
   const props = getProperties();
-  if (!props.length) { secAlert('Žiadne nehnuteľnosti na export'); return; }
+  if (!props.length) { secAlert((window.t ? t('pp.no_props_export') : 'Žiadne nehnuteľnosti na export')); return; }
   const headers = ['Názov','Typ','Status','Adresa','Mesto','Okres','Cena','Výmera','Izby','Poschodie','Rok','Stav','Vlastník','Telefón','Email','URL','Popis','Poznámky','Dátum'];
   const rows = props.map(p => [
     `"${(p.title||'').replace(/"/g,'""')}"`,
