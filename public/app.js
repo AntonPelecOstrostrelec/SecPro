@@ -1,7 +1,7 @@
 // === JS BUILD VERSION INDICATOR ===
 // If you don't see this badge in the top-left after hard refresh, the
 // browser/CDN is still serving stale app.js.
-const SECPRO_JS_BUILD = 'i18n-calcA-2026-05-15';
+const SECPRO_JS_BUILD = 'i18n-calcB-2026-05-15';
 console.log('%c[SecPro] JS build:', 'background:#16A34A;color:#fff;padding:2px 6px;border-radius:3px;', SECPRO_JS_BUILD);
 
 // Initialize Lucide icons
@@ -1073,20 +1073,20 @@ function calcMHypoteka() {
 
   document.getElementById('mh-results').innerHTML = `
     <div class="card" style="margin-top:1.5rem;background:var(--primary-bg)">
-      <div class="card-title">Výsledky prepočtu</div>
+      <div class="card-title">${window.t ? t('calm.vysledky_prepoctu') : 'Výsledky prepočtu'}</div>
       <div class="results-grid">
-        <div class="result-box highlight"><div class="result-label">Anuitná splátka</div><div class="result-value">${fmt(annuity)} EUR</div></div>
-        <div class="result-box"><div class="result-label">1. klesajúca splátka</div><div class="result-value">${fmt(decliningFirst)} EUR</div></div>
-        <div class="result-box highlight"><div class="result-label">Max. úver (príjem)</div><div class="result-value">${fmtInt(maxLoanIncome)} EUR</div></div>
-        <div class="result-box"><div class="result-label">Max. úver (LtV)</div><div class="result-value">${fmtInt(maxLoanLtV)} EUR</div></div>
+        <div class="result-box highlight"><div class="result-label">${window.t ? t('calm.anuitna_splatka') : 'Anuitná splátka'}</div><div class="result-value">${fmt(annuity)} EUR</div></div>
+        <div class="result-box"><div class="result-label">${window.t ? t('calm.1_klesajuca_splatka') : '1. klesajúca splátka'}</div><div class="result-value">${fmt(decliningFirst)} EUR</div></div>
+        <div class="result-box highlight"><div class="result-label">${window.t ? t('calm.max_uver_prijem') : 'Max. úver (príjem)'}</div><div class="result-value">${fmtInt(maxLoanIncome)} EUR</div></div>
+        <div class="result-box"><div class="result-label">${window.t ? t('calm.max_uver_ltv') : 'Max. úver (LtV)'}</div><div class="result-value">${fmtInt(maxLoanLtV)} EUR</div></div>
       </div>
     </div>
 
     <div class="card" style="margin-top:1rem">
-      <div class="card-title">Rizikové ukazovatele</div>
+      <div class="card-title">${window.t ? t('calm.rizikove_ukazovatele') : 'Rizikové ukazovatele'}</div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th style="text-align:left">Ukazovateľ</th><th>Hodnota</th><th>Limit</th><th>Stav</th></tr></thead>
+          <thead><tr><th style="text-align:left">' + (window.t?t('calm.ukazovatel'):'Ukazovateľ') + '</th><th>Hodnota</th><th>Limit</th><th>Stav</th></tr></thead>
           <tbody>
             <tr><td style="text-align:left">DSTI (anuitné)</td><td>${fmtDec(dstiAnnuity * 100, 2)}%</td><td>60,00%</td><td>${statusBadge(dstiOk)}</td></tr>
             <tr><td style="text-align:left">DSTI (klesajúce)</td><td>${fmtDec(dstiDeclining * 100, 2)}%</td><td>60,00%</td><td>${statusBadge(dstiDecOk)}</td></tr>
@@ -1099,22 +1099,22 @@ function calcMHypoteka() {
     </div>
 
     <div class="card" style="margin-top:1rem">
-      <div class="card-title">Finančný profil</div>
+      <div class="card-title">${window.t ? t('calm.financny_profil') : 'Finančný profil'}</div>
       <div class="results-grid">
-        <div class="result-box"><div class="result-label">Čistý príjem domácnosti</div><div class="result-value">${fmt(netIncome)} EUR</div></div>
-        <div class="result-box"><div class="result-label">Náklady podľa zákona</div><div class="result-value">${fmt(expenses)} EUR</div></div>
+        <div class="result-box"><div class="result-label">${window.t ? t('calm.cisty_prijem_domacnosti') : 'Čistý príjem domácnosti'}</div><div class="result-value">${fmt(netIncome)} EUR</div></div>
+        <div class="result-box"><div class="result-label">${window.t ? t('calm.naklady_podla_zakona') : 'Náklady podľa zákona'}</div><div class="result-value">${fmt(expenses)} EUR</div></div>
         <div class="result-box"><div class="result-label">KUGD (model banky)</div><div class="result-value">${fmt(kugd)} EUR</div></div>
-        <div class="result-box"><div class="result-label">Disponibilný príjem</div><div class="result-value">${fmt(freeIncome)} EUR</div></div>
+        <div class="result-box"><div class="result-label">${window.t ? t('calm.disponibilny_prijem') : 'Disponibilný príjem'}</div><div class="result-value">${fmt(freeIncome)} EUR</div></div>
       </div>
     </div>
 
     <div class="card" style="margin-top:1rem">
-      <div class="card-title">Celkové náklady úveru</div>
+      <div class="card-title">${window.t ? t('calm.celkove_naklady_uveru') : 'Celkové náklady úveru'}</div>
       <div class="results-grid">
-        <div class="result-box"><div class="result-label">Celkovo zaplatené (anuitné)</div><div class="result-value">${fmtInt(totalPaidAnnuity)} EUR</div></div>
-        <div class="result-box"><div class="result-label">Celkovo zaplatené (klesajúce)</div><div class="result-value">${fmtInt(totalPaidDeclining)} EUR</div></div>
-        <div class="result-box"><div class="result-label">RPMN (anuitné)</div><div class="result-value">${fmtDec(rpmn * 100, 2)}%</div></div>
-        <div class="result-box"><div class="result-label">RPMN (klesajúce)</div><div class="result-value">${fmtDec(rpmnDeclining * 100, 2)}%</div></div>
+        <div class="result-box"><div class="result-label">${window.t ? t('calm.celkovo_zaplatene_anuitne') : 'Celkovo zaplatené (anuitné)'}</div><div class="result-value">${fmtInt(totalPaidAnnuity)} EUR</div></div>
+        <div class="result-box"><div class="result-label">${window.t ? t('calm.celkovo_zaplatene_klesajuce') : 'Celkovo zaplatené (klesajúce)'}</div><div class="result-value">${fmtInt(totalPaidDeclining)} EUR</div></div>
+        <div class="result-box"><div class="result-label">${window.t ? t('calm.rpmn_anuitne') : 'RPMN (anuitné)'}</div><div class="result-value">${fmtDec(rpmn * 100, 2)}%</div></div>
+        <div class="result-box"><div class="result-label">${window.t ? t('calm.rpmn_klesajuce') : 'RPMN (klesajúce)'}</div><div class="result-value">${fmtDec(rpmnDeclining * 100, 2)}%</div></div>
       </div>
     </div>
   `;
@@ -1125,7 +1125,7 @@ function calcMHypoteka() {
   if (schedule.length > 36) visibleMonths.push(null); // separator
   for (let i = Math.max(24, schedule.length - 12); i < schedule.length; i++) visibleMonths.push(schedule[i]);
 
-  let schedHtml = '<div class="card" style="margin-top:1rem"><div class="card-title">Splátkový kalendár (anuitné splátky)</div><div class="table-wrap"><table><thead><tr><th>Mesiac</th><th>Splátka istiny</th><th>Úrok</th><th>Mesačná splátka</th><th>Zostatok</th></tr></thead><tbody>';
+  let schedHtml = '<div class="card" style="margin-top:1rem"><div class="card-title">' + (window.t?t('calm.splatkovy_kalendar_anuitne_splatky'):'Splátkový kalendár (anuitné splátky)') + '</div><div class="table-wrap"><table><thead><tr><th>' + (window.t?t('cal.th.month'):'Mesiac') + '</th><th>' + (window.t?t('calm.splatka_istiny'):'Splátka istiny') + '</th><th>' + (window.t?t('calm.urok'):'Úrok') + '</th><th>' + (window.t?t('cal.mesacna_splatka'):'Mesačná splátka') + '</th><th>' + (window.t?t('cal.th.balance'):'Zostatok') + '</th></tr></thead><tbody>';
   visibleMonths.forEach(s => {
     if (!s) {
       schedHtml += '<tr><td colspan="5" style="text-align:center;color:var(--text-light);padding:0.5rem">...</td></tr>';
@@ -1158,7 +1158,7 @@ function calcMHypoteka() {
       labels: chartLabels,
       datasets: [
         { label: 'Istina', data: chartPrincipal, backgroundColor: 'rgba(26,86,219,0.5)', borderColor: '#1a56db', borderWidth: 1 },
-        { label: 'Úrok', data: chartInterest, backgroundColor: 'rgba(239,68,68,0.4)', borderColor: '#ef4444', borderWidth: 1 },
+        { label: (window.t ? t('calm.urok') : 'Úrok'), data: chartInterest, backgroundColor: 'rgba(239,68,68,0.4)', borderColor: '#ef4444', borderWidth: 1 },
         { label: 'Zostatok', data: chartBalance, type: 'line', borderColor: '#1e3a8a', backgroundColor: 'transparent', borderWidth: 2, yAxisID: 'y1', tension: 0.3, pointRadius: 1 }
       ]
     },
@@ -1166,7 +1166,7 @@ function calcMHypoteka() {
       responsive: true, maintainAspectRatio: false,
       plugins: { legend: { position: 'top' } },
       scales: {
-        y: { beginAtZero: true, position: 'left', title: { display: true, text: 'Ročná splátka (EUR)' } },
+        y: { beginAtZero: true, position: 'left', title: { display: true, text: (window.t ? t('calm.rocna_splatka_eur') : 'Ročná splátka (EUR)') } },
         y1: { beginAtZero: true, position: 'right', title: { display: true, text: 'Zostatok (EUR)' }, grid: { drawOnChartArea: false } }
       }
     }
@@ -1420,11 +1420,11 @@ function generateMHPdf() {
 // ==================== 16. HISTORIA ANALYZ ====================
 const HIST_KEY = 'finio-history';
 const HIST_TYPES = {
-  'mhypoteka': { label: 'Jedna domácnosť', color: '#1a56db', bg: '#eff6ff', icon: '&#9971;' },
-  'mhypoteka-multi': { label: 'Viac domácností', color: '#7c3aed', bg: '#f5f3ff', icon: '&#9971;' },
-  'mhypoteka-rovne': { label: 'Rovné splátky', color: '#059669', bg: '#ecfdf5', icon: '&#9776;' },
-  'mhypoteka-klesajuce': { label: 'Klesajúce splátky', color: '#d97706', bg: '#fffbeb', icon: '&#9776;' },
-  'metodika': { label: 'Porovnanie bánk', color: '#dc2626', bg: '#fef2f2', icon: '&#9878;' }
+  'mhypoteka': { label: (window.t ? t('calm.jedna_domacnost') : 'Jedna domácnosť'), color: '#1a56db', bg: '#eff6ff', icon: '&#9971;' },
+  'mhypoteka-multi': { label: (window.t ? t('calm.viac_domacnosti') : 'Viac domácností'), color: '#7c3aed', bg: '#f5f3ff', icon: '&#9971;' },
+  'mhypoteka-rovne': { label: (window.t ? t('calm.rovne_splatky') : 'Rovné splátky'), color: '#059669', bg: '#ecfdf5', icon: '&#9776;' },
+  'mhypoteka-klesajuce': { label: (window.t ? t('calm.klesajuce_splatky') : 'Klesajúce splátky'), color: '#d97706', bg: '#fffbeb', icon: '&#9776;' },
+  'metodika': { label: (window.t ? t('calm.porovnanie_bank') : 'Porovnanie bánk'), color: '#dc2626', bg: '#fef2f2', icon: '&#9878;' }
 };
 
 function histTypeLabel(key) {
@@ -1873,7 +1873,7 @@ function calcMetodika() {
   const data = MET_BANKS.map(b => Math.round(sums[b] * 100) / 100);
   getOrCreateChart('met-chart', {
     type: 'bar', data: { labels, datasets: [{
-      label: 'Akceptovaný príjem (EUR)', data,
+      label: (window.t ? t('calm.akceptovany_prijem_eur') : 'Akceptovaný príjem (EUR)'), data,
       backgroundColor: data.map((v, i) => {
         const maxV = Math.max(...data);
         return v === maxV && v > 0 ? 'rgba(16,185,129,0.7)' : 'rgba(26,86,219,0.5)';
@@ -2202,27 +2202,27 @@ function calcMultiHousehold() {
     <div style="background:white;border-radius:8px;padding:1rem;margin-bottom:0.75rem">
       <h4 style="color:var(--primary-dark);margin-bottom:0.5rem">${label}</h4>
       <div class="results-grid">
-        <div class="result-box"><div class="result-label">Čistý príjem</div><div class="result-value">${fmt(h.netIncome)} EUR</div></div>
-        <div class="result-box"><div class="result-label">Počet osôb</div><div class="result-value">${h.totalPersons}</div></div>
-        <div class="result-box"><div class="result-label">Záväzky</div><div class="result-value">${fmt(h.loans)} EUR</div></div>
+        <div class="result-box"><div class="result-label">${window.t ? t('calm.cisty_prijem') : 'Čistý príjem'}</div><div class="result-value">${fmt(h.netIncome)} EUR</div></div>
+        <div class="result-box"><div class="result-label">${window.t ? t('calm.pocet_osob') : 'Počet osôb'}</div><div class="result-value">${h.totalPersons}</div></div>
+        <div class="result-box"><div class="result-label">${window.t ? t('calm.zavazky') : 'Záväzky'}</div><div class="result-value">${fmt(h.loans)} EUR</div></div>
       </div>
     </div>`;
 
   document.getElementById('mm-results').innerHTML = `
     ${hBox(h1, 'Domácnosť č.1')}${hBox(h2, 'Domácnosť č.2')}
     <div class="card" style="margin-top:1rem;background:var(--primary-bg)">
-      <div class="card-title">Kombinované výsledky</div>
+      <div class="card-title">${window.t ? t('calm.kombinovane_vysledky') : 'Kombinované výsledky'}</div>
       <div class="results-grid">
-        <div class="result-box highlight"><div class="result-label">Anuitná splátka</div><div class="result-value">${fmt(annuity)} EUR</div></div>
-        <div class="result-box"><div class="result-label">1. klesajúca splátka</div><div class="result-value">${fmt(decliningFirst)} EUR</div></div>
-        <div class="result-box highlight"><div class="result-label">Max. úver (príjem)</div><div class="result-value">${fmtInt(maxLoanIncome)} EUR</div></div>
-        <div class="result-box"><div class="result-label">Max. úver (LtV)</div><div class="result-value">${fmtInt(maxLoanLtV)} EUR</div></div>
+        <div class="result-box highlight"><div class="result-label">${window.t ? t('calm.anuitna_splatka') : 'Anuitná splátka'}</div><div class="result-value">${fmt(annuity)} EUR</div></div>
+        <div class="result-box"><div class="result-label">${window.t ? t('calm.1_klesajuca_splatka') : '1. klesajúca splátka'}</div><div class="result-value">${fmt(decliningFirst)} EUR</div></div>
+        <div class="result-box highlight"><div class="result-label">${window.t ? t('calm.max_uver_prijem') : 'Max. úver (príjem)'}</div><div class="result-value">${fmtInt(maxLoanIncome)} EUR</div></div>
+        <div class="result-box"><div class="result-label">${window.t ? t('calm.max_uver_ltv') : 'Max. úver (LtV)'}</div><div class="result-value">${fmtInt(maxLoanLtV)} EUR</div></div>
       </div>
     </div>
     <div class="card" style="margin-top:1rem">
-      <div class="card-title">Rizikové ukazovatele</div>
+      <div class="card-title">${window.t ? t('calm.rizikove_ukazovatele') : 'Rizikové ukazovatele'}</div>
       <div class="table-wrap"><table>
-        <thead><tr><th style="text-align:left">Ukazovateľ</th><th>Hodnota</th><th>Limit</th><th>Stav</th></tr></thead>
+        <thead><tr><th style="text-align:left">' + (window.t?t('calm.ukazovatel'):'Ukazovateľ') + '</th><th>Hodnota</th><th>Limit</th><th>Stav</th></tr></thead>
         <tbody>
           <tr><td style="text-align:left">DSTI (anuitné)</td><td>${fmtDec(dstiAnnuity * 100, 2)}%</td><td>60,00%</td><td>${statusBadge(dstiAnnuity < 0.6)}</td></tr>
           <tr><td style="text-align:left">DSTI (klesajúce)</td><td>${fmtDec(dstiDeclining * 100, 2)}%</td><td>60,00%</td><td>${statusBadge(dstiDeclining < 0.6)}</td></tr>
@@ -2232,12 +2232,12 @@ function calcMultiHousehold() {
       </table></div>
     </div>
     <div class="card" style="margin-top:1rem">
-      <div class="card-title">Finančný profil (kombinované)</div>
+      <div class="card-title">${window.t ? t('calm.financny_profil_kombinovane') : 'Finančný profil (kombinované)'}</div>
       <div class="results-grid">
-        <div class="result-box"><div class="result-label">Kombinovaný príjem</div><div class="result-value">${fmt(combinedIncome)} EUR</div></div>
-        <div class="result-box"><div class="result-label">Náklady (zákon)</div><div class="result-value">${fmt(expenses)} EUR</div></div>
+        <div class="result-box"><div class="result-label">${window.t ? t('calm.kombinovany_prijem') : 'Kombinovaný príjem'}</div><div class="result-value">${fmt(combinedIncome)} EUR</div></div>
+        <div class="result-box"><div class="result-label">${window.t ? t('calm.naklady_zakon') : 'Náklady (zákon)'}</div><div class="result-value">${fmt(expenses)} EUR</div></div>
         <div class="result-box"><div class="result-label">KUGD</div><div class="result-value">${fmt(combinedKugd)} EUR</div></div>
-        <div class="result-box"><div class="result-label">Voľný príjem</div><div class="result-value">${fmt(freeIncome)} EUR</div></div>
+        <div class="result-box"><div class="result-label">${window.t ? t('calm.volny_prijem') : 'Voľný príjem'}</div><div class="result-value">${fmt(freeIncome)} EUR</div></div>
       </div>
     </div>`;
 
@@ -2253,7 +2253,7 @@ function calcMultiHousehold() {
   getOrCreateChart('mm-chart', {
     type: 'bar', data: { labels, datasets: [
       { label: 'Istina', data: prinData, backgroundColor: 'rgba(26,86,219,0.5)' },
-      { label: 'Úrok', data: intData, backgroundColor: 'rgba(239,68,68,0.4)' },
+      { label: (window.t ? t('calm.urok') : 'Úrok'), data: intData, backgroundColor: 'rgba(239,68,68,0.4)' },
       { label: 'Zostatok', data: balData, type: 'line', borderColor: '#1e3a8a', backgroundColor: 'transparent', borderWidth: 2, yAxisID: 'y1', tension: 0.3, pointRadius: 1 }
     ]},
     options: { responsive: true, maintainAspectRatio: false, scales: {
@@ -2371,13 +2371,13 @@ function calcRovneSplatky() {
   document.getElementById('rs-results').innerHTML = `
     <div class="results-grid" style="margin-top:1rem">
       <div class="result-box highlight"><div class="result-label">${window.t ? t('cal.mesacna_splatka') : 'Mesačná splátka'}</div><div class="result-value">${fmt(annuity)} EUR</div></div>
-      <div class="result-box"><div class="result-label">Celkovo zaplatené</div><div class="result-value">${fmtInt(annuity * term)} EUR</div></div>
-      <div class="result-box"><div class="result-label">Celkový úrok</div><div class="result-value">${fmtInt(totalInterest)} EUR</div></div>
+      <div class="result-box"><div class="result-label">${window.t ? t('calm.celkovo_zaplatene') : 'Celkovo zaplatené'}</div><div class="result-value">${fmtInt(annuity * term)} EUR</div></div>
+      <div class="result-box"><div class="result-label">${window.t ? t('calm.celkovy_urok') : 'Celkový úrok'}</div><div class="result-value">${fmtInt(totalInterest)} EUR</div></div>
       <div class="result-box"><div class="result-label">Preplatenost</div><div class="result-value">${fmtDec(totalInterest / amount * 100, 1)}%</div></div>
     </div>`;
 
   // Full table
-  let tbl = '<div class="table-wrap" style="margin-top:1rem;max-height:500px;overflow-y:auto"><table><thead><tr><th>Mesiac</th><th>Splátka istiny</th><th>Splátka úroku</th><th>Mesačná splátka</th><th>Zostatok istiny</th></tr></thead><tbody>';
+  let tbl = '<div class="table-wrap" style="margin-top:1rem;max-height:500px;overflow-y:auto"><table><thead><tr><th>Mesiac</th><th>' + (window.t?t('calm.splatka_istiny'):'Splátka istiny') + '</th><th>' + (window.t?t('calm.splatka_uroku'):'Splátka úroku') + '</th><th>Mesačná splátka</th><th>Zostatok istiny</th></tr></thead><tbody>';
   schedule.forEach(s => {
     tbl += `<tr><td>${s.month}</td><td>${fmt(s.principal)}</td><td>${fmt(s.interest)}</td><td>${fmt(s.payment)}</td><td>${fmt(s.balance)}</td></tr>`;
   });
@@ -2396,7 +2396,7 @@ function calcRovneSplatky() {
   getOrCreateChart('rs-chart', {
     type: 'bar', data: { labels, datasets: [
       { label: 'Istina', data: prin, backgroundColor: 'rgba(26,86,219,0.5)' },
-      { label: 'Úrok', data: inte, backgroundColor: 'rgba(239,68,68,0.4)' },
+      { label: (window.t ? t('calm.urok') : 'Úrok'), data: inte, backgroundColor: 'rgba(239,68,68,0.4)' },
       { label: 'Zostatok', data: bal, type: 'line', borderColor: '#1e3a8a', backgroundColor: 'transparent', borderWidth: 2, yAxisID: 'y1', tension: 0.3, pointRadius: 1 }
     ]},
     options: { responsive: true, maintainAspectRatio: false, scales: {
@@ -2458,13 +2458,13 @@ function calcKlesajuceSplatky() {
 
   document.getElementById('ks-results').innerHTML = `
     <div class="results-grid" style="margin-top:1rem">
-      <div class="result-box highlight"><div class="result-label">Prvá splátka</div><div class="result-value">${fmt(schedule[0].payment)} EUR</div></div>
-      <div class="result-box"><div class="result-label">Posledná splátka</div><div class="result-value">${fmt(schedule[schedule.length-1].payment)} EUR</div></div>
-      <div class="result-box"><div class="result-label">Celkovo zaplatené</div><div class="result-value">${fmtInt(totalPaid)} EUR</div></div>
-      <div class="result-box"><div class="result-label">Celkový úrok</div><div class="result-value">${fmtInt(totalInterest)} EUR</div></div>
+      <div class="result-box highlight"><div class="result-label">${window.t ? t('calm.prva_splatka') : 'Prvá splátka'}</div><div class="result-value">${fmt(schedule[0].payment)} EUR</div></div>
+      <div class="result-box"><div class="result-label">${window.t ? t('calm.posledna_splatka') : 'Posledná splátka'}</div><div class="result-value">${fmt(schedule[schedule.length-1].payment)} EUR</div></div>
+      <div class="result-box"><div class="result-label">${window.t ? t('calm.celkovo_zaplatene') : 'Celkovo zaplatené'}</div><div class="result-value">${fmtInt(totalPaid)} EUR</div></div>
+      <div class="result-box"><div class="result-label">${window.t ? t('calm.celkovy_urok') : 'Celkový úrok'}</div><div class="result-value">${fmtInt(totalInterest)} EUR</div></div>
     </div>`;
 
-  let tbl = '<div class="table-wrap" style="margin-top:1rem;max-height:500px;overflow-y:auto"><table><thead><tr><th>Mesiac</th><th>Splátka istiny</th><th>Splátka úroku</th><th>Mesačná splátka</th><th>Zostatok istiny</th></tr></thead><tbody>';
+  let tbl = '<div class="table-wrap" style="margin-top:1rem;max-height:500px;overflow-y:auto"><table><thead><tr><th>Mesiac</th><th>' + (window.t?t('calm.splatka_istiny'):'Splátka istiny') + '</th><th>' + (window.t?t('calm.splatka_uroku'):'Splátka úroku') + '</th><th>Mesačná splátka</th><th>Zostatok istiny</th></tr></thead><tbody>';
   schedule.forEach(s => {
     tbl += `<tr><td>${s.month}</td><td>${fmt(s.principal)}</td><td>${fmt(s.interest)}</td><td>${fmt(s.payment)}</td><td>${fmt(s.balance)}</td></tr>`;
   });
