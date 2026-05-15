@@ -1,7 +1,7 @@
 // === JS BUILD VERSION INDICATOR ===
 // If you don't see this badge in the top-left after hard refresh, the
 // browser/CDN is still serving stale app.js.
-const SECPRO_JS_BUILD = 'i18n-p611-2026-05-15';
+const SECPRO_JS_BUILD = 'i18n-calcA-2026-05-15';
 console.log('%c[SecPro] JS build:', 'background:#16A34A;color:#fff;padding:2px 6px;border-radius:3px;', SECPRO_JS_BUILD);
 
 // Initialize Lucide icons
@@ -226,25 +226,25 @@ function calcInvestment() {
 
   document.getElementById('inv-results').innerHTML = `
     <div class="results-grid">
-      <div class="result-box highlight"><div class="result-label">Hodnota investície</div><div class="result-value">${fmt(finalValue)} EUR</div></div>
-      <div class="result-box"><div class="result-label">Celkový vklad</div><div class="result-value">${fmt(totalDeposit)} EUR</div></div>
-      <div class="result-box"><div class="result-label">Čistý výnos</div><div class="result-value">${fmt(profit)} EUR</div></div>
-      <div class="result-box"><div class="result-label">Zhodnotenie</div><div class="result-value">${fmt(profit / totalDeposit * 100)} %</div></div>
+      <div class="result-box highlight"><div class="result-label">${window.t ? t('cal.hodnota_investicie') : 'Hodnota investície'}</div><div class="result-value">${fmt(finalValue)} EUR</div></div>
+      <div class="result-box"><div class="result-label">${window.t ? t('cal.celkovy_vklad') : 'Celkový vklad'}</div><div class="result-value">${fmt(totalDeposit)} EUR</div></div>
+      <div class="result-box"><div class="result-label">${window.t ? t('cal.cisty_vynos') : 'Čistý výnos'}</div><div class="result-value">${fmt(profit)} EUR</div></div>
+      <div class="result-box"><div class="result-label">${window.t ? t('cal.zhodnotenie') : 'Zhodnotenie'}</div><div class="result-value">${fmt(profit / totalDeposit * 100)} %</div></div>
     </div>`;
 
   getOrCreateChart('inv-chart', {
     type: 'bar',
     data: {
-      labels: data.map(d => d.year + '. rok'),
+      labels: data.map(d => d.year + (window.t?t('cal.year_suffix'):'. rok')),
       datasets: [
-        { label: 'Vklady', data: data.map(d => d.deposit), backgroundColor: 'rgba(59,130,246,0.3)', borderColor: '#3b82f6', borderWidth: 1 },
-        { label: 'Hodnota investície', data: data.map(d => d.value), backgroundColor: 'rgba(16,185,129,0.3)', borderColor: '#10b981', borderWidth: 1 }
+        { label: (window.t ? t('cal.vklady') : 'Vklady'), data: data.map(d => d.deposit), backgroundColor: 'rgba(59,130,246,0.3)', borderColor: '#3b82f6', borderWidth: 1 },
+        { label: (window.t ? t('cal.hodnota_investicie') : 'Hodnota investície'), data: data.map(d => d.value), backgroundColor: 'rgba(16,185,129,0.3)', borderColor: '#10b981', borderWidth: 1 }
       ]
     },
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } }, scales: { y: { beginAtZero: true } } }
   });
 
-  let tableHtml = '<div class="table-wrap"><table><thead><tr><th>Rok</th><th>Ročný vklad</th><th>Celkový vklad</th><th>Hodnota</th><th>Čistý zisk</th></tr></thead><tbody>';
+  let tableHtml = '<div class="table-wrap"><table><thead><tr><th>' + (window.t?t('cal.th.year'):'Rok') + '</th><th>' + (window.t?t('cal.rocny_vklad'):'Ročný vklad') + '</th><th>' + (window.t?t('cal.celkovy_vklad'):'Celkový vklad') + '</th><th>' + (window.t?t('cal.th.value'):'Hodnota') + '</th><th>' + (window.t?t('cal.cisty_zisk'):'Čistý zisk') + '</th></tr></thead><tbody>';
   data.forEach(d => {
     tableHtml += `<tr><td>${d.year}</td><td>${fmt(M * 12)}</td><td>${fmt(d.deposit)}</td><td>${fmt(d.value)}</td><td>${fmt(d.value - d.deposit)}</td></tr>`;
   });
@@ -267,10 +267,10 @@ function calcMillion() {
 
   document.getElementById('mil-results').innerHTML = `
     <div class="results-grid">
-      <div class="result-box highlight"><div class="result-label">Mesačná investícia musí byť</div><div class="result-value">${fmt(monthlyPayment)} EUR</div></div>
-      <div class="result-box"><div class="result-label">Cieľová suma</div><div class="result-value">${fmt(target)} EUR</div></div>
-      <div class="result-box"><div class="result-label">Celkovo vložených</div><div class="result-value">${fmt(totalDeposit)} EUR</div></div>
-      <div class="result-box"><div class="result-label">Výnos z investície</div><div class="result-value">${fmt(profit)} EUR</div></div>
+      <div class="result-box highlight"><div class="result-label">${window.t ? t('cal.mesacna_investicia') : 'Mesačná investícia musí byť'}</div><div class="result-value">${fmt(monthlyPayment)} EUR</div></div>
+      <div class="result-box"><div class="result-label">${window.t ? t('cal.cielova_suma') : 'Cieľová suma'}</div><div class="result-value">${fmt(target)} EUR</div></div>
+      <div class="result-box"><div class="result-label">${window.t ? t('cal.celkovo_vlozenych') : 'Celkovo vložených'}</div><div class="result-value">${fmt(totalDeposit)} EUR</div></div>
+      <div class="result-box"><div class="result-label">${window.t ? t('cal.vynos_z_investicie') : 'Výnos z investície'}</div><div class="result-value">${fmt(profit)} EUR</div></div>
     </div>`;
 
   const chartData = [];
@@ -283,10 +283,10 @@ function calcMillion() {
   getOrCreateChart('mil-chart', {
     type: 'line',
     data: {
-      labels: chartData.map(d => d.year + '. rok'),
+      labels: chartData.map(d => d.year + (window.t?t('cal.year_suffix'):'. rok')),
       datasets: [
-        { label: 'Hodnota investície', data: chartData.map(d => d.value), borderColor: '#1a56db', backgroundColor: 'rgba(26,86,219,0.1)', fill: true, tension: 0.3 },
-        { label: 'Vklady', data: chartData.map(d => d.deposit), borderColor: '#64748b', borderDash: [5, 5], fill: false, tension: 0 }
+        { label: (window.t ? t('cal.hodnota_investicie') : 'Hodnota investície'), data: chartData.map(d => d.value), borderColor: '#1a56db', backgroundColor: 'rgba(26,86,219,0.1)', fill: true, tension: 0.3 },
+        { label: (window.t ? t('cal.vklady') : 'Vklady'), data: chartData.map(d => d.deposit), borderColor: '#64748b', borderDash: [5, 5], fill: false, tension: 0 }
       ]
     },
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } }, scales: { y: { beginAtZero: true } } }
@@ -316,10 +316,10 @@ function calcRenta() {
 
   document.getElementById('ren-results').innerHTML = `
     <div class="results-grid">
-      <div class="result-box highlight"><div class="result-label">Mesačná renta</div><div class="result-value">${fmt(renta)} EUR</div></div>
-      <div class="result-box"><div class="result-label">Celkovo vyplatené</div><div class="result-value">${fmt(totalPaid)} EUR</div></div>
-      <div class="result-box"><div class="result-label">Výnos z investície</div><div class="result-value">${fmt(profitDuringPayout)} EUR</div></div>
-      <div class="result-box"><div class="result-label">Zostávajúci kapitál</div><div class="result-value">${fmt(remain)} EUR</div></div>
+      <div class="result-box highlight"><div class="result-label">${window.t ? t('cal.mesacna_renta') : 'Mesačná renta'}</div><div class="result-value">${fmt(renta)} EUR</div></div>
+      <div class="result-box"><div class="result-label">${window.t ? t('cal.celkovo_vyplatene') : 'Celkovo vyplatené'}</div><div class="result-value">${fmt(totalPaid)} EUR</div></div>
+      <div class="result-box"><div class="result-label">${window.t ? t('cal.vynos_z_investicie') : 'Výnos z investície'}</div><div class="result-value">${fmt(profitDuringPayout)} EUR</div></div>
+      <div class="result-box"><div class="result-label">${window.t ? t('cal.zostavajuci_kapital') : 'Zostávajúci kapitál'}</div><div class="result-value">${fmt(remain)} EUR</div></div>
     </div>`;
 
   const chartData = [];
@@ -334,10 +334,10 @@ function calcRenta() {
   getOrCreateChart('ren-chart', {
     type: 'line',
     data: {
-      labels: chartData.map(d => d.year + '. rok'),
+      labels: chartData.map(d => d.year + (window.t?t('cal.year_suffix'):'. rok')),
       datasets: [
-        { label: 'Zostatok kapitálu', data: chartData.map(d => d.balance), borderColor: '#1a56db', backgroundColor: 'rgba(26,86,219,0.1)', fill: true, tension: 0.3 },
-        { label: 'Celkovo vybraté', data: chartData.map(d => d.withdrawn), borderColor: '#10b981', fill: false, tension: 0 }
+        { label: (window.t ? t('cal.zostatok_kapitalu') : 'Zostatok kapitálu'), data: chartData.map(d => d.balance), borderColor: '#1a56db', backgroundColor: 'rgba(26,86,219,0.1)', fill: true, tension: 0.3 },
+        { label: (window.t ? t('cal.celkovo_vybrate') : 'Celkovo vybraté'), data: chartData.map(d => d.withdrawn), borderColor: '#10b981', fill: false, tension: 0 }
       ]
     },
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } }, scales: { y: { beginAtZero: true } } }
@@ -378,10 +378,10 @@ function calcFinMath() {
 
   document.getElementById('fm-results').innerHTML = `
     <div class="results-grid">
-      <div class="result-box highlight"><div class="result-label">Konečná hodnota</div><div class="result-value">${fmt(FV)} EUR</div></div>
-      <div class="result-box"><div class="result-label">Počiatočná hodnota</div><div class="result-value">${fmt(PV)} EUR</div></div>
-      <div class="result-box"><div class="result-label">Celkové vklady</div><div class="result-value">${fmt(totalDeposit)} EUR</div></div>
-      <div class="result-box"><div class="result-label">Čistý výnos</div><div class="result-value">${fmt(profit)} EUR</div></div>
+      <div class="result-box highlight"><div class="result-label">${window.t ? t('cal.konecna_hodnota') : 'Konečná hodnota'}</div><div class="result-value">${fmt(FV)} EUR</div></div>
+      <div class="result-box"><div class="result-label">${window.t ? t('cal.pociatocna_hodnota') : 'Počiatočná hodnota'}</div><div class="result-value">${fmt(PV)} EUR</div></div>
+      <div class="result-box"><div class="result-label">${window.t ? t('cal.celkove_vklady') : 'Celkové vklady'}</div><div class="result-value">${fmt(totalDeposit)} EUR</div></div>
+      <div class="result-box"><div class="result-label">${window.t ? t('cal.cisty_vynos') : 'Čistý výnos'}</div><div class="result-value">${fmt(profit)} EUR</div></div>
     </div>`;
 
   const chartData = [];
@@ -400,10 +400,10 @@ function calcFinMath() {
   getOrCreateChart('fm-chart', {
     type: 'line',
     data: {
-      labels: chartData.map(d => d.year + '. rok'),
+      labels: chartData.map(d => d.year + (window.t?t('cal.year_suffix'):'. rok')),
       datasets: [
-        { label: 'Hodnota', data: chartData.map(d => d.value), borderColor: '#1a56db', backgroundColor: 'rgba(26,86,219,0.1)', fill: true, tension: 0.3 },
-        { label: 'Vklady', data: chartData.map(d => d.deposit), borderColor: '#64748b', borderDash: [5, 5], fill: false }
+        { label: (window.t ? t('cal.th.value') : 'Hodnota'), data: chartData.map(d => d.value), borderColor: '#1a56db', backgroundColor: 'rgba(26,86,219,0.1)', fill: true, tension: 0.3 },
+        { label: (window.t ? t('cal.vklady') : 'Vklady'), data: chartData.map(d => d.deposit), borderColor: '#64748b', borderDash: [5, 5], fill: false }
       ]
     },
     options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: false } } }
@@ -443,14 +443,14 @@ function calcPilier() {
     const isHighlight = r.rate === 0.08 ? ' highlight' : '';
     html += `<div class="result-box${isHighlight}"><div class="result-label">${r.name}</div><div class="result-value">${fmt(r.finalValue)} EUR</div></div>`;
   });
-  html += `<div class="result-box"><div class="result-label">Rozdiel garant vs index</div><div class="result-value">${fmt(diff)} EUR</div></div>`;
+  html += `<div class="result-box"><div class="result-label">${window.t ? t('cal.rozdiel_garant') : 'Rozdiel garant vs index'}</div><div class="result-value">${fmt(diff)} EUR</div></div>`;
   html += '</div>';
   document.getElementById('pil-results').innerHTML = html;
 
   getOrCreateChart('pil-chart', {
     type: 'line',
     data: {
-      labels: results[0].yearData.map(d => d.year + '. rok'),
+      labels: results[0].yearData.map(d => d.year + (window.t?t('cal.year_suffix'):'. rok')),
       datasets: results.map((r, i) => ({
         label: r.name,
         data: r.yearData.map(d => d.value),
@@ -463,7 +463,7 @@ function calcPilier() {
     options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: false } } }
   });
 
-  let tableHtml = '<div class="table-wrap"><table><thead><tr><th>Rok</th><th>Mzda</th><th>Mesačný odvod</th><th>Garantovaný 2%</th><th>Akciový 4%</th><th>Indexový 8%</th></tr></thead><tbody>';
+  let tableHtml = '<div class="table-wrap"><table><thead><tr><th>' + (window.t?t('cal.th.year'):'Rok') + '</th><th>' + (window.t?t('cal.th.salary'):'Mzda') + '</th><th>' + (window.t?t('cal.th.mesacny_odvod'):'Mesačný odvod') + '</th><th>Garantovaný 2%</th><th>Akciový 4%</th><th>Indexový 8%</th></tr></thead><tbody>';
   for (let y = 0; y < years; y++) {
     const sal = results[0].yearData[y].salary;
     tableHtml += `<tr><td>${y + 1}</td><td>${fmt(sal)}</td><td>${fmt(sal * 0.04)}</td><td>${fmt(results[0].yearData[y].value)}</td><td>${fmt(results[1].yearData[y].value)}</td><td>${fmt(results[2].yearData[y].value)}</td></tr>`;
@@ -518,31 +518,31 @@ function calcHypoteka() {
 
   document.getElementById('hyp-results').innerHTML = `
     <div class="results-grid">
-      <div class="result-box"><div class="result-label">Mesačná splátka</div><div class="result-value">${fmt(annuity)} EUR</div></div>
-      <div class="result-box"><div class="result-label">Preplatenosť úveru</div><div class="result-value">${fmt(overpayment)} EUR</div></div>
-      <div class="result-box highlight"><div class="result-label">Hodnota investície</div><div class="result-value">${fmt(invValue)} EUR</div></div>
-      <div class="result-box"><div class="result-label">Čistý zisk investície</div><div class="result-value">${fmt(invProfit)} EUR</div></div>
+      <div class="result-box"><div class="result-label">${window.t ? t('cal.mesacna_splatka') : 'Mesačná splátka'}</div><div class="result-value">${fmt(annuity)} EUR</div></div>
+      <div class="result-box"><div class="result-label">${window.t ? t('cal.preplatenost_uveru') : 'Preplatenosť úveru'}</div><div class="result-value">${fmt(overpayment)} EUR</div></div>
+      <div class="result-box highlight"><div class="result-label">${window.t ? t('cal.hodnota_investicie') : 'Hodnota investície'}</div><div class="result-value">${fmt(invValue)} EUR</div></div>
+      <div class="result-box"><div class="result-label">${window.t ? t('cal.cisty_zisk_inv') : 'Čistý zisk investície'}</div><div class="result-value">${fmt(invProfit)} EUR</div></div>
     </div>
     <div class="info-box" style="margin-top:1rem">
       Celková úspora pre klienta (zisk z investície - preplatenosť úveru): <strong>${fmt(netSavings)} EUR</strong>
     </div>`;
 
   const labels = [];
-  for (let y = 1; y <= years; y++) labels.push(y + '. rok');
+  for (let y = 1; y <= years; y++) labels.push(y + (window.t?t('cal.year_suffix'):'. rok'));
 
   getOrCreateChart('hyp-chart', {
     type: 'line',
     data: {
       labels,
       datasets: [
-        { label: 'Hodnota investície', data: invYearData, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.1)', fill: true, tension: 0.3 },
-        { label: 'Zostatok úveru', data: mortYearData, borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.1)', fill: true, tension: 0.3 }
+        { label: (window.t ? t('cal.hodnota_investicie') : 'Hodnota investície'), data: invYearData, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.1)', fill: true, tension: 0.3 },
+        { label: (window.t ? t('cal.zostatok_uveru') : 'Zostatok úveru'), data: mortYearData, borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.1)', fill: true, tension: 0.3 }
       ]
     },
     options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
   });
 
-  let tableHtml = '<div class="table-wrap"><table><thead><tr><th>Rok</th><th>Zostatok úveru</th><th>Hodnota investície</th><th>Čistý vklad invest.</th><th>Rozdiel</th></tr></thead><tbody>';
+  let tableHtml = '<div class="table-wrap"><table><thead><tr><th>' + (window.t?t('cal.th.year'):'Rok') + '</th><th>' + (window.t?t('cal.zostatok_uveru'):'Zostatok úveru') + '</th><th>' + (window.t?t('cal.hodnota_investicie'):'Hodnota investície') + '</th><th>' + (window.t?t('cal.cisty_vklad_inv'):'Čistý vklad invest.') + '</th><th>' + (window.t?t('cal.th.rozdiel'):'Rozdiel') + '</th></tr></thead><tbody>';
   for (let y = 0; y < years; y++) {
     const deposit = monthlyInv * 12 * (y + 1);
     tableHtml += `<tr><td>${y + 1}</td><td>${fmt(mortYearData[y])}</td><td>${fmt(invYearData[y])}</td><td>${fmt(deposit)}</td><td>${fmt(invYearData[y] - mortYearData[y])}</td></tr>`;
@@ -573,9 +573,9 @@ function calcRezerva() {
 
   document.getElementById('rez-results').innerHTML = `
     <div class="results-grid">
-      <div class="result-box highlight"><div class="result-label">Celkovo na účte</div><div class="result-value">${fmt(final.value)} EUR</div></div>
-      <div class="result-box"><div class="result-label">Celkový vklad</div><div class="result-value">${fmt(final.deposit)} EUR</div></div>
-      <div class="result-box"><div class="result-label">Čistý zisk</div><div class="result-value">${fmt(final.profit)} EUR</div></div>
+      <div class="result-box highlight"><div class="result-label">${window.t ? t('cal.celkovo_na_ucte') : 'Celkovo na účte'}</div><div class="result-value">${fmt(final.value)} EUR</div></div>
+      <div class="result-box"><div class="result-label">${window.t ? t('cal.celkovy_vklad') : 'Celkový vklad'}</div><div class="result-value">${fmt(final.deposit)} EUR</div></div>
+      <div class="result-box"><div class="result-label">${window.t ? t('cal.cisty_zisk') : 'Čistý zisk'}</div><div class="result-value">${fmt(final.profit)} EUR</div></div>
     </div>`;
 
   getOrCreateChart('rez-chart', {
@@ -583,14 +583,14 @@ function calcRezerva() {
     data: {
       labels: data.map(d => d.year + '.'),
       datasets: [
-        { label: 'Vklady', data: data.map(d => d.deposit), backgroundColor: 'rgba(59,130,246,0.3)', borderColor: '#3b82f6', borderWidth: 1 },
-        { label: 'Celkovo na účte', data: data.map(d => d.value), backgroundColor: 'rgba(16,185,129,0.3)', borderColor: '#10b981', borderWidth: 1 }
+        { label: (window.t ? t('cal.vklady') : 'Vklady'), data: data.map(d => d.deposit), backgroundColor: 'rgba(59,130,246,0.3)', borderColor: '#3b82f6', borderWidth: 1 },
+        { label: (window.t ? t('cal.celkovo_na_ucte') : 'Celkovo na účte'), data: data.map(d => d.value), backgroundColor: 'rgba(16,185,129,0.3)', borderColor: '#10b981', borderWidth: 1 }
       ]
     },
     options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
   });
 
-  let tableHtml = '<div class="table-wrap"><table><thead><tr><th>Rok</th><th>Celkový vklad</th><th>Čistý zisk</th><th>Celkovo na účte</th></tr></thead><tbody>';
+  let tableHtml = '<div class="table-wrap"><table><thead><tr><th>' + (window.t?t('cal.th.year'):'Rok') + '</th><th>' + (window.t?t('cal.celkovy_vklad'):'Celkový vklad') + '</th><th>' + (window.t?t('cal.cisty_zisk'):'Čistý zisk') + '</th><th>' + (window.t?t('cal.celkovo_na_ucte'):'Celkovo na účte') + '</th></tr></thead><tbody>';
   data.forEach(d => {
     tableHtml += `<tr><td>${d.year}</td><td>${fmt(d.deposit)}</td><td>${fmt(d.profit)}</td><td>${fmt(d.value)}</td></tr>`;
   });
@@ -633,28 +633,28 @@ function calcDividenda() {
 
   document.getElementById('div-results').innerHTML = `
     <div class="results-grid">
-      <div class="result-box highlight"><div class="result-label">${reinvest ? 'Celková hodnota' : 'Celkovo vyplatené dividendy'}</div><div class="result-value">${fmt(reinvest ? final.balance : final.totalDividends)} EUR</div></div>
-      <div class="result-box"><div class="result-label">Počiatočný vklad</div><div class="result-value">${fmt(amount)} EUR</div></div>
-      <div class="result-box"><div class="result-label">Celkový výnos</div><div class="result-value">${fmt(final.totalReturn)} EUR</div></div>
-      <div class="result-box"><div class="result-label">Dividenda posledný rok</div><div class="result-value">${fmt(final.dividend)} EUR</div></div>
+      <div class="result-box highlight"><div class="result-label">${reinvest ? (window.t?t('cal.celkova_hodnota'):'Celková hodnota') : (window.t?t('cal.celkovo_vyplatene_div'):'Celkovo vyplatené dividendy')}</div><div class="result-value">${fmt(reinvest ? final.balance : final.totalDividends)} EUR</div></div>
+      <div class="result-box"><div class="result-label">${window.t ? t('cal.pociatocny_vklad') : 'Počiatočný vklad'}</div><div class="result-value">${fmt(amount)} EUR</div></div>
+      <div class="result-box"><div class="result-label">${window.t ? t('cal.celkovy_vynos') : 'Celkový výnos'}</div><div class="result-value">${fmt(final.totalReturn)} EUR</div></div>
+      <div class="result-box"><div class="result-label">${window.t ? t('cal.dividenda_posledny') : 'Dividenda posledný rok'}</div><div class="result-value">${fmt(final.dividend)} EUR</div></div>
     </div>`;
 
   getOrCreateChart('div-chart', {
     type: 'bar',
     data: {
-      labels: data.map(d => d.year + '. rok'),
+      labels: data.map(d => d.year + (window.t?t('cal.year_suffix'):'. rok')),
       datasets: reinvest ? [
-        { label: 'Počiatočný vklad', data: data.map(() => amount), backgroundColor: 'rgba(59,130,246,0.3)', borderColor: '#3b82f6', borderWidth: 1 },
-        { label: 'Celková hodnota s reinvesticiou', data: data.map(d => d.balance), backgroundColor: 'rgba(16,185,129,0.3)', borderColor: '#10b981', borderWidth: 1 }
+        { label: (window.t ? t('cal.pociatocny_vklad') : 'Počiatočný vklad'), data: data.map(() => amount), backgroundColor: 'rgba(59,130,246,0.3)', borderColor: '#3b82f6', borderWidth: 1 },
+        { label: (window.t ? t('cal.celkova_hodnota_reinv') : 'Celková hodnota s reinvesticiou'), data: data.map(d => d.balance), backgroundColor: 'rgba(16,185,129,0.3)', borderColor: '#10b981', borderWidth: 1 }
       ] : [
-        { label: 'Ročná dividenda', data: data.map(d => d.dividend), backgroundColor: 'rgba(26,86,219,0.5)', borderColor: '#1a56db', borderWidth: 1 },
-        { label: 'Celkovo vyplatené', data: data.map(d => d.totalDividends), backgroundColor: 'rgba(16,185,129,0.3)', borderColor: '#10b981', borderWidth: 1 }
+        { label: (window.t ? t('cal.rocna_dividenda') : 'Ročná dividenda'), data: data.map(d => d.dividend), backgroundColor: 'rgba(26,86,219,0.5)', borderColor: '#1a56db', borderWidth: 1 },
+        { label: (window.t ? t('cal.celkovo_vyplatene') : 'Celkovo vyplatené'), data: data.map(d => d.totalDividends), backgroundColor: 'rgba(16,185,129,0.3)', borderColor: '#10b981', borderWidth: 1 }
       ]
     },
     options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
   });
 
-  let tableHtml = '<div class="table-wrap"><table><thead><tr><th>Rok</th><th>Hodnota</th><th>Dividenda v roku</th><th>Celkové dividendy</th><th>Celkový výnos</th></tr></thead><tbody>';
+  let tableHtml = '<div class="table-wrap"><table><thead><tr><th>' + (window.t?t('cal.th.year'):'Rok') + '</th><th>' + (window.t?t('cal.th.value'):'Hodnota') + '</th><th>' + (window.t?t('cal.dividenda_v_roku'):'Dividenda v roku') + '</th><th>' + (window.t?t('cal.celkove_dividendy'):'Celkové dividendy') + '</th><th>' + (window.t?t('cal.celkovy_vynos'):'Celkový výnos') + '</th></tr></thead><tbody>';
   data.forEach(d => {
     tableHtml += `<tr><td>${d.year}</td><td>${fmt(d.balance)}</td><td>${fmt(d.dividend)}</td><td>${fmt(d.totalDividends)}</td><td>${fmt(d.totalReturn)}</td></tr>`;
   });
@@ -715,19 +715,19 @@ function calcAOF() {
     <div class="card" style="margin-top:1rem;background:var(--primary-bg)">
       <div class="card-title">Výsledky analýzy</div>
       <div class="results-grid">
-        <div class="result-box"><div class="result-label">Roky do dôchodku</div><div class="result-value">${yearsToRetire}</div></div>
-        <div class="result-box"><div class="result-label">Ideálna rezerva</div><div class="result-value">${fmt(idealReserve)} EUR</div></div>
-        <div class="result-box"><div class="result-label">Predp. štátny dôchodok (po zmene)</div><div class="result-value">${fmt(estimatedPension)} EUR</div></div>
-        <div class="result-box"><div class="result-label">Predp. dôchodok (pred zmenou)</div><div class="result-value">${fmt(rawPension)} EUR</div></div>
-        <div class="result-box"><div class="result-label">Bude chýbať mesačne</div><div class="result-value">${fmt(gap)} EUR</div></div>
+        <div class="result-box"><div class="result-label">${window.t ? t('cal.roky_do_dochodku') : 'Roky do dôchodku'}</div><div class="result-value">${yearsToRetire}</div></div>
+        <div class="result-box"><div class="result-label">${window.t ? t('cal.idealna_rezerva') : 'Ideálna rezerva'}</div><div class="result-value">${fmt(idealReserve)} EUR</div></div>
+        <div class="result-box"><div class="result-label">${window.t ? t('cal.predp_dochodok_po') : 'Predp. štátny dôchodok (po zmene)'}</div><div class="result-value">${fmt(estimatedPension)} EUR</div></div>
+        <div class="result-box"><div class="result-label">${window.t ? t('cal.predp_dochodok_pred') : 'Predp. dôchodok (pred zmenou)'}</div><div class="result-value">${fmt(rawPension)} EUR</div></div>
+        <div class="result-box"><div class="result-label">${window.t ? t('cal.bude_chybat') : 'Bude chýbať mesačne'}</div><div class="result-value">${fmt(gap)} EUR</div></div>
       </div>
     </div>
     <div class="card" style="margin-top:1rem">
       <div class="card-title">Dôchodkové zabezpečenie</div>
       <div class="results-grid">
-        <div class="result-box"><div class="result-label">Nutný kapitál na 20-ročný dôchodok</div><div class="result-value">${fmtInt(requiredCapital20)} EUR</div></div>
-        <div class="result-box highlight"><div class="result-label">Nutný kapitál na doživotný dôchodok</div><div class="result-value">${fmtInt(requiredCapitalLife)} EUR</div></div>
-        <div class="result-box highlight"><div class="result-label">Potrebné investovať mesačne (pri 7% p.a.)</div><div class="result-value">${fmt(monthlyNeeded)} EUR</div></div>
+        <div class="result-box"><div class="result-label">${window.t ? t('cal.nutny_kapital_20') : 'Nutný kapitál na 20-ročný dôchodok'}</div><div class="result-value">${fmtInt(requiredCapital20)} EUR</div></div>
+        <div class="result-box highlight"><div class="result-label">${window.t ? t('cal.nutny_kapital_doziv') : 'Nutný kapitál na doživotný dôchodok'}</div><div class="result-value">${fmtInt(requiredCapitalLife)} EUR</div></div>
+        <div class="result-box highlight"><div class="result-label">${window.t ? t('cal.potrebne_investovat') : 'Potrebné investovať mesačne (pri 7% p.a.)'}</div><div class="result-value">${fmt(monthlyNeeded)} EUR</div></div>
       </div>
     </div>
     <div class="card" style="margin-top:1rem">
@@ -735,8 +735,8 @@ function calcAOF() {
       <div class="results-grid">
         <div class="result-box"><div class="result-label">Odvody I. pilier</div><div class="result-value">${fmt(pilier1Contrib)} EUR</div></div>
         ${hasPilier2 ? `<div class="result-box"><div class="result-label">Odvody II. pilier</div><div class="result-value">${fmt(pilier2Contrib)} EUR</div></div>` : ''}
-        <div class="result-box"><div class="result-label">PN dávka (od 2. mesiaca)</div><div class="result-value">${fmt(pnBenefit)} EUR</div></div>
-        <div class="result-box"><div class="result-label">Pri PN bude chýbať</div><div class="result-value">${fmt(pnGap)} EUR</div></div>
+        <div class="result-box"><div class="result-label">${window.t ? t('cal.pn_davka') : 'PN dávka (od 2. mesiaca)'}</div><div class="result-value">${fmt(pnBenefit)} EUR</div></div>
+        <div class="result-box"><div class="result-label">${window.t ? t('cal.pri_pn_chybat') : 'Pri PN bude chýbať'}</div><div class="result-value">${fmt(pnGap)} EUR</div></div>
       </div>
     </div>`;
 }
@@ -809,10 +809,10 @@ function calcRozlozenie() {
 
   let html = `
     <div class="results-grid" style="margin-top:1rem">
-      <div class="result-box"><div class="result-label">${type === 'lump' ? 'Investovaná suma' : 'Mesačná investícia'}</div><div class="result-value">${fmt(investAmount)} EUR</div></div>
+      <div class="result-box"><div class="result-label">${type === 'lump' ? (window.t?t('cal.investovana_suma'):'Investovaná suma') : (window.t?t('cal.mesacna_investicia'):'Mesačná investícia')}</div><div class="result-value">${fmt(investAmount)} EUR</div></div>
       <div class="result-box"><div class="result-label">Rezerva</div><div class="result-value">${fmt(reserveAmount)} EUR</div></div>
       <div class="result-box highlight"><div class="result-label">Očakávaná hodnota (${horizon} r.)</div><div class="result-value">${fmt(expectedValue)} EUR</div></div>
-      <div class="result-box highlight"><div class="result-label">Očakávaný výnos</div><div class="result-value">${fmt(profit)} EUR</div></div>
+      <div class="result-box highlight"><div class="result-label">${window.t ? t('cal.ocakavany_vynos') : 'Očakávaný výnos'}</div><div class="result-value">${fmt(profit)} EUR</div></div>
     </div>
     <div class="info-box" style="margin-top:1rem">
       Očakávané zhodnotenie: <strong>${fmtDec(weightedReturn * 100, 2)}% p.a.</strong> | Očakávaná volatilita: <strong>${fmtDec(weightedVolatility * 100, 2)}% p.a.</strong> | Rizikovosť: <strong>${adjustedRisk} z 10</strong>
@@ -2370,7 +2370,7 @@ function calcRovneSplatky() {
 
   document.getElementById('rs-results').innerHTML = `
     <div class="results-grid" style="margin-top:1rem">
-      <div class="result-box highlight"><div class="result-label">Mesačná splátka</div><div class="result-value">${fmt(annuity)} EUR</div></div>
+      <div class="result-box highlight"><div class="result-label">${window.t ? t('cal.mesacna_splatka') : 'Mesačná splátka'}</div><div class="result-value">${fmt(annuity)} EUR</div></div>
       <div class="result-box"><div class="result-label">Celkovo zaplatené</div><div class="result-value">${fmtInt(annuity * term)} EUR</div></div>
       <div class="result-box"><div class="result-label">Celkový úrok</div><div class="result-value">${fmtInt(totalInterest)} EUR</div></div>
       <div class="result-box"><div class="result-label">Preplatenost</div><div class="result-value">${fmtDec(totalInterest / amount * 100, 1)}%</div></div>
@@ -2479,7 +2479,7 @@ function calcKlesajuceSplatky() {
   }
   getOrCreateChart('ks-chart', {
     type: 'bar', data: { labels, datasets: [
-      { label: 'Mesačná splátka', data: pay, backgroundColor: 'rgba(16,185,129,0.5)', borderColor: '#10b981', borderWidth: 1 },
+      { label: (window.t ? t('cal.mesacna_splatka') : 'Mesačná splátka'), data: pay, backgroundColor: 'rgba(16,185,129,0.5)', borderColor: '#10b981', borderWidth: 1 },
       { label: 'Zostatok', data: bal, type: 'line', borderColor: '#1e3a8a', backgroundColor: 'transparent', borderWidth: 2, yAxisID: 'y1', tension: 0.3, pointRadius: 1 }
     ]},
     options: { responsive: true, maintainAspectRatio: false, scales: {
