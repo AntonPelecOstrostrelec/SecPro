@@ -1,7 +1,7 @@
 // === JS BUILD VERSION INDICATOR ===
 // If you don't see this badge in the top-left after hard refresh, the
 // browser/CDN is still serving stale app.js.
-const SECPRO_JS_BUILD = 'i18n-p5b-2026-05-15';
+const SECPRO_JS_BUILD = 'i18n-p611-2026-05-15';
 console.log('%c[SecPro] JS build:', 'background:#16A34A;color:#fff;padding:2px 6px;border-radius:3px;', SECPRO_JS_BUILD);
 
 // Initialize Lucide icons
@@ -3884,6 +3884,22 @@ function contactStatusLabel(key) {
 function contactRoleLabel(key) {
   const fb = (typeof CONTACT_ROLE_META !== 'undefined' && (CONTACT_ROLE_META[key] || {}).label) || key || '';
   return (typeof window !== 'undefined' && window.t) ? t('cst.crole.' + key, fb) : fb;
+}
+function clientStageLabel(key) {
+  const fb = (typeof CLIENT_STAGE_LABELS !== 'undefined' && (CLIENT_STAGE_LABELS[key] || {}).label) || key || '';
+  return (typeof window !== 'undefined' && window.t) ? t('cst.cstage.' + key, fb) : fb;
+}
+function amlStatusLabel(key) {
+  const fb = (typeof AML_STATUS_MAP !== 'undefined' && (AML_STATUS_MAP[key] || {}).label) || key || '';
+  return (typeof window !== 'undefined' && window.t) ? t('cst.amlst.' + key, fb) : fb;
+}
+function amlRiskLabel(key) {
+  const fb = (typeof AML_RISK_MAP !== 'undefined' && (AML_RISK_MAP[key] || {}).label) || key || '';
+  return (typeof window !== 'undefined' && window.t) ? t('cst.amlrisk.' + key, fb) : fb;
+}
+function amlSourceLabel(key) {
+  const fb = (typeof AML_SOURCE_LABELS !== 'undefined' && AML_SOURCE_LABELS[key]) || key || '';
+  return (typeof window !== 'undefined' && window.t) ? t('cst.amlsrc.' + key, fb) : fb;
 }
 
 // ===================== PROPERTY FORM WIZARD =====================
@@ -10266,7 +10282,7 @@ function renderContacts() {
   const tableWrap = document.getElementById('contact-table-wrap');
   const countEl = document.getElementById('contact-count');
 
-  countEl.textContent = filtered.length + ' / ' + contacts.length + ' kontaktov';
+  countEl.textContent = (window.t ? t('ct.count') : '{f} / {t} kontaktov').replace('{f}', filtered.length).replace('{t}', contacts.length);
 
   if (filtered.length === 0) {
     tableWrap.style.display = 'none';
@@ -10274,7 +10290,7 @@ function renderContacts() {
     if (contacts.length > 0 && filtered.length === 0) {
       tableWrap.style.display = 'none';
       empty.style.display = 'block';
-      empty.querySelector('p').textContent = 'Žiadne kontakty nezodpovedajú filtru';
+      empty.querySelector('p').textContent = (window.t ? t('ct.no_match') : 'Žiadne kontakty nezodpovedajú filtru');
       empty.querySelector('button').style.display = 'none';
     }
   } else {
@@ -10282,7 +10298,7 @@ function renderContacts() {
     empty.style.display = 'none';
     // Reset empty state text
     const emptyP = empty.querySelector('p');
-    if (emptyP) emptyP.textContent = 'Zatiaľ nemáte žiadne kontakty';
+    if (emptyP) emptyP.textContent = (window.t ? t('ct.empty') : 'Zatiaľ nemáte žiadne kontakty');
     const emptyBtn = empty.querySelector('button');
     if (emptyBtn) emptyBtn.style.display = '';
   }
@@ -10291,21 +10307,24 @@ function renderContacts() {
   tbody.innerHTML = filtered.map(c => {
     const roles = Array.isArray(c.roles) ? c.roles : (c.category ? [c.category] : []);
     const roleChips = roles.map(r => {
-      const meta = CONTACT_ROLE_META[r] || { label: r, icon: '', color: '#64748B', bg: '#F1F5F9' };
+      const _m = CONTACT_ROLE_META[r] || { icon: '', color: '#64748B', bg: '#F1F5F9' };
+      const meta = { icon: _m.icon, color: _m.color, bg: _m.bg, label: contactRoleLabel(r) };
       return `<span style="display:inline-flex;align-items:center;gap:0.2rem;padding:0.15rem 0.5rem;border-radius:10px;font-size:0.68rem;font-weight:600;background:${meta.bg};color:${meta.color};margin:1px 2px 1px 0;white-space:nowrap;">${meta.icon} ${esc(meta.label)}</span>`;
     }).join('') || '<span style="font-size:0.7rem;color:var(--text-light);">—</span>';
-    const st = CONTACT_STATUS_LABELS[c.status] || { label: c.status, color: '#999', bg: '#f0f0f0' };
+    const _cs = CONTACT_STATUS_LABELS[c.status] || { color: '#999', bg: '#f0f0f0' };
+    const st = { color: _cs.color, bg: _cs.bg, label: contactStatusLabel(c.status) };
     const note = c.note ? (c.note.length > 40 ? c.note.slice(0, 40) + '...' : c.note) : '-';
     const amlRec = amlAll.find(a => a.contactId === c.id);
     const amlBadge = amlRec
-      ? (amlRec.status === 'approved' ? '<span class="aml-badge approved" style="font-size:0.7rem;padding:0.15rem 0.45rem;">Overený</span>'
-        : amlRec.status === 'rejected' ? '<span class="aml-badge rejected" style="font-size:0.7rem;padding:0.15rem 0.45rem;">Zamietnutý</span>'
-        : amlRec.status === 'flagged' ? '<span class="aml-badge flagged" style="font-size:0.7rem;padding:0.15rem 0.45rem;">Flagged</span>'
-        : '<span class="aml-badge pending" style="font-size:0.7rem;padding:0.15rem 0.45rem;">Čaká</span>')
+      ? (amlRec.status === 'approved' ? '<span class="aml-badge approved" style="font-size:0.7rem;padding:0.15rem 0.45rem;">' + (window.t ? t('ct.aml.verified') : 'Overený') + '</span>'
+        : amlRec.status === 'rejected' ? '<span class="aml-badge rejected" style="font-size:0.7rem;padding:0.15rem 0.45rem;">' + (window.t ? t('ct.aml.rejected') : 'Zamietnutý') + '</span>'
+        : amlRec.status === 'flagged' ? '<span class="aml-badge flagged" style="font-size:0.7rem;padding:0.15rem 0.45rem;">' + (window.t ? t('ct.aml.flagged') : 'Flagged') + '</span>'
+        : '<span class="aml-badge pending" style="font-size:0.7rem;padding:0.15rem 0.45rem;">' + (window.t ? t('ct.aml.pending') : 'Čaká') + '</span>')
       : '<span style="font-size:0.7rem;color:var(--text-light);">-</span>';
     // Stage pill if seller/buyer
     const hasDeal = roles.includes('seller') || roles.includes('buyer');
-    const stg = hasDeal ? (CLIENT_STAGE_LABELS[c.stage || 'new'] || CLIENT_STAGE_LABELS.new) : null;
+    const _stg0 = hasDeal ? (CLIENT_STAGE_LABELS[c.stage || 'new'] || CLIENT_STAGE_LABELS.new) : null;
+    const stg = _stg0 ? { icon: _stg0.icon, color: _stg0.color, bg: _stg0.bg, label: clientStageLabel(c.stage || 'new') } : null;
     const stageHtml = stg
       ? `<span style="display:inline-block;padding:0.15rem 0.5rem;border-radius:10px;font-size:0.68rem;font-weight:600;background:${stg.bg};color:${stg.color};">${stg.icon} ${esc(stg.label)}</span>`
       : '<span style="font-size:0.7rem;color:var(--text-light);">—</span>';
@@ -10321,8 +10340,8 @@ function renderContacts() {
       <td style="text-align:center;">${amlBadge}</td>
       <td style="text-align:left;font-size:0.8rem;color:var(--text-light);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(c.note || '')}">${esc(note)}</td>
       <td style="text-align:center;">
-        <button onclick="openContactForm('${c.id}')" style="background:none;border:none;cursor:pointer;color:#1A7A8A;padding:4px;" title="Upraviť"><i data-lucide="pencil" style="width:15px;height:15px;"></i></button>
-        <button onclick="deleteContact('${c.id}')" style="background:none;border:none;cursor:pointer;color:#E8734A;padding:4px;" title="Odstrániť"><i data-lucide="trash-2" style="width:15px;height:15px;"></i></button>
+        <button onclick="openContactForm('${c.id}')" style="background:none;border:none;cursor:pointer;color:#1A7A8A;padding:4px;" title="${window.t ? t('ct.edit') : 'Upraviť'}"><i data-lucide="pencil" style="width:15px;height:15px;"></i></button>
+        <button onclick="deleteContact('${c.id}')" style="background:none;border:none;cursor:pointer;color:#E8734A;padding:4px;" title="${window.t ? t('ct.delete') : 'Odstrániť'}"><i data-lucide="trash-2" style="width:15px;height:15px;"></i></button>
       </td>
     </tr>`;
   }).join('');
@@ -11728,12 +11747,12 @@ function renderAmlList() {
   const grid = document.getElementById('aml-grid');
   const empty = document.getElementById('aml-empty');
   const countEl = document.getElementById('aml-count');
-  if (countEl) countEl.textContent = filtered.length + ' z ' + records.length + ' preverení';
+  if (countEl) countEl.textContent = (window.t ? t('aml.count') : '{f} z {t} preverení').replace('{f}', filtered.length).replace('{t}', records.length);
 
   if (filtered.length === 0) {
     grid.innerHTML = '';
     empty.style.display = records.length === 0 ? 'block' : 'block';
-    if (records.length > 0) empty.querySelector('p').textContent = 'Žiadne preverenia nezodpovedajú filtru.';
+    if (records.length > 0) empty.querySelector('p').textContent = (window.t ? t('aml.no_match') : 'Žiadne preverenia nezodpovedajú filtru.');
     return;
   }
   empty.style.display = 'none';
@@ -11755,19 +11774,19 @@ function renderAmlList() {
           '<span class="aml-card-name">' + name + '</span>' +
           '<span class="aml-card-type">' + typeLabel + '</span>' +
         '</div>' +
-        '<span class="aml-badge ' + r.status + '">' + st.label + '</span>' +
+        '<span class="aml-badge ' + r.status + '">' + esc(amlStatusLabel(r.status)) + '</span>' +
       '</div>' +
       '<div class="aml-card-meta">' +
         '<span>' + dateStr + '</span>' +
-        (r.ico ? '<span>IČO: ' + esc(r.ico) + '</span>' : '') +
+        (r.ico ? '<span>' + (window.t ? t('aml.regno') : 'IČO') + ': ' + esc(r.ico) + '</span>' : '') +
         (r.transactionValue ? '<span>' + Number(r.transactionValue).toLocaleString('sk-SK') + ' €</span>' : '') +
       '</div>' +
       '<div style="display:flex;align-items:center;justify-content:space-between;">' +
         '<div style="display:flex;align-items:center;gap:0.5rem;">' +
           '<div class="aml-risk-bar">' + riskSegs + '</div>' +
-          '<span style="font-size:0.72rem;font-weight:600;color:' + risk.color + ';">' + risk.label + ' riziko</span>' +
+          '<span style="font-size:0.72rem;font-weight:600;color:' + risk.color + ';">' + esc(amlRiskLabel(r.riskCategory)) + ' ' + (window.t ? t('aml.risk_suffix') : 'riziko') + '</span>' +
         '</div>' +
-        '<span style="font-size:0.68rem;color:var(--text-light);">Skóre: ' + (r.riskScore || 0) + '</span>' +
+        '<span style="font-size:0.68rem;color:var(--text-light);">' + (window.t ? t('aml.score') : 'Skóre') + ': ' + (r.riskScore || 0) + '</span>' +
       '</div>' +
     '</div>';
   }).join('');
@@ -14943,15 +14962,15 @@ function renderSignatures() {
         </div>
         <div class="sig-card-body">
           <div class="sig-meta">
-            <div><span class="sig-label">Podpísal:</span> <b>${esc(s.signerName)}</b>${s.signerRole ? ' <span style="color:var(--text-light);font-size:0.75rem;">(' + esc(s.signerRole) + ')</span>' : ''}</div>
+            <div><span class="sig-label">${window.t ? t('sig.signed_by') : 'Podpísal:'}</span> <b>${esc(s.signerName)}</b>${s.signerRole ? ' <span style="color:var(--text-light);font-size:0.75rem;">(' + esc(s.signerRole) + ')</span>' : ''}</div>
             ${s.documentRef ? `<div><span class="sig-label">Dokument:</span> ${esc(s.documentRef)}</div>` : ''}
-            ${s.docHash ? `<div class="sig-hash"><span class="sig-label">Hash:</span> <code>${esc(s.docHash.slice(0,16))}…</code></div>` : ''}
+            ${s.docHash ? `<div class="sig-hash"><span class="sig-label">${window.t ? t('sig.hash') : 'Hash:'}</span> <code>${esc(s.docHash.slice(0,16))}…</code></div>` : ''}
           </div>
           <img class="sig-img" src="${s.signatureDataUrl}" alt="Podpis" />
         </div>
         <div class="sig-card-footer">
-          <button class="sig-btn-view" onclick="viewSignatureEntry('${s.id}')">Zobraziť</button>
-          <button class="sig-btn-delete" onclick="deleteSignatureEntry('${s.id}')">Vymazať</button>
+          <button class="sig-btn-view" onclick="viewSignatureEntry('${s.id}')">${window.t ? t('sig.view') : 'Zobraziť'}</button>
+          <button class="sig-btn-delete" onclick="deleteSignatureEntry('${s.id}')">${window.t ? t('sig.delete') : 'Vymazať'}</button>
         </div>
       </div>
     `;
