@@ -12541,6 +12541,59 @@ function exportSavedLeadsCSV() {
   a.click();
 }
 
+// Deep-tech: animate a numeric counter from current \u2192 target over ~700ms
+function animateCounter(el, target) {
+  if (!el || typeof target !== 'number') return;
+  const current = parseInt(String(el.textContent || '').replace(/\D/g, ''), 10) || 0;
+  if (current === target) { el.textContent = String(target); return; }
+  const duration = 700;
+  const startTime = performance.now();
+  function step(now) {
+    const t = Math.min(1, (now - startTime) / duration);
+    const eased = 1 - Math.pow(1 - t, 4); // easeOutQuart
+    const v = Math.round(current + (target - current) * eased);
+    el.textContent = String(v);
+    if (t < 1) requestAnimationFrame(step);
+    else el.textContent = String(target);
+  }
+  requestAnimationFrame(step);
+}
+
+// Deep-tech: 30-day activity heatmap (property updates + viewings + AML)
+function renderDashHeatmap(props, amlRecords) {
+  const grid = document.getElementById('dash-heatmap-grid');
+  const sumEl = document.getElementById('dash-heatmap-sum');
+  if (!grid) return;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const dayMs = 86400000;
+  const counts = new Array(30).fill(0);
+  function bucket(dateStr) {
+    if (!dateStr) return -1;
+    const d = new Date(dateStr); if (isNaN(d)) return -1;
+    d.setHours(0, 0, 0, 0);
+    const diff = Math.round((today - d) / dayMs);
+    if (diff < 0 || diff >= 30) return -1;
+    return 29 - diff;
+  }
+  (props || []).forEach(p => {
+    (p.viewings || []).forEach(v => { const i = bucket(v.date || v.dateTime || v.createdAt); if (i >= 0) counts[i]++; });
+    const i = bucket(p.updatedAt || p.createdAt); if (i >= 0) counts[i]++;
+  });
+  (amlRecords || []).forEach(r => { const i = bucket(r.updatedAt || r.createdAt || r.date); if (i >= 0) counts[i]++; });
+  const maxCount = Math.max(1, ...counts);
+  function level(n) { if (n === 0) return 0; const r = n / maxCount; if (r < 0.25) return 1; if (r < 0.5) return 2; if (r < 0.8) return 3; return 4; }
+  function dayLabel(idx) {
+    const d = new Date(today.getTime() - (29 - idx) * dayMs);
+    return d.toLocaleDateString(window.i18n && window.i18n.getLang() === 'en' ? 'en-GB' : 'sk-SK', { day: '2-digit', month: 'short' });
+  }
+  grid.innerHTML = counts.map((n, i) => `<div class="dash-heatmap-cell" data-level="${level(n)}" title="${dayLabel(i)}: ${n}"></div>`).join('');
+  if (sumEl) {
+    const total = counts.reduce((a, b) => a + b, 0);
+    const lbl = window.t ? t('home.heatmap.events') : 'aktiv\u00EDt';
+    sumEl.textContent = `${total} ${lbl}`;
+  }
+}
+
 // ==================== DASHBOARD ====================
 function renderDashboard() {
   const props = getProperties();
@@ -12553,25 +12606,28 @@ function renderDashboard() {
   const totalViewings = props.reduce((sum, p) => sum + ((p.viewings || []).length), 0);
   const portfolioValue = activeProps.reduce((sum, p) => sum + (Number(p.price) || 0), 0);
 
-  document.getElementById('dash-active-count').textContent = activeProps.length;
+  animateCounter(document.getElementById('dash-active-count'), activeProps.length);
   document.getElementById('dash-portfolio-value').textContent = portfolioValue > 0
     ? (portfolioValue >= 1000000
       ? (portfolioValue / 1000000).toFixed(1).replace('.', ',') + ' M\u20AC'
       : portfolioValue.toLocaleString('sk-SK') + ' \u20AC')
     : '0 \u20AC';
-  document.getElementById('dash-viewings-count').textContent = totalViewings;
-  document.getElementById('dash-sold-count').textContent = soldProps.length;
+  animateCounter(document.getElementById('dash-viewings-count'), totalViewings);
+  animateCounter(document.getElementById('dash-sold-count'), soldProps.length);
 
   // --- AML KPI ---
   const amlRecords = typeof getAmlRecords === 'function' ? getAmlRecords() : [];
   const amlPending = amlRecords.filter(r => r.status === 'pending' || r.status === 'flagged').length;
-  document.getElementById('dash-aml-pending').textContent = amlPending;
+  animateCounter(document.getElementById('dash-aml-pending'), amlPending);
 
   // --- Pipeline Funnel ---
   renderDashPipeline(props);
 
   // --- Charts ---
   renderDashCharts(props);
+
+  // --- 30-day activity heatmap (deep-tech) ---
+  renderDashHeatmap(props, amlRecords);
 
   // --- Lead Metrics ---
   renderDashLeadMetrics();

@@ -1913,6 +1913,12 @@ window.__I18N_DICT = {
     'auth.error.server_session': 'Chyba servera pri overení sedenia.',
     'auth.error.email_required': 'Email is required',
 
+    // ── Deep-tech heatmap ──
+    'home.heatmap.title': 'Aktivita za posledných 30 dní',
+    'home.heatmap.less': 'Menej',
+    'home.heatmap.more': 'Viac',
+    'home.heatmap.events': 'aktivít',
+
   },
 
   en: {
@@ -3818,6 +3824,12 @@ window.__I18N_DICT = {
     'auth.error.account_not_found': 'Account not found.',
     'auth.error.server_session': 'Server error during session check.',
     'auth.error.email_required': 'Email is required.',
+
+    // ── Deep-tech heatmap ──
+    'home.heatmap.title': 'Activity over the past 30 days',
+    'home.heatmap.less': 'Less',
+    'home.heatmap.more': 'More',
+    'home.heatmap.events': 'events',
 
   },
 };

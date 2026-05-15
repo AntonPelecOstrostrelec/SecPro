@@ -3819,6 +3819,65 @@
       display: flex; align-items: center; gap: 0.5rem;
     }
     .dash-chart-canvas { position: relative; height: 240px; }
+
+    /* Deep-tech activity heatmap */
+    .dash-heatmap-card {
+      background: linear-gradient(135deg, #FFFFFF 0%, #FAFCFD 100%);
+      border-radius: 18px;
+      box-shadow:
+        0 1px 2px rgba(11,42,60,0.04),
+        0 8px 28px rgba(11,42,60,0.06),
+        inset 0 0 0 1px rgba(11,42,60,0.04);
+      padding: 1.5rem 1.75rem; margin-bottom: 1.75rem;
+    }
+    .dash-heatmap-head {
+      display: flex; align-items: baseline; justify-content: space-between;
+      gap: 1rem; margin-bottom: 1rem;
+    }
+    .dash-heatmap-title {
+      font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+      color: #6C6C70; display: flex; align-items: center; gap: 0.5rem;
+    }
+    .dash-heatmap-sum {
+      font-size: 0.75rem; color: #6C6C70; font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+    .dash-heatmap-grid {
+      display: grid; grid-template-columns: repeat(30, 1fr); gap: 4px;
+      margin-bottom: 8px;
+    }
+    .dash-heatmap-cell {
+      aspect-ratio: 1; border-radius: 4px;
+      background: rgba(60, 60, 67, 0.05);
+      transition: transform 0.15s, box-shadow 0.15s;
+      cursor: pointer; position: relative;
+    }
+    .dash-heatmap-cell:hover { transform: scale(1.4); box-shadow: 0 4px 12px rgba(0,0,0,0.12); z-index: 2; }
+    .dash-heatmap-cell[data-level="1"] { background: rgba(46, 196, 212, 0.18); }
+    .dash-heatmap-cell[data-level="2"] { background: rgba(46, 196, 212, 0.42); }
+    .dash-heatmap-cell[data-level="3"] { background: rgba(46, 196, 212, 0.68); }
+    .dash-heatmap-cell[data-level="4"] { background: linear-gradient(135deg, #2EC4D4, #1A7A8A); box-shadow: 0 0 8px rgba(46,196,212,0.45); }
+    .dash-heatmap-legend {
+      display: flex; align-items: center; justify-content: flex-end;
+      gap: 6px; font-size: 0.65rem; color: #8E8E93;
+      font-variant-numeric: tabular-nums;
+    }
+    .dash-heatmap-legend .swatches { display: flex; gap: 3px; }
+    .dash-heatmap-legend .swatches > div { width: 10px; height: 10px; border-radius: 2px; }
+
+    /* Live pulse dot for "real-time" feel */
+    .dash-live-dot {
+      display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+      background: #00A36A; box-shadow: 0 0 0 0 rgba(0, 163, 106, 0.5);
+      animation: dt-pulse 1.8s ease-in-out infinite;
+      vertical-align: middle; margin-right: 6px;
+    }
+    @keyframes dt-pulse {
+      0%   { box-shadow: 0 0 0 0 rgba(0, 163, 106, 0.5); }
+      70%  { box-shadow: 0 0 0 8px rgba(0, 163, 106, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(0, 163, 106, 0); }
+    }
+
     .dash-actions-row {
       display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 0.75rem; margin-bottom: 1.75rem;
