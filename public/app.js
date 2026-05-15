@@ -1,7 +1,7 @@
 // === JS BUILD VERSION INDICATOR ===
 // If you don't see this badge in the top-left after hard refresh, the
 // browser/CDN is still serving stale app.js.
-const SECPRO_JS_BUILD = 'lang-topbar1-2026-05-15';
+const SECPRO_JS_BUILD = 'i18n-p1-2026-05-15';
 console.log('%c[SecPro] JS build:', 'background:#16A34A;color:#fff;padding:2px 6px;border-radius:3px;', SECPRO_JS_BUILD);
 
 // Initialize Lucide icons
@@ -3830,6 +3830,39 @@ const PROP_CONDITION_MAP = {
   'povodny-stav': 'Pôvodný stav',
   'rozostavanost': 'Rozostavanosť',
 };
+
+// ── i18n label resolvers for shared constants ──────────────────────
+// These translate status/type/condition/contact-category labels through
+// the i18n dict. The SK dict values mirror the original Slovak strings,
+// so Slovak users see zero change; EN users get proper translations.
+// t(key, fallback) returns the original Slovak label if a key is missing,
+// so partial dict coverage never shows raw key strings.
+function propStatusLabel(key) {
+  const legacy = { kontaktovany: 'kontakt', dohodnute: 'stretnutie', rozpracovany: 'inzercia', uzavrety: 'predana' };
+  const k = legacy[key] || key;
+  const fb = (PROP_STATUS_MAP[key] || {}).label || key || '';
+  return (typeof window !== 'undefined' && window.t) ? t('cst.status.' + k, fb) : fb;
+}
+function propTypeLabel(key) {
+  const fb = PROP_TYPE_MAP[key] || key || '';
+  return (typeof window !== 'undefined' && window.t) ? t('cst.type.' + key, fb) : fb;
+}
+function propConditionLabel(key) {
+  const fb = PROP_CONDITION_MAP[key] || key || '';
+  return (typeof window !== 'undefined' && window.t) ? t('cst.cond.' + key, fb) : fb;
+}
+function contactCategoryLabel(key) {
+  const fb = (typeof CONTACT_CATEGORY_LABELS !== 'undefined' && CONTACT_CATEGORY_LABELS[key]) || key || '';
+  return (typeof window !== 'undefined' && window.t) ? t('cst.ccat.' + key, fb) : fb;
+}
+function contactStatusLabel(key) {
+  const fb = (typeof CONTACT_STATUS_LABELS !== 'undefined' && (CONTACT_STATUS_LABELS[key] || {}).label) || key || '';
+  return (typeof window !== 'undefined' && window.t) ? t('cst.cstat.' + key, fb) : fb;
+}
+function contactRoleLabel(key) {
+  const fb = (typeof CONTACT_ROLE_META !== 'undefined' && (CONTACT_ROLE_META[key] || {}).label) || key || '';
+  return (typeof window !== 'undefined' && window.t) ? t('cst.crole.' + key, fb) : fb;
+}
 
 // ===================== PROPERTY FORM WIZARD =====================
 const PROP_WIZ_TOTAL_STEPS = 3;
@@ -12513,28 +12546,30 @@ function renderDashActivityFeed(props, contacts) {
 
   const events = [];
 
+  const _untitled = () => (window.t ? t('common.untitled') : 'Bez názvu');
+
   // Property events
   props.forEach(p => {
-    if (p.createdAt) events.push({ type: 'property_add', date: p.createdAt, text: 'Pridaná nehnuteľnosť: ' + (p.title || 'Bez názvu'), icon: 'home', color: '#1A7A8A' });
-    if (p.leonisPublishedAt) events.push({ type: 'property_publish', date: p.leonisPublishedAt, text: 'Publikovaná na LEONES: ' + (p.title || 'Bez názvu'), icon: 'globe', color: '#10B981' });
+    if (p.createdAt) events.push({ type: 'property_add', date: p.createdAt, text: (window.t ? t('dash.activity.property_add') : 'Pridaná nehnuteľnosť') + ': ' + (p.title || _untitled()), icon: 'home', color: '#1A7A8A' });
+    if (p.leonisPublishedAt) events.push({ type: 'property_publish', date: p.leonisPublishedAt, text: (window.t ? t('dash.activity.property_publish') : 'Publikovaná na LEONES') + ': ' + (p.title || _untitled()), icon: 'globe', color: '#10B981' });
     (p.statusHistory || []).forEach(sh => {
-      events.push({ type: 'status_change', date: sh.date || sh.changedAt, text: (p.title || 'Bez názvu') + ' → ' + (sh.to || sh.status || ''), icon: 'git-branch', color: '#8B5CF6' });
+      events.push({ type: 'status_change', date: sh.date || sh.changedAt, text: (p.title || _untitled()) + ' → ' + (sh.to ? propStatusLabel(sh.to) : (sh.status ? propStatusLabel(sh.status) : '')), icon: 'git-branch', color: '#8B5CF6' });
     });
     (p.viewings || []).forEach(v => {
-      events.push({ type: 'viewing', date: v.date, text: 'Obhliadka: ' + (p.title || 'Bez názvu'), icon: 'eye', color: '#F59E0B' });
+      events.push({ type: 'viewing', date: v.date, text: (window.t ? t('dash.activity.viewing') : 'Obhliadka') + ': ' + (p.title || _untitled()), icon: 'eye', color: '#F59E0B' });
     });
   });
 
   // Contact events
   contacts.forEach(c => {
-    if (c.createdAt) events.push({ type: 'contact_add', date: c.createdAt, text: 'Nový kontakt: ' + (c.name || ''), icon: 'user-plus', color: '#0369A1' });
+    if (c.createdAt) events.push({ type: 'contact_add', date: c.createdAt, text: (window.t ? t('dash.activity.contact_add') : 'Nový kontakt') + ': ' + (c.name || ''), icon: 'user-plus', color: '#0369A1' });
   });
 
   // Lead events
   const leads = typeof getSavedLeads === 'function' ? getSavedLeads() : [];
   leads.forEach(l => {
-    if (l.savedAt) events.push({ type: 'lead_saved', date: l.savedAt, text: 'Uložený lead: ' + (l.title || 'Bez názvu'), icon: 'bookmark', color: '#3B82F6' });
-    if (l.contactedAt) events.push({ type: 'lead_contacted', date: l.contactedAt, text: 'Kontaktovaný lead: ' + (l.title || ''), icon: 'phone', color: '#F59E0B' });
+    if (l.savedAt) events.push({ type: 'lead_saved', date: l.savedAt, text: (window.t ? t('dash.activity.lead_saved') : 'Uložený lead') + ': ' + (l.title || _untitled()), icon: 'bookmark', color: '#3B82F6' });
+    if (l.contactedAt) events.push({ type: 'lead_contacted', date: l.contactedAt, text: (window.t ? t('dash.activity.lead_contacted') : 'Kontaktovaný lead') + ': ' + (l.title || ''), icon: 'phone', color: '#F59E0B' });
   });
 
   // Sort by date desc, take last 10
@@ -12542,7 +12577,7 @@ function renderDashActivityFeed(props, contacts) {
   const recent = events.slice(0, 10);
 
   if (recent.length === 0) {
-    feed.innerHTML = '<div class="dash-empty-state">Zatiaľ žiadna aktivita</div>';
+    feed.innerHTML = '<div class="dash-empty-state">' + (window.t ? t('dash.activity.empty') : 'Zatiaľ žiadna aktivita') + '</div>';
     return;
   }
 
@@ -12801,7 +12836,7 @@ function renderDashRecentProps(props) {
     .slice(0, 5);
 
   if (sorted.length === 0) {
-    container.innerHTML = '<div class="dash-empty-state">Zatiaľ žiadne nehnuteľnosti.<br><span class="dash-section-link" onclick="showPage(\'myproperties\'); setTimeout(()=>openPropertyForm(), 100);">Pridajte prvú</span></div>';
+    container.innerHTML = '<div class="dash-empty-state">' + (window.t ? t('dash.recent.props_empty') : 'Zatiaľ žiadne nehnuteľnosti.') + '<br><span class="dash-section-link" onclick="showPage(\'myproperties\'); setTimeout(()=>openPropertyForm(), 100);">' + (window.t ? t('dash.recent.props_add_first') : 'Pridajte prvú') + '</span></div>';
     return;
   }
 
@@ -12812,16 +12847,16 @@ function renderDashRecentProps(props) {
     const dateStr = p.lastModified
       ? new Date(p.lastModified).toLocaleDateString('sk-SK', { day: 'numeric', month: 'short' })
       : '';
-    const typeName = PROP_TYPE_MAP[p.type] || p.type || '';
+    const typeName = propTypeLabel(p.type) || '';
 
     return '<div class="dash-recent-item" onclick="showPage(\'myproperties\'); setTimeout(()=>openPropDetail(\'' + p.id + '\'), 100);">' +
       '<div class="dash-recent-thumb">' +
         (photo ? '<img src="' + photo + '" />' : '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>') +
       '</div>' +
       '<div class="dash-recent-info">' +
-        '<div class="dash-recent-name">' + esc(p.title || 'Bez názvu') + '</div>' +
+        '<div class="dash-recent-name">' + esc(p.title || (window.t ? t('common.untitled') : 'Bez názvu')) + '</div>' +
         '<div class="dash-recent-meta">' +
-          '<span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:0.68rem;font-weight:600;background:' + st.bg + ';color:' + st.color + ';">' + st.label + '</span>' +
+          '<span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:0.68rem;font-weight:600;background:' + st.bg + ';color:' + st.color + ';">' + esc(propStatusLabel(p.status)) + '</span>' +
           (typeName ? '<span>' + esc(typeName) + '</span>' : '') +
           (p.city ? '<span>' + esc(p.city) + '</span>' : '') +
           (dateStr ? '<span>' + dateStr + '</span>' : '') +
@@ -12841,14 +12876,16 @@ function renderDashRecentContacts(contacts) {
     .slice(0, 5);
 
   if (sorted.length === 0) {
-    container.innerHTML = '<div class="dash-empty-state">Zatiaľ žiadne kontakty.<br><span class="dash-section-link" onclick="showPage(\'contacts\'); setTimeout(()=>openContactForm(), 100);">Pridajte prvý</span></div>';
+    container.innerHTML = '<div class="dash-empty-state">' + (window.t ? t('dash.recent.contacts_empty') : 'Zatiaľ žiadne kontakty.') + '<br><span class="dash-section-link" onclick="showPage(\'contacts\'); setTimeout(()=>openContactForm(), 100);">' + (window.t ? t('dash.recent.contacts_add_first') : 'Pridajte prvý') + '</span></div>';
     return;
   }
 
   container.innerHTML = sorted.map(c => {
     const initials = c.name ? c.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() : '?';
-    const cat = CONTACT_CATEGORY_LABELS[c.category] || c.category || '';
-    const st = CONTACT_STATUS_LABELS[c.status] || { label: c.status || '', color: '#999', bg: '#f0f0f0' };
+    const cat = contactCategoryLabel(c.category);
+    const stColor = (CONTACT_STATUS_LABELS[c.status] || {}).color || '#999';
+    const stBg = (CONTACT_STATUS_LABELS[c.status] || {}).bg || '#f0f0f0';
+    const st = { label: contactStatusLabel(c.status), color: stColor, bg: stBg };
 
     return '<div class="dash-contact-item" onclick="showPage(\'contacts\'); setTimeout(()=>openContactForm(\'' + c.id + '\'), 100);">' +
       '<div class="dash-contact-avatar">' + initials + '</div>' +
