@@ -1,7 +1,7 @@
 // === JS BUILD VERSION INDICATOR ===
 // If you don't see this badge in the top-left after hard refresh, the
 // browser/CDN is still serving stale app.js.
-const SECPRO_JS_BUILD = 'i18n-p1-2026-05-15';
+const SECPRO_JS_BUILD = 'i18n-p2-2026-05-15';
 console.log('%c[SecPro] JS build:', 'background:#16A34A;color:#fff;padding:2px 6px;border-radius:3px;', SECPRO_JS_BUILD);
 
 // Initialize Lucide icons
@@ -153,9 +153,15 @@ function getOrCreateChart(canvasId, config) {
 document.addEventListener('i18n:changed', (e) => {
   try {
     const activePage = document.querySelector('.page.active');
-    if (activePage && activePage.id === 'page-home' && typeof renderDashboard === 'function') {
-      renderDashboard();
-    }
+    const id = activePage && activePage.id;
+    // Re-render the active page's dynamic (JS-rendered) content so newly
+    // translated strings take effect immediately without a reload.
+    if (id === 'page-home' && typeof renderDashboard === 'function') renderDashboard();
+    else if (id === 'page-historia' && typeof renderHistory === 'function') renderHistory();
+    else if (id === 'page-myproperties' && typeof renderProperties === 'function') renderProperties();
+    else if (id === 'page-contacts' && typeof renderContacts === 'function') renderContacts();
+    else if (id === 'page-aml' && typeof renderAmlList === 'function') renderAmlList();
+    else if (id === 'page-saved-leads' && typeof renderSavedLeads === 'function') renderSavedLeads();
   } catch {}
   // Keep every language switcher in the UI (header, login, profile) in sync
   try { _syncLangSwitchers((e && e.detail && e.detail.lang) || (window.i18n && window.i18n.getLang())); } catch {}
@@ -1421,6 +1427,11 @@ const HIST_TYPES = {
   'metodika': { label: 'Porovnanie bánk', color: '#dc2626', bg: '#fef2f2', icon: '&#9878;' }
 };
 
+function histTypeLabel(key) {
+  const fb = (HIST_TYPES[key] || {}).label || key || '';
+  return (typeof window !== 'undefined' && window.t) ? t('hist.type.' + key, fb) : fb;
+}
+
 function getHistory() { return _getCached('history', []); }
 function setHistory(arr) { _setCached('history', arr); }
 
@@ -1498,26 +1509,31 @@ function renderHistory() {
   const container = document.getElementById('hist-list');
   if (!container) return;
   if (hist.length === 0) {
-    container.innerHTML = '<div class="hist-empty"><div class="hist-empty-icon">&#128203;</div><h3 style="color:var(--text);margin-bottom:0.5rem">Zatiaľ žiadne uložené analýzy</h3><p>Po vykonaní výpočtu kliknite na tlačidlo "Uložiť analýzu"</p></div>';
+    const eTitle = window.t ? t('hist.empty.title') : 'Zatiaľ žiadne uložené analýzy';
+    const eHint = window.t ? t('hist.empty.hint') : 'Po vykonaní výpočtu kliknite na tlačidlo "Uložiť analýzu"';
+    container.innerHTML = '<div class="hist-empty"><div class="hist-empty-icon">&#128203;</div><h3 style="color:var(--text);margin-bottom:0.5rem">' + eTitle + '</h3><p>' + eHint + '</p></div>';
     return;
   }
+  const lblOpen = window.t ? t('hist.btn.open') : 'Otvoriť';
+  const lblRename = window.t ? t('hist.btn.rename') : 'Premenovať';
+  const lblDelete = window.t ? t('hist.btn.delete') : 'Vymazať';
   container.innerHTML = hist.map(e => {
-    const t = HIST_TYPES[e.type] || { label: e.type, color: '#64748b', bg: '#f8fafc', icon: '&#9679;' };
+    const ht = HIST_TYPES[e.type] || { label: e.type, color: '#64748b', bg: '#f8fafc', icon: '&#9679;' };
     const d = new Date(e.date);
     const dateStr = d.toLocaleDateString('sk-SK') + ' ' + d.toLocaleTimeString('sk-SK', {hour:'2-digit',minute:'2-digit'});
     return `<div class="hist-card" data-id="${e.id}">
-      <div class="hist-card-icon" style="background:${t.bg};color:${t.color}">${t.icon}</div>
+      <div class="hist-card-icon" style="background:${ht.bg};color:${ht.color}">${ht.icon}</div>
       <div class="hist-card-body">
         <div class="hist-card-name">${escHtml(e.name)}</div>
         <div class="hist-card-meta">
-          <span class="hist-badge" style="background:${t.bg};color:${t.color}">${t.label}</span>
+          <span class="hist-badge" style="background:${ht.bg};color:${ht.color}">${escHtml(histTypeLabel(e.type))}</span>
           <span>${dateStr}</span>
         </div>
       </div>
       <div class="hist-actions">
-        <button class="hist-btn hist-btn-open" onclick="loadAnalysis(${e.id})">Otvoriť</button>
-        <button class="hist-btn hist-btn-rename" onclick="renameAnalysis(${e.id})">Premenovat</button>
-        <button class="hist-btn hist-btn-delete" onclick="confirmDeleteAnalysis(${e.id})">Vymazať</button>
+        <button class="hist-btn hist-btn-open" onclick="loadAnalysis(${e.id})">${lblOpen}</button>
+        <button class="hist-btn hist-btn-rename" onclick="renameAnalysis(${e.id})">${lblRename}</button>
+        <button class="hist-btn hist-btn-delete" onclick="confirmDeleteAnalysis(${e.id})">${lblDelete}</button>
       </div>
     </div>`;
   }).join('');
@@ -1529,25 +1545,31 @@ function renameAnalysis(id) {
   const hist = getHistory();
   const entry = hist.find(e => e.id === id);
   if (!entry) return;
-  showModal('Premenovať analýzu', 'Zadajte nový názov:', entry.name, (newName) => {
-    if (newName && newName.trim()) {
-      entry.name = newName.trim();
-      setHistory(hist);
-      renderHistory();
-      showToast('Analýza premenovaná!');
-    }
-  });
+  showModal(
+    window.t ? t('hist.rename.title') : 'Premenovať analýzu',
+    window.t ? t('hist.rename.prompt') : 'Zadajte nový názov:',
+    entry.name,
+    (newName) => {
+      if (newName && newName.trim()) {
+        entry.name = newName.trim();
+        setHistory(hist);
+        renderHistory();
+        showToast(window.t ? t('hist.rename.done') : 'Analýza premenovaná!');
+      }
+    });
 }
 
 function confirmDeleteAnalysis(id) {
   const hist = getHistory();
   const entry = hist.find(e => e.id === id);
   if (!entry) return;
-  showConfirm('Vymazať analyzu?', 'Naozaj chcete vymazat "' + escHtml(entry.name) + '"? Tuto akciu nie je mozne vratit.', () => {
+  const dTitle = window.t ? t('hist.delete.title') : 'Vymazať analýzu?';
+  const dMsg = (window.t ? t('hist.delete.confirm') : 'Naozaj chcete vymazať „{name}"? Túto akciu nie je možné vrátiť.').replace('{name}', escHtml(entry.name));
+  showConfirm(dTitle, dMsg, () => {
     const newHist = hist.filter(e => e.id !== id);
     setHistory(newHist);
     renderHistory();
-    showToast('Analýza vymazaná!');
+    showToast(window.t ? t('hist.delete.done') : 'Analýza vymazaná!');
   });
 }
 
