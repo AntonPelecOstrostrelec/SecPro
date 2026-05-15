@@ -33,6 +33,10 @@
 <!-- LOGIN OVERLAY -->
 <div class="login-overlay" id="loginOverlay">
   <div class="login-box">
+    <div class="lang-switch lang-switch-login" role="group" aria-label="Language">
+      <button type="button" class="lang-switch-btn" data-lang="sk" onclick="switchAppLanguage('sk')" title="Slovenčina">SK</button>
+      <button type="button" class="lang-switch-btn" data-lang="en" onclick="switchAppLanguage('en')" title="English">EN</button>
+    </div>
     <div class="login-logo">
       <img class="login-logo-img" src="img/secpro-logo-s.png" alt="SecPro logo" width="64" height="64">
       <h1>SecPro</h1>
@@ -130,6 +134,10 @@
     <span class="header-subtitle" data-i18n="app.subtitle">Centrum pre moderných maklérov</span>
   </div>
   <div class="header-user" id="headerUser">
+    <div class="lang-switch" role="group" aria-label="Language">
+      <button type="button" class="lang-switch-btn" data-lang="sk" onclick="switchAppLanguage('sk')" title="Slovenčina">SK</button>
+      <button type="button" class="lang-switch-btn" data-lang="en" onclick="switchAppLanguage('en')" title="English">EN</button>
+    </div>
     <button class="header-bell" id="header-bell" onclick="toggleReminderPanel(event)" title="Pripomienky" data-i18n-attr-title="header.reminders" aria-label="Pripomienky" data-i18n-attr-aria-label="header.reminders">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
       <span class="header-bell-badge" id="header-bell-badge" style="display:none;">0</span>
@@ -4513,6 +4521,6 @@
   </div>
 </div>
 
-<script src="app.js?v=i18n-pass1"></script>
+<script src="app.js?v=lang-topbar1"></script>
 </body>
 </html>

@@ -1,7 +1,7 @@
 // === JS BUILD VERSION INDICATOR ===
 // If you don't see this badge in the top-left after hard refresh, the
 // browser/CDN is still serving stale app.js.
-const SECPRO_JS_BUILD = 'poi-back2-2026-05-07';
+const SECPRO_JS_BUILD = 'lang-topbar1-2026-05-15';
 console.log('%c[SecPro] JS build:', 'background:#16A34A;color:#fff;padding:2px 6px;border-radius:3px;', SECPRO_JS_BUILD);
 
 // Initialize Lucide icons
@@ -150,13 +150,53 @@ function getOrCreateChart(canvasId, config) {
 
 // Re-render dashboard + charts when language switches (Chart.js charts have
 // baked-in translated strings — they must be rebuilt for the new language).
-document.addEventListener('i18n:changed', () => {
+document.addEventListener('i18n:changed', (e) => {
   try {
     const activePage = document.querySelector('.page.active');
     if (activePage && activePage.id === 'page-home' && typeof renderDashboard === 'function') {
       renderDashboard();
     }
   } catch {}
+  // Keep every language switcher in the UI (header, login, profile) in sync
+  try { _syncLangSwitchers((e && e.detail && e.detail.lang) || (window.i18n && window.i18n.getLang())); } catch {}
+});
+
+// Global language switcher — used by the header pill, the login/register
+// overlay pill, and (indirectly) the profile radios. Switches the UI
+// language, mirrors the choice into every visible switcher, and best-effort
+// persists it to the user's account if they're logged in.
+function switchAppLanguage(lang) {
+  if (!window.i18n || !['sk', 'en'].includes(lang)) return;
+  if (window.i18n.getLang() === lang) return;   // no-op if already active
+  window.i18n.setLang(lang);                     // fires i18n:changed → _syncLangSwitchers
+  // Persist to backend only when authenticated (pre-login users have no token)
+  try {
+    const token = (typeof getStoredToken === 'function') ? getStoredToken() : null;
+    if (token) {
+      fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'update-prefs', token, language: lang }),
+      }).catch(() => {});
+    }
+  } catch {}
+}
+
+// Reflect the active language in all switcher UIs (segmented pills + the
+// profile modal radio buttons). Safe to call even if some aren't in the DOM.
+function _syncLangSwitchers(lang) {
+  if (!lang) return;
+  document.querySelectorAll('.lang-switch-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.lang === lang);
+    b.setAttribute('aria-pressed', b.dataset.lang === lang ? 'true' : 'false');
+  });
+  const radio = document.querySelector('input[name="profile-language"][value="' + lang + '"]');
+  if (radio) radio.checked = true;
+}
+
+// Paint initial switcher state once the DOM + i18n engine are ready.
+document.addEventListener('DOMContentLoaded', () => {
+  try { _syncLangSwitchers(window.i18n && window.i18n.getLang()); } catch {}
 });
 
 // ==================== 1. INVESTOVANIE ====================

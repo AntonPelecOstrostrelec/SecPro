@@ -3153,6 +3153,61 @@
       margin-bottom: 0.5rem;
     }
 
+    /* ─── Language switcher (segmented SK/EN pill) ─── */
+    .lang-switch {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      padding: 3px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+    }
+    .lang-switch-btn {
+      min-width: 32px;
+      padding: 4px 10px;
+      border: none;
+      background: transparent;
+      color: rgba(255, 255, 255, 0.75);
+      font-size: 0.74rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background-color 0.15s, color 0.15s;
+      font-family: inherit;
+    }
+    .lang-switch-btn:hover {
+      color: #fff;
+    }
+    .lang-switch-btn.active {
+      background: #fff;
+      color: #0B2A3C;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    }
+    /* Login/registration overlay variant — light card, anchored top-right */
+    .lang-switch-login {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: #F1F5F9;
+      border-color: #E2E8F0;
+    }
+    .lang-switch-login .lang-switch-btn {
+      color: #64748B;
+    }
+    .lang-switch-login .lang-switch-btn:hover {
+      color: #0B2A3C;
+    }
+    .lang-switch-login .lang-switch-btn.active {
+      background: #1A7A8A;
+      color: #fff;
+    }
+    @media (max-width: 480px) {
+      .lang-switch { padding: 2px; }
+      .lang-switch-btn { min-width: 28px; padding: 4px 7px; font-size: 0.7rem; }
+    }
+
     /* ─── Reminder bell (header) ─── */
     .header-bell {
       position: relative;
@@ -4350,6 +4405,7 @@
       max-width: 420px;
       box-shadow: 0 20px 60px rgba(0,0,0,0.3);
       animation: loginSlideUp 0.5s ease;
+      position: relative;
     }
     @keyframes loginSlideUp {
       from { opacity: 0; transform: translateY(30px); }
