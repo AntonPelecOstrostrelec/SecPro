@@ -1,7 +1,7 @@
 // === JS BUILD VERSION INDICATOR ===
 // If you don't see this badge in the top-left after hard refresh, the
 // browser/CDN is still serving stale app.js.
-const SECPRO_JS_BUILD = 'i18n-p34-2026-05-15';
+const SECPRO_JS_BUILD = 'i18n-p5a-2026-05-15';
 console.log('%c[SecPro] JS build:', 'background:#16A34A;color:#fff;padding:2px 6px;border-radius:3px;', SECPRO_JS_BUILD);
 
 // Initialize Lucide icons
@@ -8637,7 +8637,7 @@ function renderProperties() {
   const empty = document.getElementById('prop-empty');
   const countEl = document.getElementById('prop-count');
 
-  if (countEl) countEl.textContent = `${filtered.length} z ${props.length} nehnuteľností`;
+  if (countEl) countEl.textContent = (window.t ? t('prop.card.count') : '{f} z {t} nehnuteľností').replace('{f}', filtered.length).replace('{t}', props.length);
 
   // If the user is currently on the map view, don't touch the grid's display.
   // setPropertyView('map') deliberately hid the grid, but async refreshes
@@ -8657,7 +8657,7 @@ function renderProperties() {
     if (props.length > 0 && filtered.length === 0) {
       grid.style.display = 'none';
       empty.style.display = 'block';
-      empty.querySelector('p').textContent = 'Žiadne nehnuteľnosti nezodpovedajú filtru.';
+      empty.querySelector('p').textContent = window.t ? t('prop.card.no_match') : 'Žiadne nehnuteľnosti nezodpovedajú filtru.';
       empty.querySelector('button').style.display = 'none';
     }
     return;
@@ -8668,8 +8668,9 @@ function renderProperties() {
 
   grid.innerHTML = filtered.map(p => {
     const st = PROP_STATUS_MAP[p.status] || PROP_STATUS_MAP['novy'];
-    const typeName = PROP_TYPE_MAP[p.type] || p.type;
-    const condName = PROP_CONDITION_MAP[p.condition] || '';
+    const stLabel = propStatusLabel(p.status);
+    const typeName = propTypeLabel(p.type);
+    const condName = p.condition ? propConditionLabel(p.condition) : '';
     const priceStr = p.price ? p.price.toLocaleString('sk-SK') + ' €' : '—';
     const photo = (p.photos && p.photos.length > 0) ? p.photos[0] : '';
     const dateStr = p.createdAt ? new Date(p.createdAt).toLocaleDateString('sk-SK') : '';
@@ -8690,7 +8691,7 @@ function renderProperties() {
            reflects it. Avoids double-fire when wrapping a real <input>. -->
       <div class="prop-card-select" role="checkbox" tabindex="0"
            aria-checked="${isSel ? 'true' : 'false'}"
-           title="Vybrať (Shift+klik = rozsah)"
+           title="${window.t ? t('prop.card.select_tip') : 'Vybrať (Shift+klik = rozsah)'}"
            onclick="event.stopPropagation();togglePropSelect(event,'${p.id}');">
         <span class="prop-card-select-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
       </div>
@@ -8699,8 +8700,8 @@ function renderProperties() {
       <div class="prop-card-hero ${photo ? 'has-photo' : ''}" onclick="openPropDetail('${p.id}')" style="cursor:pointer;">
         ${photo ? `<img src="${photo}" class="prop-card-hero-img" />` : `<div class="prop-card-hero-placeholder"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>`}
         <div class="prop-card-hero-overlay">
-          <span class="prop-card-status prop-inline-status" title="Klik pre zmenu statusu" onclick="event.stopPropagation();openInlineStatusDropdown(this,'${p.id}');" style="--st-color:${st.color};--st-bg:${st.bg};">${st.label}</span>
-          ${photoCount > 1 ? `<span class="prop-card-photo-count">${photoCount} foto</span>` : ''}
+          <span class="prop-card-status prop-inline-status" title="${window.t ? t('prop.card.status_tip') : 'Klik pre zmenu statusu'}" onclick="event.stopPropagation();openInlineStatusDropdown(this,'${p.id}');" style="--st-color:${st.color};--st-bg:${st.bg};">${esc(stLabel)}</span>
+          ${photoCount > 1 ? `<span class="prop-card-photo-count">${(window.t ? t('prop.card.photo_count') : '{n} foto').replace('{n}', photoCount)}</span>` : ''}
         </div>
       </div>
 
@@ -8709,7 +8710,7 @@ function renderProperties() {
         <!-- Title & Price row -->
         <div class="prop-card-title-row" onclick="openPropDetail('${p.id}')" style="cursor:pointer;">
           <h4 class="prop-card-title">${p.title}</h4>
-          <div class="prop-card-price prop-inline-editable" title="Klik pre rýchlu úpravu ceny" onclick="event.stopPropagation();startInlinePriceEdit(this,'${p.id}');">${priceStr}</div>
+          <div class="prop-card-price prop-inline-editable" title="${window.t ? t('prop.card.price_tip') : 'Klik pre rýchlu úpravu ceny'}" onclick="event.stopPropagation();startInlinePriceEdit(this,'${p.id}');">${priceStr}</div>
         </div>
 
         <!-- Location -->
@@ -8722,7 +8723,7 @@ function renderProperties() {
         <div class="prop-card-tags">
           <span class="prop-tag">${typeName}</span>
           ${p.size ? `<span class="prop-tag">${p.size} m\u00B2</span>` : ''}
-          ${p.rooms ? `<span class="prop-tag">${p.rooms} izby</span>` : ''}
+          ${p.rooms ? `<span class="prop-tag">${(window.t ? t('prop.card.rooms') : '{n} izby').replace('{n}', p.rooms)}</span>` : ''}
           ${condName ? `<span class="prop-tag">${condName}</span>` : ''}
         </div>
 
@@ -8736,14 +8737,14 @@ function renderProperties() {
             if (isTerminal) dotCls += ' cancelled';
             else if (i < currentPipeIdx) dotCls += ' done';
             else if (i === currentPipeIdx) dotCls += ' active';
-            return `<div class="${dotCls}" title="${stage.label}"></div>`;
+            return `<div class="${dotCls}" title="${esc(propStatusLabel(stage.key))}"></div>`;
           }).join('<div class="pcp-line"></div>')}
         </div>
         ${canAdvance ? `<button class="prop-card-advance-btn" onclick="advanceProperty('${p.id}')">
-          ${nextStage.icon} ${nextStage.label}
+          ${nextStage.icon} ${esc(propStatusLabel(nextStage.key))}
         </button>` : ''}
-        ${isCompleted ? `<div class="prop-card-completed">Nehnuteľnosť predaná</div>` : ''}
-        ${isTerminal ? `<button class="prop-card-advance-btn" style="background:#F1F5F9;color:#64748B;" onclick="advanceProperty('${p.id}', 'novy')">Obnoviť</button>` : ''}
+        ${isCompleted ? `<div class="prop-card-completed">${window.t ? t('prop.card.sold') : 'Nehnuteľnosť predaná'}</div>` : ''}
+        ${isTerminal ? `<button class="prop-card-advance-btn" style="background:#F1F5F9;color:#64748B;" onclick="advanceProperty('${p.id}', 'novy')">${window.t ? t('prop.card.restore') : 'Obnoviť'}</button>` : ''}
 
         <!-- Owner -->
         ${p.owner || p.phone ? `<div class="prop-card-owner">
@@ -8767,20 +8768,20 @@ function renderProperties() {
         <div class="prop-card-badge-row">
           ${intCount ? `<span class="prop-card-badge badge-interested" onclick="openQuickInterestModal('${p.id}')">👥 ${intCount}</span>` : ''}
           ${viewCount ? `<span class="prop-card-badge badge-viewings" onclick="openQuickInterestModal('${p.id}')">📋 ${viewCount}</span>` : ''}
-          <span class="prop-card-badge" style="background:#F0F9F7;color:#1A7A8A;border:1px dashed rgba(26,122,138,0.3);" onclick="openQuickInterestModal('${p.id}')">+ Záujemca</span>
+          <span class="prop-card-badge" style="background:#F0F9F7;color:#1A7A8A;border:1px dashed rgba(26,122,138,0.3);" onclick="openQuickInterestModal('${p.id}')">${window.t ? t('prop.card.add_interested') : '+ Záujemca'}</span>
         </div>
       </div>
 
       <!-- LEONES publish -->
       <div style="padding:0 16px 8px;">
         ${p.leonisPublished
-          ? `<button onclick="event.stopPropagation();unpublishFromLeonis('${p.id}')" class="pca-leones published" title="Stiahnuť z LEONES">
+          ? `<button onclick="event.stopPropagation();unpublishFromLeonis('${p.id}')" class="pca-leones published" title="${window.t ? t('prop.card.leones_unpub_tip') : 'Stiahnuť z LEONES'}">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-              Na LEONES
+              ${window.t ? t('prop.card.leones_on') : 'Na LEONES'}
             </button>`
-          : `<button onclick="event.stopPropagation();publishToLeonis('${p.id}')" class="pca-leones publish" title="Publikovať na LEONES">
+          : `<button onclick="event.stopPropagation();publishToLeonis('${p.id}')" class="pca-leones publish" title="${window.t ? t('prop.card.leones_pub_tip') : 'Publikovať na LEONES'}">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
-              Publikovať na LEONES
+              ${window.t ? t('prop.card.leones_pub') : 'Publikovať na LEONES'}
             </button>`
         }
       </div>
@@ -8793,10 +8794,10 @@ function renderProperties() {
                section already has [+] add-menu and a card list, which made this
                redundant. -->
 
-          ${viewCount ? `<button onclick="openProtocolModal('${p.id}')" class="pca-btn" style="color:#1A7A8A;" title="Protokol s podpisom"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button>` : ''}
-          ${viewCount ? `<button onclick="generateViewingDocument('${p.id}')" class="pca-btn pca-doc" title="Zápisnica PDF"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></button>` : ''}
-          ${p.url ? `<a href="${p.url}" target="_blank" class="pca-btn pca-link" title="Inzerát"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>` : ''}
-          <button onclick="event.stopPropagation();openCardMenu(this, '${p.id}');" class="pca-btn pca-more" title="Akcie" aria-label="Akcie"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg></button>
+          ${viewCount ? `<button onclick="openProtocolModal('${p.id}')" class="pca-btn" style="color:#1A7A8A;" title="${window.t ? t('prop.card.protocol_tip') : 'Protokol s podpisom'}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button>` : ''}
+          ${viewCount ? `<button onclick="generateViewingDocument('${p.id}')" class="pca-btn pca-doc" title="${window.t ? t('prop.card.minutes_pdf') : 'Zápisnica PDF'}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></button>` : ''}
+          ${p.url ? `<a href="${p.url}" target="_blank" class="pca-btn pca-link" title="${window.t ? t('prop.card.listing_tip') : 'Inzerát'}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>` : ''}
+          <button onclick="event.stopPropagation();openCardMenu(this, '${p.id}');" class="pca-btn pca-more" title="${window.t ? t('prop.card.actions') : 'Akcie'}" aria-label="${window.t ? t('prop.card.actions') : 'Akcie'}"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg></button>
         </div>
       </div>
     </div>`;
