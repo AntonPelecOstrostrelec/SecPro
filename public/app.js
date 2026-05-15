@@ -1,7 +1,7 @@
 // === JS BUILD VERSION INDICATOR ===
 // If you don't see this badge in the top-left after hard refresh, the
 // browser/CDN is still serving stale app.js.
-const SECPRO_JS_BUILD = 'i18n-p2-2026-05-15';
+const SECPRO_JS_BUILD = 'i18n-p34-2026-05-15';
 console.log('%c[SecPro] JS build:', 'background:#16A34A;color:#fff;padding:2px 6px;border-radius:3px;', SECPRO_JS_BUILD);
 
 // Initialize Lucide icons
@@ -12154,6 +12154,16 @@ const LEAD_PIPELINE = [
 const LEAD_STATUS_MAP = {};
 LEAD_PIPELINE.forEach(s => { LEAD_STATUS_MAP[s.key] = s; });
 
+function leadPipelineLabel(key) {
+  const fb = (LEAD_STATUS_MAP[key] || {}).label || key || '';
+  return (typeof window !== 'undefined' && window.t) ? t('lead.pl.' + key, fb) : fb;
+}
+function searchLeadStatusLabel(key) {
+  const f = (typeof SEARCH_LEAD_STATUSES !== 'undefined') ? SEARCH_LEAD_STATUSES.find(s => s.key === key) : null;
+  const fb = (f && f.label) || key || '';
+  return (typeof window !== 'undefined' && window.t) ? t('lead.sst.' + key, fb) : fb;
+}
+
 function saveLead(lead) {
   const leads = getSavedLeads();
   if (leads.some(l => l.url === lead.url)) return;
@@ -12294,7 +12304,7 @@ function updateLeadNotes(id, notes) {
 }
 
 async function deleteSavedLead(id) {
-  if (!await secConfirm({ message: 'Naozaj chcete odstrániť tento lead?', type: 'danger', ok: 'Odstrániť' })) return;
+  if (!await secConfirm({ message: (window.t ? t('lead.saved.delete_confirm') : 'Naozaj chcete odstrániť tento lead?'), type: 'danger', ok: (window.t ? t('lead.saved.delete_ok') : 'Odstrániť') })) return;
   const leads = getSavedLeads().filter(l => l.id !== id);
   saveSavedLeads(leads);
   renderSavedLeads();
@@ -12347,7 +12357,7 @@ function renderSavedLeads() {
   document.getElementById('lead-stat-won').textContent = won;
   document.getElementById('lead-stat-conversion').textContent = conversion + '%';
 
-  if (countEl) countEl.textContent = leads.length + ' leadov celkom';
+  if (countEl) countEl.textContent = (window.t ? t('lead.saved.count') : '{n} leadov celkom').replace('{n}', leads.length);
 
   const funnelEl = document.getElementById('lead-pipeline-funnel');
   if (funnelEl) {
@@ -12356,10 +12366,11 @@ function renderSavedLeads() {
     leads.forEach(l => { counts[l.status] = (counts[l.status] || 0) + 1; });
     funnelEl.innerHTML = LEAD_PIPELINE.map(s => {
       const c = counts[s.key] || 0;
-      return '<div class="dash-funnel-stage" style="background:' + s.color + '0A;color:' + s.color + ';" title="' + s.label + ': ' + c + '">' +
+      const sLbl = leadPipelineLabel(s.key);
+      return '<div class="dash-funnel-stage" style="background:' + s.color + '0A;color:' + s.color + ';" title="' + esc(sLbl) + ': ' + c + '">' +
         '<div class="dash-funnel-dot" style="background:' + s.color + ';"></div>' +
         '<div class="dash-funnel-count" style="color:' + s.color + ';">' + c + '</div>' +
-        '<div class="dash-funnel-label">' + s.label + '</div>' +
+        '<div class="dash-funnel-label">' + esc(sLbl) + '</div>' +
       '</div>';
     }).join('');
   }
@@ -12443,7 +12454,7 @@ function renderSavedLeads() {
     return '<div class="card" style="padding:1rem;' + (isDone ? 'opacity:0.6;' : '') + '">' +
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.75rem;">' +
         '<div style="flex:1;min-width:0;">' +
-          '<div style="font-size:0.92rem;font-weight:600;color:var(--dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + esc(lead.title) + '">' + esc(lead.title || 'Bez n\u00E1zvu') + '</div>' +
+          '<div style="font-size:0.92rem;font-weight:600;color:var(--dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + esc(lead.title) + '">' + esc(lead.title || (window.t ? t('common.untitled') : 'Bez n\u00E1zvu')) + '</div>' +
           '<div style="font-size:0.78rem;color:var(--text-light);margin-top:0.2rem;">' + esc(lead.location || '') + (lead.source ? ' \u00B7 ' + esc(lead.source) : '') + (savedDupCount > 0 ? ' <span class="sec-tooltip-wrap"><span class="lc-dup-badge" style="cursor:default;">Dup ' + savedDupCount + 'x</span><span class="sec-tooltip">' + savedDupCount + ' \u010Falš\u00EDch leadov s rovnak\u00FDm telef\u00F3nom</span></span>' : '') + '</div>' +
         '</div>' +
         '<div style="display:flex;align-items:center;gap:0.5rem;margin-left:0.5rem;flex-shrink:0;">' +
@@ -12459,15 +12470,15 @@ function renderSavedLeads() {
       '</div>' +
       priceHistoryHtml +
       (lead.phone ? '<div style="margin-bottom:0.5rem;font-size:0.82rem;"><a href="tel:' + lead.phone + '" style="color:#1A7A8A;font-weight:600;text-decoration:none;"><i data-lucide="phone" style="width:12px;height:12px;display:inline;vertical-align:middle;margin-right:4px;"></i>' + esc(lead.phone) + '</a></div>' : '') +
-      '<textarea style="width:100%;font-size:0.78rem;border:1px solid #E5E7EB;border-radius:8px;padding:0.5rem;resize:vertical;min-height:36px;font-family:Inter,sans-serif;margin-bottom:0.5rem;" placeholder="Pozn\u00E1mky..." oninput="updateLeadNotes(\'' + lead.id + '\', this.value)">' + esc(lead.notes || '') + '</textarea>' +
+      '<textarea style="width:100%;font-size:0.78rem;border:1px solid #E5E7EB;border-radius:8px;padding:0.5rem;resize:vertical;min-height:36px;font-family:Inter,sans-serif;margin-bottom:0.5rem;" placeholder="' + (window.t ? t('lead.saved.notes_ph') : 'Pozn\u00E1mky...') + '" oninput="updateLeadNotes(\'' + lead.id + '\', this.value)">' + esc(lead.notes || '') + '</textarea>' +
       '<div style="display:flex;gap:0.4rem;flex-wrap:wrap;align-items:center;">' +
         '<select style="font-size:0.75rem;padding:4px 8px;border-radius:8px;border:1px solid #E5E7EB;background:white;cursor:pointer;" onchange="changeLeadStatus(\'' + lead.id + '\', this.value); this.value=\'\';">' +
-          '<option value="">Zmeni\u0165 stav...</option>' +
+          '<option value="">' + (window.t ? t('lead.saved.change_status') : 'Zmeni\u0165 stav...') + '</option>' +
           statusOptions +
         '</select>' +
-        '<a href="' + esc(lead.url) + '" target="_blank" rel="noopener" class="btn" style="font-size:0.72rem;padding:4px 10px;background:#F0F9FF;color:#0891B2;text-decoration:none;">Otvori\u0165</a>' +
-        '<button class="btn" style="font-size:0.72rem;padding:4px 10px;background:#EFF8F6;color:#1A7A8A;" onclick="convertLeadToProperty(\'' + lead.id + '\')">→ Nehnute\u013Enos\u0165</button>' +
-        '<button class="btn" style="font-size:0.72rem;padding:4px 10px;background:#FEF2F2;color:#EF4444;" onclick="deleteSavedLead(\'' + lead.id + '\')">Odstr\u00E1ni\u0165</button>' +
+        '<a href="' + esc(lead.url) + '" target="_blank" rel="noopener" class="btn" style="font-size:0.72rem;padding:4px 10px;background:#F0F9FF;color:#0891B2;text-decoration:none;">' + (window.t ? t('lead.saved.open') : 'Otvori\u0165') + '</a>' +
+        '<button class="btn" style="font-size:0.72rem;padding:4px 10px;background:#EFF8F6;color:#1A7A8A;" onclick="convertLeadToProperty(\'' + lead.id + '\')">' + (window.t ? t('lead.saved.to_property') : '→ Nehnute\u013Enos\u0165') + '</button>' +
+        '<button class="btn" style="font-size:0.72rem;padding:4px 10px;background:#FEF2F2;color:#EF4444;" onclick="deleteSavedLead(\'' + lead.id + '\')">' + (window.t ? t('lead.saved.remove') : 'Odstr\u00E1ni\u0165') + '</button>' +
       '</div>' +
     '</div>';
   }).join('');
